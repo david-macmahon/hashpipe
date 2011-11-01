@@ -22,10 +22,10 @@ ifdef EXT_DISK
 	OPT_FLAGS += -DEXT_DISK
 endif
 
-CFLAGS = -g -O3 -Wall -D_GNU_SOURCE -I$(CUDA)/include -I$(VEGAS_INCL) \
-		-I$(PYSLALIB) -I$(GUPPI_DIR)/src $(OPT_FLAGS)
+CFLAGS = -g -O3 -Wall -D_GNU_SOURCE \
+		-I$(PYSLALIB) -I$(GUPPI_DIR)/src $(OPT_FLAGS) -fno-strict-aliasing
 
-NVCCFLAGS = -arch=sm_20 -I$(CUDA)/include -I$(VEGAS_INCL)
+NVCCFLAGS = -arch=sm_20 -I$(CUDA)/include
 
 LIBS = -L$(PYSLALIB) -L$(VEGAS_LIB) -lcfitsio -lsla -lm -lpthread
 CUDA_LIBS = -L$(CUDA)/lib64 -lcufft -lcuda -lcudart -lrt -lm -lpthread
