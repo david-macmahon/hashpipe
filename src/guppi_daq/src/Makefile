@@ -43,7 +43,7 @@ CUDA_OBJS = pfb_gpu.o pfb_gpu_kernels.o vegas_pfb_thread.o
 
 all: $(PROGS) $(THREAD_PROGS) vegas_hpc_lbw 
 clean:
-	rm -f $(PROGS) $(THREAD_PROGS) *~ *.o sdfits.tgz test_psrfits_0*.fits *.ptx
+	rm -f $(PROGS) $(THREAD_PROGS) *~ *.o sdfits.tgz test_psrfits_0*.fits *.ptx tags
 INSTALL_DIR = ../bin
 install: $(PROGS) $(THREAD_PROGS) vegas_hpc_lbw
 	mkdir -p $(INSTALL_DIR) && \
@@ -54,6 +54,10 @@ sdfits.tgz: sdfits.h read_sdfits.c \
 find_dropped_blocks: find_dropped_blocks.o 
 #	$(CC) $(CFLAGS) $< -o $@ -L$(OPT64)/lib -lcfitsio -lm
 	$(CC) $(CFLAGS) $< -o $@ -lcfitsio -lm
+
+tags:
+	ctags -R .
+
 %.o : %.cu
 	nvcc -c $(NVCCFLAGS) $< -o $@
 
