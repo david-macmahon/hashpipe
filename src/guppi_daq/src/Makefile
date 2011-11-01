@@ -1,6 +1,9 @@
 # Makefile to install GUPPI C code
 # Commented lines are lines that were modified by Simon Scott to allow installation on otto.
 
+# Default location for CUDA (can override on command line or environment)
+CUDA ?= /usr/local/cuda
+
 OPT_FLAGS =
 
 ifdef PAYLOAD
