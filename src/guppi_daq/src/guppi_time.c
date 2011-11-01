@@ -9,6 +9,45 @@
 #include "guppi_error.h"
 #include "guppi_defines.h"
 
+// Reimplementation of slalib's slaCaldj routine.
+// Calculate MJD from Gregorian date.
+// From http://en.wikipedia.org/wiki/Julian_date#Converting_Gregorian_calendar_date_to_Julian_Day_Number
+void slaCaldj(int year, int month, int day, double *mjd, int *rv)
+{
+  int a = (14-month) / 12;
+  int y = year + 4800 - a;
+  int m = month + 12*a - 3;
+  int jd = day + (153*m + 2) / 5 + 365*y + y/4 - y/100 + y/400 - 32045;
+  *mjd = jd - 2400000.5;
+  *rv = 0;
+}
+
+// Reimplementation of slalib's slaDjcl routine.
+// Calculate Gregorian date from MJD.
+// From http://aa.usno.navy.mil/faq/docs/JD_Formula.php
+void slaDjcl(double mjd, int *year, int *month, int *day, double *fracday, int *rv)
+{
+  int i, j, k, l, n;
+  int jd = floor(mjd + 2400000.5);
+
+  l= jd+68569;
+  n= 4*l/146097;
+  l= l-(146097*n+3)/4;
+  i= 4000*(l+1)/1461001;
+  l= l-1461*i/4+31;
+  j= 80*l/2447;
+  k= l-2447*j/80;
+  l= j/11;
+  j= j+2-12*l;
+  i= 100*(n-49)+i+l;
+
+  *year = i;
+  *month = j;
+  *day = k;
+  *fracday = fmod(mjd, 1);
+  *rv = 0;
+}
+
 int get_current_mjd(int *stt_imjd, int *stt_smjd, double *stt_offs) {
     int rv;
     struct timeval tv;
@@ -77,6 +116,7 @@ int datetime_from_mjd(long double MJD, int *YYYY, int *MM, int *DD,
 }
 
 int get_current_lst(double mjd, int *lst_secs) {
+#if 0
     int N = 0;
     double gmst, eqeqx, tt;
     double lon, lat, hgt, lst_rad;
@@ -103,6 +143,9 @@ int get_current_lst(double mjd, int *lst_secs) {
 
     // Convert to seconds
     *lst_secs = (int) (lst_rad * 86400.0 / 6.283185307179586476925);
+#endif
+
+    *lst_secs = 0;
 
     return(GUPPI_OK);
 }

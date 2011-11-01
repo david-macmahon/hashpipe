@@ -27,14 +27,14 @@ CFLAGS = -g -O3 -Wall -D_GNU_SOURCE \
 
 NVCCFLAGS = -arch=sm_20 -I$(CUDA)/include
 
-LIBS = -L$(PYSLALIB) -L$(VEGAS_LIB) -lcfitsio -lsla -lm -lpthread
+LIBS = -L$(PYSLALIB) -L$(VEGAS_LIB) -lcfitsio -lm -lpthread
 CUDA_LIBS = -L$(CUDA)/lib64 -lcufft -lcuda -lcudart -lrt -lm -lpthread
 
 PROGS = check_guppi_databuf check_guppi_status clean_guppi_shmem
 OBJS  = guppi_status.o guppi_databuf.o guppi_udp.o guppi_error.o \
 	guppi_params.o guppi_time.o guppi_thread_args.o \
 	write_sdfits.o misc_utils.o \
-	hget.o hput.o sla.o
+	hget.o hput.o
 THREAD_PROGS = test_net_thread vegas_hpc_hbw
 THREAD_OBJS  = vegas_net_thread.o vegas_rawdisk_thread.o \
 	        guppi_sdfits_thread.o guppi_accum_thread.o \
