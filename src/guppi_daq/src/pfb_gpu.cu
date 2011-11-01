@@ -627,7 +627,7 @@ int accumulate()
     iCUDARet = cudaGetLastError();
     if (iCUDARet != cudaSuccess)
     {
-        (void) fprintf(stderr, cudaGetErrorString(iCUDARet));
+        (void) fprintf(stderr, "%s", cudaGetErrorString(iCUDARet));
         run = 0;
         return GUPPI_ERR_GEN;
     }

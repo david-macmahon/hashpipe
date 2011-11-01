@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
 
     /* If not quiet, print out buffer */
     if (!quiet) { 
-        printf(s.buf); printf("\n"); 
+        printf("%s\n", s.buf);
     }
 
     guppi_status_unlock(&s);
