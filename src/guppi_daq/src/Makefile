@@ -61,7 +61,7 @@ tags:
 %.o : %.cu
 	nvcc -c $(NVCCFLAGS) $< -o $@
 
-paper_hpc: paper_hpc.c $(THREAD_OBJS) $(OBJS) $(CUDA_OBJS)
+paper_xgpu: paper_xgpu.c $(THREAD_OBJS) $(OBJS) $(CUDA_OBJS)
 	$(CC) $(CFLAGS) $(CUDA_CFLAGS) $< -o $@ $(THREAD_OBJS) \
 		$(CUDA_OBJS) $(OBJS) $(LIBS) $(CUDA_LIBS)
 

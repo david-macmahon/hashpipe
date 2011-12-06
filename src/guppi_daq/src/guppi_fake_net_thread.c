@@ -225,7 +225,8 @@ void *guppi_fake_net_thread(void *_args) {
 
     /* Attach to databuf shared mem */
     struct guppi_databuf *db;
-    db = guppi_databuf_attach(args->output_buffer); 
+    //db = guppi_databuf_attach(args->output_buffer); 
+    db = paper_databuf_attach(args->output_buffer); 
     if (db==NULL) {
         guppi_error("guppi_fake_net_thread",
                 "Error attaching to databuf shared memory.");

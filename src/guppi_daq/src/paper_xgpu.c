@@ -17,6 +17,7 @@
 #include "guppi_error.h"
 #include "guppi_status.h"
 #include "guppi_databuf.h"
+#include "paper_databuf.h"
 #include "guppi_params.h"
 #include "guppi_thread_main.h"
 #include "guppi_defines.h"
@@ -78,14 +79,14 @@ int main(int argc, char *argv[]) {
 
 printf("trying attach of gpu buf\n");
     /* Init first shared data buffer */
-    struct guppi_databuf *gpu_input_dbuf=NULL;
-    gpu_input_dbuf = guppi_databuf_attach(pfb_args.input_buffer);
+    struct paper_databuf *gpu_input_dbuf=NULL;
+    gpu_input_dbuf = paper_databuf_attach(pfb_args.input_buffer);
 if(gpu_input_dbuf) printf("success %p\n", gpu_input_dbuf);
 
     /* If attach fails, first try to create the databuf */
     if (gpu_input_dbuf==NULL) { 
 printf("trying create of gpu buf\n");
-        gpu_input_dbuf = guppi_databuf_create(1, 3*2*1024*1024,
+        gpu_input_dbuf = paper_databuf_create(4, 128*128*64*2,
                             pfb_args.input_buffer, GPU_INPUT_BUF);
     }
 

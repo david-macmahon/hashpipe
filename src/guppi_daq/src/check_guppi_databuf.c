@@ -84,7 +84,8 @@ int main(int argc, char *argv[]) {
 #ifndef NEW_GBT
         db = guppi_databuf_create(nblock, blocksize*1024*1024, db_id);
 #else
-        db = guppi_databuf_create(nblock, blocksize*1024*1024, db_id, type);
+        //db = guppi_databuf_create(nblock, blocksize*1024*1024, db_id, type);
+        db = paper_databuf_create(nblock, blocksize*1024*1024, db_id, type);
 #endif
         if (db==NULL) {
             fprintf(stderr, "Error creating databuf %d (may already exist).\n",
@@ -92,7 +93,8 @@ int main(int argc, char *argv[]) {
             exit(1);
         }
     } else {
-        db = guppi_databuf_attach(db_id);
+        //db = guppi_databuf_attach(db_id);
+        db = paper_databuf_attach(db_id);
         if (db==NULL) { 
             fprintf(stderr, 
                     "Error attaching to databuf %d (may not exist).\n",
