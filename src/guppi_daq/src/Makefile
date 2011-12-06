@@ -30,8 +30,8 @@ NVCCFLAGS = -arch=sm_20 -I$(CUDA)/include
 LIBS = -L$(PYSLALIB) -L$(VEGAS_LIB) -lcfitsio -lm -lpthread
 CUDA_LIBS = -L$(CUDA)/lib64 -lcufft -lcuda -lcudart -lrt -lm -lpthread
 
-PROGS = check_guppi_databuf check_guppi_status clean_guppi_shmem
-OBJS  = guppi_status.o guppi_databuf.o guppi_udp.o guppi_error.o \
+PROGS = check_guppi_databuf check_guppi_status clean_guppi_shmem test_udp_recv
+OBJS  = guppi_status.o paper_databuf.o guppi_udp.o guppi_error.o \
 	guppi_params.o guppi_time.o guppi_thread_args.o \
 	write_sdfits.o misc_utils.o \
 	hget.o hput.o
@@ -61,7 +61,7 @@ tags:
 %.o : %.cu
 	nvcc -c $(NVCCFLAGS) $< -o $@
 
-vegas_hpc_lbw: vegas_hpc_lbw.c $(THREAD_OBJS) $(OBJS) $(CUDA_OBJS)
+paper_hpc: paper_hpc.c $(THREAD_OBJS) $(OBJS) $(CUDA_OBJS)
 	$(CC) $(CFLAGS) $(CUDA_CFLAGS) $< -o $@ $(THREAD_OBJS) \
 		$(CUDA_OBJS) $(OBJS) $(LIBS) $(CUDA_LIBS)
 
