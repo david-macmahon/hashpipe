@@ -1,4 +1,4 @@
-/* guppi_databuf.c
+/* paper_databuf.c
  *
  * Routines for creating and accessing main data transfer
  * buffer in shared memory.
@@ -18,6 +18,43 @@
 #include "guppi_status.h"
 #include "paper_databuf.h"
 #include "guppi_error.h"
+
+/*
+ * Since the first element of struct paper_input_databuf is a struct
+ * guppi_databuf, a pointer to a struct paper_input_databuf is also a pointer
+ * to a struct guppi_databuf.  This allows a pointer to a struct
+ * paper_input_databuf to be passed, with appropriate casting, to functions
+ * that accept a pointer to a struct guppi_databuf.  This allows the reuse of
+ * many of the functions in guppi_databuf.c.  This is a form of inheritence: a
+ * struct paper_input_databuf is a struct guppi_databuf (plus additional
+ * specializations).
+ *
+ * Many of the functions in guppi_databuf.c accept a pointer to a struct
+ * guppi_databuf, but unfortunately some of them have VEGAS-specific code or
+ * parameters which render them unsuitable for general use.
+ *
+ * For guppi_databuf.c function...
+ *
+ *   guppi_databuf_xyzzy(struct guppi_databuf *d...)
+ *
+ * ...that is suitable for general use, a corresponding paper_databuf.c
+ * function...
+ *
+ *   paper_input_databuf_xyzzy(struct paper_input_databuf *d...)
+ *
+ * ...can be created that passes its d parameter to guppi_databuf_xyzzy with
+ * appropraite casting.  In some cases (e.g. guppi_databuf_attach), that's all
+ * that's needed, but other cases may require additional functionality in the
+ * paper_input_buffer function.
+ *
+ * guppi_databuf.c functions that are not suitable for general use will have
+ * to be duplicated in a paper-specific way (i.e. without calling the
+ * guppi_databuf version) if they are in fact relevent to paper_input_databuf.
+ * Functions that are duplicated for this reason should have a brief comment
+ * indicating why they are bgin duplicated rather than simply calling the
+ * guppi_databuf.c equivalent.
+ *
+ */
 
 struct paper_input_databuf *paper_databuf_create(int n_block, size_t block_size,
         int databuf_id, int buf_type) {
