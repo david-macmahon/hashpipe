@@ -142,7 +142,7 @@ printf("databuf_size %d\n", databuf_size);
     rv = semctl(d->semid, 0, SETALL, arg);
     free(arg.array);
 
-    return(d);
+    return (struct paper_input_databuf *)d;
 }
 
 int guppi_databuf_detach(struct guppi_databuf *d) {
