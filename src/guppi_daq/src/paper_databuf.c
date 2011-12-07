@@ -56,6 +56,11 @@
  *
  */
 
+/*
+ * guppi_databuf_create is non-general.  Instead of n_block and block_size, it
+ * should take a single overall size since in the general case it cannot know
+ * what size to allocate.
+ */
 struct paper_input_databuf *paper_input_databuf_create(int n_block, size_t block_size,
         int databuf_id, int buf_type) {
 
