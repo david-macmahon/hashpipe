@@ -19,7 +19,7 @@
 #include "paper_databuf.h"
 #include "guppi_error.h"
 
-struct paper_databuf *paper_databuf_create(int n_block, size_t block_size,
+struct paper_input_databuf *paper_databuf_create(int n_block, size_t block_size,
         int databuf_id, int buf_type) {
 
     /* Calc databuf size */
@@ -166,7 +166,7 @@ char *guppi_databuf_data(struct guppi_databuf *d, int block_id) {
 }
 #endif
 
-struct paper_databuf *paper_databuf_attach(int databuf_id) {
+struct paper_input_databuf *paper_databuf_attach(int databuf_id) {
 
     /* Get shmid */
     int shmid;
