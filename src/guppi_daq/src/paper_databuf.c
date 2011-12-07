@@ -209,27 +209,7 @@ char *guppi_databuf_data(struct guppi_databuf *d, int block_id) {
 #endif
 
 struct paper_input_databuf *paper_input_databuf_attach(int databuf_id) {
-
-    /* Get shmid */
-    int shmid;
-    shmid = shmget(GUPPI_DATABUF_KEY + databuf_id - 1, 0, 0666);
-    if (shmid==-1) {
-        // Doesn't exist, exit quietly otherwise complain
-        if (errno!=ENOENT)
-            guppi_error("guppi_databuf_attach", "shmget error");
-        return(NULL);
-    }
-
-    /* Attach */
-    struct guppi_databuf *d;
-    d = shmat(shmid, NULL, 0);
-    if (d==(void *)-1) {
-        guppi_error("guppi_databuf_attach", "shmat error");
-        return(NULL);
-    }
-
-    return(d);
-
+  return (struct paper_input_databuf *)guppi_databuf_attach(databuf_id);
 }
 
 int guppi_databuf_block_status(struct guppi_databuf *d, int block_id) {
