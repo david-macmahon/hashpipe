@@ -17,7 +17,7 @@ typedef struct paper_input_databuf {
   paper_input_block_t blocks[];
 } paper_input_databuf_t;
 
-struct paper_input_databuf *paper_databuf_create(int n_block, size_t block_size,
+struct paper_input_databuf *paper_input_databuf_create(int n_block, size_t block_size,
         int databuf_id, int buf_type);
-struct paper_input_databuf *paper_databuf_attach(int databuf_id);
+struct paper_input_databuf *paper_input_databuf_attach(int databuf_id);
 
