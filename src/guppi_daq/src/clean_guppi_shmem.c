@@ -43,8 +43,7 @@ int main(int argc, char *argv[]) {
     struct guppi_databuf *d=NULL;
     int i = 0;
     for (i=1; i<=2; i++) {
-        //d = guppi_databuf_attach(i); // Repeat for however many needed ..
-        d = paper_databuf_attach(i); // Repeat for however many needed ..
+        d = guppi_databuf_attach(i); // Repeat for however many needed ..
         if (d==NULL) continue;
         if (d->semid) { 
             rv = semctl(d->semid, 0, IPC_RMID); 

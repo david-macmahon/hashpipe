@@ -91,8 +91,7 @@ void guppi_sdfits_thread(void *_args) {
     
     /* Attach to databuf shared mem */
     struct guppi_databuf *db;
-    //db = guppi_databuf_attach(args->input_buffer);
-    db = paper_databuf_attach(args->input_buffer);
+    db = guppi_databuf_attach(args->input_buffer);
     if (db==NULL) {
         guppi_error("guppi_sdfits_thread",
                     "Error attaching to databuf shared memory.");

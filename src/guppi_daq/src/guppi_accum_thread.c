@@ -172,8 +172,7 @@ void guppi_accum_thread(void *_args) {
 
     /* Attach to databuf shared mem */
     struct guppi_databuf *db_in, *db_out;
-    //db_in = guppi_databuf_attach(args->input_buffer);
-    db_in = paper_databuf_attach(args->input_buffer);
+    db_in = guppi_databuf_attach(args->input_buffer);
     char errmsg[256];
     if (db_in==NULL) {
         sprintf(errmsg,
@@ -183,8 +182,7 @@ void guppi_accum_thread(void *_args) {
         pthread_exit(NULL);
     }
     pthread_cleanup_push((void *)guppi_databuf_detach, db_in);
-    //db_out = guppi_databuf_attach(args->output_buffer);
-    db_out = paper_databuf_attach(args->output_buffer);
+    db_out = guppi_databuf_attach(args->output_buffer);
     if (db_out==NULL) {
         sprintf(errmsg,
                 "Error attaching to output databuf(%d) shared memory.", 

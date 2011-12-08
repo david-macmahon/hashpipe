@@ -91,8 +91,7 @@ void guppi_rawdisk_thread(void *_args) {
 
     /* Attach to databuf shared mem */
     struct guppi_databuf *db;
-    //db = guppi_databuf_attach(args->input_buffer);
-    db = paper_databuf_attach(args->input_buffer);
+    db = guppi_databuf_attach(args->input_buffer);
     if (db==NULL) {
         guppi_error("guppi_rawdisk_thread",
                 "Error attaching to databuf shared memory.");
