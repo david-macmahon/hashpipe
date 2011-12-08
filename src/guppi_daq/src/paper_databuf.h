@@ -1,6 +1,27 @@
 #include "guppi_databuf.h"
 
-#define NUM_HEADERS_PER_BLOCK 3
+#define N_BLOCKS 4
+#define N_SUB_BLOCKS_PER_BLOCK 3
+#define N_TIME 128
+#define N_CHAN 128
+#define N_INPUT 64
+
+typedef struct paper_input_input {
+    uint8_t real;
+    uint8_t imag;
+} paper_input_input_t;
+
+typedef struct paper_input_chan {
+    paper_input_input_t input[N_INPUT];
+} paper_input_chan_t;
+
+typedef struct paper_input_time {
+    paper_input_chan_t chan[N_CHAN];
+} paper_input_time_t;
+
+typedef struct paper_input_sub_block {
+    paper_input_time_t time[N_TIME];
+} paper_input_sub_block_t;
 
 typedef struct paper_input_header {
   uint64_t mcnt;
@@ -8,13 +29,13 @@ typedef struct paper_input_header {
 } paper_input_header_t;
 
 typedef struct paper_input_block {
-  paper_input_header_t header[NUM_HEADERS_PER_BLOCK];
-  char data[];
+  paper_input_header_t header[N_SUB_BLOCKS_PER_BLOCK];
+  paper_input_sub_block_t sub_block[N_SUB_BLOCKS_PER_BLOCK];
 } paper_input_block_t;
 
 typedef struct paper_input_databuf {
   struct guppi_databuf header;
-  paper_input_block_t blocks[];
+  paper_input_block_t block[N_BLOCKS];
 } paper_input_databuf_t;
 
 struct paper_input_databuf *paper_input_databuf_create(int n_block, size_t block_size,
