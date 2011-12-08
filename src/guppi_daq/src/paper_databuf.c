@@ -62,20 +62,21 @@
  * what size to allocate.
  */
 struct paper_input_databuf *paper_input_databuf_create(int n_block, size_t block_size,
-        int databuf_id, int buf_type) {
+        int databuf_id, int buf_type)
+{
 
     /* Calc databuf size */
     size_t guppi_databuf_header_size = sizeof(struct guppi_databuf);
-printf("guppi_databuf_header_size %d\n", guppi_databuf_header_size);
+printf("guppi_databuf_header_size %lu\n", guppi_databuf_header_size);
     size_t paper_input_header_size = sizeof(paper_input_header_t);    
-printf("paper_input_header_size %d\n", paper_input_header_size);
+printf("paper_input_header_size %lu\n", paper_input_header_size);
     size_t paper_input_block_size = sizeof(paper_input_block_t);
-printf("paper_input_block_size %d\n", paper_input_block_size);
+printf("paper_input_block_size %lu\n", paper_input_block_size);
     size_t paper_input_databuf_size = sizeof(paper_input_databuf_t);
-printf("paper_input_databuf_size %d\n", paper_input_databuf_size);
+printf("paper_input_databuf_size %lu\n", paper_input_databuf_size);
       size_t databuf_size = paper_input_databuf_size + 
                             (paper_input_block_size + NUM_HEADERS_PER_BLOCK * block_size) * n_block;
-printf("databuf_size %d\n", databuf_size);
+printf("databuf_size %lu\n", databuf_size);
 //exit(1);	// debug exit
 
     /* Get shared memory block, error if it already exists */
@@ -145,168 +146,61 @@ printf("databuf_size %d\n", databuf_size);
     return (struct paper_input_databuf *)d;
 }
 
-int guppi_databuf_detach(struct guppi_databuf *d) {
-    int rv = shmdt(d);
-    if (rv!=0) {
-        guppi_error("guppi_status_detach", "shmdt error");
-        return(GUPPI_ERR_SYS);
-    }
-    return(GUPPI_OK);
+struct paper_input_databuf *paper_input_databuf_attach(int databuf_id)
+{
+    return (struct paper_input_databuf *)guppi_databuf_attach(databuf_id);
 }
 
-void guppi_databuf_clear(struct guppi_databuf *d) {
+/* Mimicking guppi_databuf's "detach" mispelling. */
+int paper_input_databuf_detach(struct paper_input_databuf *d)
+{
+    return guppi_databuf_detach((struct guppi_databuf *)d);
+}
+
+/*
+ * guppi_databuf_clear() does some VEGAS specific stuff so we have to duplicate
+ * its non-VEGAS functionality here.
+ */
+void paper_input_databuf_clear(struct paper_input_databuf *d)
+{
+    struct guppi_databuf *g = (struct guppi_databuf *)d;
 
     /* Zero out semaphores */
     union semun arg;
-    arg.array = (unsigned short *)malloc(sizeof(unsigned short)*d->n_block);
-    memset(arg.array, 0, sizeof(unsigned short)*d->n_block);
-    semctl(d->semid, 0, SETALL, arg);
+    arg.array = (unsigned short *)malloc(sizeof(unsigned short)*g->n_block);
+    memset(arg.array, 0, sizeof(unsigned short)*g->n_block);
+    semctl(g->semid, 0, SETALL, arg);
     free(arg.array);
 
-    /* Clear all headers */
-    int i;
-    for (i=0; i<d->n_block; i++) {
-        guppi_fitsbuf_clear(guppi_databuf_header(d, i));
-    }
-
+    // TODO memset to 0?
 }
 
-void guppi_fitsbuf_clear(char *buf) {
-    char *end, *ptr;
-    end = ksearch(buf, "END");
-    if (end!=NULL) {
-        for (ptr=buf; ptr<=end; ptr+=80) memset(ptr, ' ', 80);
-    }
-    memset(buf, ' ' , 80);
-    strncpy(buf, "END", 3);
+int paper_input_databuf_block_status(struct paper_input_databuf *d, int block_id)
+{
+    return guppi_databuf_block_status((struct guppi_databuf *)d, block_id);
 }
 
-#ifndef NEW_GBT
-char *guppi_databuf_header(struct guppi_databuf *d, int block_id) {
-    return((char *)d + d->struct_size + block_id*d->header_size);
+int paper_input_databuf_total_status(struct paper_input_databuf *d)
+{
+    return guppi_databuf_total_status((struct guppi_databuf *)d);
 }
 
-char *guppi_databuf_data(struct guppi_databuf *d, int block_id) {
-    return((char *)d + d->struct_size + d->n_block*d->header_size
-            + block_id*d->block_size);
+int paper_input_databuf_wait_free(struct paper_input_databuf *d, int block_id)
+{
+    return guppi_databuf_wait_free((struct guppi_databuf *)d, block_id);
 }
 
-#else
-
-char *guppi_databuf_header(struct guppi_databuf *d, int block_id) {
-    return((char *)d + d->struct_size + block_id*d->header_size);
+int paper_input_databuf_wait_filled(struct paper_input_databuf *d, int block_id)
+{
+    return guppi_databuf_wait_filled((struct guppi_databuf *)d, block_id);
 }
 
-char *guppi_databuf_index(struct guppi_databuf *d, int block_id) {
-    return((char *)d + d->struct_size + d->n_block*d->header_size
-            + block_id*d->index_size);
+int paper_input_databuf_set_free(struct paper_input_databuf *d, int block_id)
+{
+    return guppi_databuf_set_free((struct guppi_databuf *)d, block_id);
 }
 
-char *guppi_databuf_data(struct guppi_databuf *d, int block_id) {
-    return((char *)d + d->struct_size + d->n_block*d->header_size
-            + d->n_block*d->index_size + block_id*d->block_size);
-}
-#endif
-
-struct paper_input_databuf *paper_input_databuf_attach(int databuf_id) {
-  return (struct paper_input_databuf *)guppi_databuf_attach(databuf_id);
-}
-
-int guppi_databuf_block_status(struct guppi_databuf *d, int block_id) {
-    return(semctl(d->semid, block_id, GETVAL));
-}
-
-int guppi_databuf_total_status(struct guppi_databuf *d) {
-
-    /* Get all values at once */
-    union semun arg;
-    arg.array = (unsigned short *)malloc(sizeof(unsigned short)*d->n_block);
-    memset(arg.array, 0, sizeof(unsigned short)*d->n_block);
-    semctl(d->semid, 0, GETALL, arg);
-    int i,tot=0;
-    for (i=0; i<d->n_block; i++) tot+=arg.array[i];
-    free(arg.array);
-    return(tot);
-
-}
-
-int guppi_databuf_wait_free(struct guppi_databuf *d, int block_id) {
-    int rv;
-    struct sembuf op;
-    op.sem_num = block_id;
-    op.sem_op = 0;
-    op.sem_flg = 0;
-    struct timespec timeout;
-    timeout.tv_sec = 0;
-    timeout.tv_nsec = 250000000;
-    rv = semtimedop(d->semid, &op, 1, &timeout);
-    if (rv==-1) { 
-        if (errno==EAGAIN) return(GUPPI_TIMEOUT);
-        if (errno==EINTR) return(GUPPI_ERR_SYS);
-        guppi_error("guppi_databuf_wait_free", "semop error");
-        perror("semop");
-        return(GUPPI_ERR_SYS);
-    }
-    return(0);
-}
-
-int guppi_databuf_wait_filled(struct guppi_databuf *d, int block_id) {
-    /* This needs to wait for the semval of the given block
-     * to become > 0, but NOT immediately decrement it to 0.
-     * Probably do this by giving an array of semops, since
-     * (afaik) the whole array happens atomically:
-     * step 1: wait for val=1 then decrement (semop=-1)
-     * step 2: increment by 1 (semop=1)
-     */
-    int rv;
-    struct sembuf op[2];
-    op[0].sem_num = op[1].sem_num = block_id;
-    op[0].sem_flg = op[1].sem_flg = 0;
-    op[0].sem_op = -1;
-    op[1].sem_op = 1;
-    struct timespec timeout;
-    timeout.tv_sec = 0;
-    timeout.tv_nsec = 250000000;
-    rv = semtimedop(d->semid, op, 2, &timeout);
-    if (rv==-1) { 
-        if (errno==EAGAIN) return(GUPPI_TIMEOUT);
-        // Don't complain on a signal interruption
-        if (errno==EINTR) return(GUPPI_ERR_SYS);
-        guppi_error("guppi_databuf_wait_filled", "semop error");
-        perror("semop");
-        return(GUPPI_ERR_SYS);
-    }
-    return(0);
-}
-
-int guppi_databuf_set_free(struct guppi_databuf *d, int block_id) {
-    /* This function should always succeed regardless of the current
-     * state of the specified databuf.  So we use semctl (not semop) to set
-     * the value to zero.
-     */
-    int rv;
-    union semun arg;
-    arg.val = 0;
-    rv = semctl(d->semid, block_id, SETVAL, arg);
-    if (rv==-1) { 
-        guppi_error("guppi_databuf_set_free", "semctl error");
-        return(GUPPI_ERR_SYS);
-    }
-    return(0);
-}
-
-int guppi_databuf_set_filled(struct guppi_databuf *d, int block_id) {
-    /* This function should always succeed regardless of the current
-     * state of the specified databuf.  So we use semctl (not semop) to set
-     * the value to one.
-     */
-    int rv;
-    union semun arg;
-    arg.val = 1;
-    rv = semctl(d->semid, block_id, SETVAL, arg);
-    if (rv==-1) { 
-        guppi_error("guppi_databuf_set_filled", "semctl error");
-        return(GUPPI_ERR_SYS);
-    }
-    return(0);
+int paper_input_databuf_set_filled(struct paper_input_databuf *d, int block_id)
+{
+    return guppi_databuf_set_filled((struct guppi_databuf *)d, block_id);
 }
