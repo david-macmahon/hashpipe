@@ -27,7 +27,7 @@ CFLAGS = -g -O3 -Wall -D_GNU_SOURCE \
 
 NVCCFLAGS = -arch=sm_20 -I$(CUDA)/include
 
-LIBS = -L$(PYSLALIB) -L$(VEGAS_LIB) -lcfitsio -lm -lpthread
+LIBS = -L$(PYSLALIB) -L$(VEGAS_LIB) -lcfitsio -lm -lpthread -lxgpu
 CUDA_LIBS = -L$(CUDA)/lib64 -lcufft -lcuda -lcudart -lrt -lm -lpthread
 
 PROGS = check_guppi_databuf check_guppi_status clean_guppi_shmem test_udp_recv
@@ -35,10 +35,10 @@ OBJS  = guppi_status.o guppi_databuf.o paper_databuf.o guppi_udp.o guppi_error.o
 	guppi_params.o guppi_time.o guppi_thread_args.o \
 	write_sdfits.o misc_utils.o \
 	hget.o hput.o
-THREAD_PROGS = test_net_thread vegas_hpc_hbw
+THREAD_PROGS = test_net_thread vegas_hpc_hbw paper_xgpu
 THREAD_OBJS  = vegas_net_thread.o vegas_rawdisk_thread.o \
 	        guppi_sdfits_thread.o guppi_accum_thread.o \
-	        guppi_null_thread.o guppi_fake_net_thread.o
+	        guppi_null_thread.o guppi_fake_net_thread.o paper_gpu_thread.o
 CUDA_OBJS = pfb_gpu.o pfb_gpu_kernels.o vegas_pfb_thread.o
 
 all: $(PROGS) $(THREAD_PROGS) vegas_hpc_lbw 
@@ -60,10 +60,6 @@ tags:
 
 %.o : %.cu
 	nvcc -c $(NVCCFLAGS) $< -o $@
-
-paper_xgpu: paper_xgpu.c $(THREAD_OBJS) $(OBJS) $(CUDA_OBJS)
-	$(CC) $(CFLAGS) $(CUDA_CFLAGS) $< -o $@ $(THREAD_OBJS) \
-		$(CUDA_OBJS) $(OBJS) $(LIBS) $(CUDA_LIBS)
 
 .SECONDEXPANSION:
 $(PROGS): $$@.c $(OBJS)
