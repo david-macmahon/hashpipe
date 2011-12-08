@@ -61,7 +61,8 @@
 /*
  * guppi_databuf_create is non-general.  Instead of n_block and block_size, it
  * should take a single overall size since in the general case it cannot know
- * what size to allocate.
+ * what size to allocate.  It also performs some VEGAS specific initialization
+ * which we do not replicate here.
  */
 struct paper_input_databuf *paper_input_databuf_create(int n_block, size_t block_size,
         int databuf_id, int buf_type)
@@ -111,11 +112,6 @@ printf("databuf_size %lu\n", databuf_size);
     memset(d, 0, databuf_size);
 
     /* Fill params into databuf */
-    int i;
-    char end_key[81];
-    memset(end_key, ' ', 80);
-    strncpy(end_key, "END", 3);
-    end_key[80]='\0';
     d->shmid = shmid;
     d->semid = 0;
     d->n_block = n_block;
@@ -125,10 +121,6 @@ printf("databuf_size %lu\n", databuf_size);
     //d->index_size = index_size;
     //sprintf(d->data_type, "unknown");
     //d->buf_type = buf_type;
-
-    for (i=0; i<n_block; i++) { 
-        memcpy(guppi_databuf_header(d,i), end_key, 80); 
-    }
 
     /* Get semaphores set up */
     d->semid = semget(GUPPI_DATABUF_KEY + databuf_id - 1, 
