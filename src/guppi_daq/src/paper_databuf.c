@@ -86,14 +86,14 @@ printf("databuf_size %lu\n", databuf_size);
     /* Get shared memory block, error if it already exists */
     key_t key = guppi_databuf_key();
     if(key == GUPPI_KEY_ERROR) {
-        guppi_error("guppi_databuf_create", "guppi_databuf_key error");
+        guppi_error(__FUNCTION__, "guppi_databuf_key error");
         return(NULL);
     }
     int shmid;
     shmid = shmget(key + databuf_id - 1, paper_input_databuf_size, 0666 | IPC_CREAT | IPC_EXCL);
     if (shmid==-1) {
-	perror("guppi_databuf_create()");
-        guppi_error("guppi_databuf_create", "shmget error");
+        perror("shmget");
+        guppi_error(__FUNCTION__, "shmget error");
         return(NULL);
     }
 
@@ -101,16 +101,15 @@ printf("databuf_size %lu\n", databuf_size);
     struct guppi_databuf *d;
     d = shmat(shmid, NULL, 0);
     if (d==(void *)-1) {
-        guppi_error("guppi_databuf_create", "shmat error");
+        guppi_error(__FUNCTION__, "shmat error");
         return(NULL);
     }
 
     /* Try to lock in memory */
     int rv = shmctl(shmid, SHM_LOCK, NULL);
     if (rv==-1) {
-	printf("errno %d\n", errno);
-        guppi_error("guppi_databuf_create", "Error locking shared memory.");
         perror("shmctl");
+        guppi_error(__FUNCTION__, "Error locking shared memory.");
     }
 
     /* Zero out memory */
@@ -130,7 +129,7 @@ printf("databuf_size %lu\n", databuf_size);
     /* Get semaphores set up */
     d->semid = semget(key + databuf_id - 1, n_block, 0666 | IPC_CREAT);
     if (d->semid==-1) { 
-        guppi_error("guppi_databuf_create", "semget error");
+        guppi_error(__FUNCTION__, "semget error");
         return(NULL);
     }
 
@@ -225,14 +224,14 @@ printf("databuf_size %lu\n", databuf_size);
     /* Get shared memory block, error if it already exists */
     key_t key = guppi_databuf_key();
     if(key == GUPPI_KEY_ERROR) {
-        guppi_error("guppi_databuf_create", "guppi_databuf_key error");
+        guppi_error(__FUNCTION__, "guppi_databuf_key error");
         return(NULL);
     }
     int shmid;
     shmid = shmget(key + databuf_id - 1, databuf_size, 0666 | IPC_CREAT | IPC_EXCL);
     if (shmid==-1) {
-        perror("guppi_databuf_create()");
-        guppi_error("guppi_databuf_create", "shmget error");
+        perror("shmget");
+        guppi_error(__FUNCTION__, "shmget error");
         return(NULL);
     }
 
@@ -240,16 +239,15 @@ printf("databuf_size %lu\n", databuf_size);
     struct guppi_databuf *d;
     d = shmat(shmid, NULL, 0);
     if (d==(void *)-1) {
-        guppi_error("guppi_databuf_create", "shmat error");
+        guppi_error(__FUNCTION__, "shmat error");
         return(NULL);
     }
 
     /* Try to lock in memory */
     int rv = shmctl(shmid, SHM_LOCK, NULL);
     if (rv==-1) {
-        printf("errno %d\n", errno);
-        guppi_error("guppi_databuf_create", "Error locking shared memory.");
         perror("shmctl");
+        guppi_error(__FUNCTION__, "Error locking shared memory.");
     }
 
     /* Zero out memory */
@@ -269,7 +267,7 @@ printf("databuf_size %lu\n", databuf_size);
     /* Get semaphores set up */
     d->semid = semget(key + databuf_id - 1, n_block, 0666 | IPC_CREAT);
     if (d->semid==-1) {
-        guppi_error("guppi_databuf_create", "semget error");
+        guppi_error(__FUNCTION__, "semget error");
         return(NULL);
     }
 
