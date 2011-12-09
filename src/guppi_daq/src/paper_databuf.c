@@ -70,17 +70,8 @@ struct paper_input_databuf *paper_input_databuf_create(int n_block, size_t block
 {
 
     /* Calc databuf size */
-    size_t guppi_databuf_header_size = sizeof(struct guppi_databuf);
-printf("guppi_databuf_header_size %lu\n", guppi_databuf_header_size);
-    size_t paper_input_header_size = sizeof(paper_input_header_t);    
-printf("paper_input_header_size %lu\n", paper_input_header_size);
-    size_t paper_input_block_size = sizeof(paper_input_block_t);
-printf("paper_input_block_size %lu\n", paper_input_block_size);
     size_t paper_input_databuf_size = sizeof(paper_input_databuf_t);
 printf("paper_input_databuf_size %lu\n", paper_input_databuf_size);
-      size_t databuf_size = paper_input_databuf_size + 
-                            (paper_input_block_size + N_SUB_BLOCKS_PER_INPUT_BLOCK * block_size) * n_block;
-printf("databuf_size %lu\n", databuf_size);
 //exit(1);	// debug exit
 
     /* Get shared memory block, error if it already exists */
@@ -113,7 +104,7 @@ printf("databuf_size %lu\n", databuf_size);
     }
 
     /* Zero out memory */
-    memset(d, 0, databuf_size);
+    memset(d, 0, paper_input_databuf_size);
 
     /* Fill params into databuf */
     d->shmid = shmid;
