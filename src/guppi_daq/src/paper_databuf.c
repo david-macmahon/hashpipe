@@ -15,6 +15,7 @@
 #include <sys/resource.h> 
 
 #include "fitshead.h"
+#include "guppi_ipckey.h"
 #include "guppi_status.h"
 #include "paper_databuf.h"
 #include "guppi_error.h"
@@ -83,9 +84,13 @@ printf("databuf_size %lu\n", databuf_size);
 //exit(1);	// debug exit
 
     /* Get shared memory block, error if it already exists */
+    key_t key = guppi_databuf_key();
+    if(key == GUPPI_KEY_ERROR) {
+        guppi_error("guppi_databuf_create", "guppi_databuf_key error");
+        return(NULL);
+    }
     int shmid;
-    shmid = shmget(GUPPI_DATABUF_KEY + databuf_id - 1, 
-            databuf_size, 0666 | IPC_CREAT | IPC_EXCL);
+    shmid = shmget(key + databuf_id - 1, paper_input_databuf_size, 0666 | IPC_CREAT | IPC_EXCL);
     if (shmid==-1) {
 	perror("guppi_databuf_create()");
         guppi_error("guppi_databuf_create", "shmget error");
@@ -123,8 +128,7 @@ printf("databuf_size %lu\n", databuf_size);
     //d->buf_type = buf_type;
 
     /* Get semaphores set up */
-    d->semid = semget(GUPPI_DATABUF_KEY + databuf_id - 1, 
-            n_block, 0666 | IPC_CREAT);
+    d->semid = semget(key + databuf_id - 1, n_block, 0666 | IPC_CREAT);
     if (d->semid==-1) { 
         guppi_error("guppi_databuf_create", "semget error");
         return(NULL);
@@ -219,9 +223,13 @@ printf("paper_output_databuf_size %lu\n", paper_output_databuf_size);
 printf("databuf_size %lu\n", databuf_size);
 
     /* Get shared memory block, error if it already exists */
+    key_t key = guppi_databuf_key();
+    if(key == GUPPI_KEY_ERROR) {
+        guppi_error("guppi_databuf_create", "guppi_databuf_key error");
+        return(NULL);
+    }
     int shmid;
-    shmid = shmget(GUPPI_DATABUF_KEY + databuf_id - 1,
-            databuf_size, 0666 | IPC_CREAT | IPC_EXCL);
+    shmid = shmget(key + databuf_id - 1, databuf_size, 0666 | IPC_CREAT | IPC_EXCL);
     if (shmid==-1) {
         perror("guppi_databuf_create()");
         guppi_error("guppi_databuf_create", "shmget error");
@@ -259,8 +267,7 @@ printf("databuf_size %lu\n", databuf_size);
     //d->buf_type = buf_type;
 
     /* Get semaphores set up */
-    d->semid = semget(GUPPI_DATABUF_KEY + databuf_id - 1,
-            n_block, 0666 | IPC_CREAT);
+    d->semid = semget(key + databuf_id - 1, n_block, 0666 | IPC_CREAT);
     if (d->semid==-1) {
         guppi_error("guppi_databuf_create", "semget error");
         return(NULL);

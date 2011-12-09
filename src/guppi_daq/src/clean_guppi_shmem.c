@@ -19,7 +19,8 @@ int main(int argc, char *argv[]) {
 
     /* Status shared mem, force unlock first */
     struct guppi_status s;
-    sem_unlink(GUPPI_STATUS_SEMID);
+    const char *semname = guppi_status_semname();
+    sem_unlink(semname);
     rv = guppi_status_attach(&s);
     if (rv!=GUPPI_OK) {
         fprintf(stderr, "Error connecting to status shared mem.\n");
@@ -32,7 +33,7 @@ int main(int argc, char *argv[]) {
         perror("shmctl");
         ex=1;
     }
-    rv = sem_unlink(GUPPI_STATUS_SEMID);
+    rv = sem_unlink(semname);
     if (rv==-1) {
         fprintf(stderr, "Error unlinking status semaphore.\n");
         perror("sem_unlink");

@@ -14,6 +14,7 @@
 #include <time.h>
 
 #include "fitshead.h"
+#include "guppi_ipckey.h"
 #include "guppi_status.h"
 #include "guppi_databuf.h"
 #include "guppi_error.h"
@@ -30,9 +31,13 @@ struct guppi_databuf *guppi_databuf_create(int n_block, size_t block_size,
     size_t databuf_size = (block_size+header_size) * n_block + struct_size;
 
     /* Get shared memory block, error if it already exists */
+    key_t key = guppi_databuf_key();
+    if(key == GUPPI_KEY_ERROR) {
+        guppi_error("guppi_databuf_create", "guppi_databuf_key error");
+        return(NULL);
+    }
     int shmid;
-    shmid = shmget(GUPPI_DATABUF_KEY + databuf_id - 1, 
-            databuf_size, 0666 | IPC_CREAT | IPC_EXCL);
+    shmid = shmget(key + databuf_id - 1, databuf_size, 0666 | IPC_CREAT | IPC_EXCL);
     if (shmid==-1) {
         guppi_error("guppi_databuf_create", "shmget error");
         return(NULL);
@@ -74,8 +79,7 @@ struct guppi_databuf *guppi_databuf_create(int n_block, size_t block_size,
     }
 
     /* Get semaphores set up */
-    d->semid = semget(GUPPI_DATABUF_KEY + databuf_id - 1, 
-            n_block, 0666 | IPC_CREAT);
+    d->semid = semget(key + databuf_id - 1, n_block, 0666 | IPC_CREAT);
     if (d->semid==-1) { 
         guppi_error("guppi_databuf_create", "semget error");
         return(NULL);
@@ -104,9 +108,13 @@ struct guppi_databuf *guppi_databuf_create(int n_block, size_t block_size,
     size_t databuf_size = (block_size+header_size+index_size) * n_block + struct_size;
 
     /* Get shared memory block, error if it already exists */
+    key_t key = guppi_databuf_key();
+    if(key == GUPPI_KEY_ERROR) {
+        guppi_error("guppi_databuf_create", "guppi_databuf_key error");
+        return(NULL);
+    }
     int shmid;
-    shmid = shmget(GUPPI_DATABUF_KEY + databuf_id - 1, 
-            databuf_size, 0666 | IPC_CREAT | IPC_EXCL);
+    shmid = shmget(key + databuf_id - 1, databuf_size, 0666 | IPC_CREAT | IPC_EXCL);
     if (shmid==-1) {
         guppi_error("guppi_databuf_create", "shmget error");
         return(NULL);
@@ -151,8 +159,7 @@ struct guppi_databuf *guppi_databuf_create(int n_block, size_t block_size,
     }
 
     /* Get semaphores set up */
-    d->semid = semget(GUPPI_DATABUF_KEY + databuf_id - 1, 
-            n_block, 0666 | IPC_CREAT);
+    d->semid = semget(key + databuf_id - 1, n_block, 0666 | IPC_CREAT);
     if (d->semid==-1) { 
         guppi_error("guppi_databuf_create", "semget error");
         return(NULL);
@@ -236,8 +243,13 @@ char *guppi_databuf_data(struct guppi_databuf *d, int block_id) {
 struct guppi_databuf *guppi_databuf_attach(int databuf_id) {
 
     /* Get shmid */
+    key_t key = guppi_databuf_key();
+    if(key == GUPPI_KEY_ERROR) {
+        guppi_error("guppi_databuf_attach", "guppi_databuf_key error");
+        return(NULL);
+    }
     int shmid;
-    shmid = shmget(GUPPI_DATABUF_KEY + databuf_id - 1, 0, 0666);
+    shmid = shmget(key + databuf_id - 1, 0, 0666);
     if (shmid==-1) {
         // Doesn't exist, exit quietly otherwise complain
         if (errno!=ENOENT)

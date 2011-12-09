@@ -13,13 +13,56 @@
 #include <fcntl.h>
 #include <semaphore.h>
 
+#include "guppi_ipckey.h"
 #include "guppi_status.h"
 #include "guppi_error.h"
+
+/* Returns the guppi status (POSIX) semaphore name. */
+const char * guppi_status_semname()
+{
+    static char semid[NAME_MAX-4] = {'\0'};
+    int length_remaining = NAME_MAX-4;
+    char *s;
+    // Lazy init
+    if(semid[0] == '\0') {
+        const char * envstr = getenv("GUPPI_STATUS_SEMNAME");
+        if(envstr) {
+            strncpy(semid, envstr, length_remaining);
+            semid[length_remaining-1] = '\0';
+        } else {
+            envstr = getenv("GUPPI_KEYFILE");
+            if(!envstr) {
+                envstr = getenv("HOME");
+                if(!envstr) {
+                    envstr = "/tmp";
+                }
+            }
+            strncpy(semid, envstr, length_remaining);
+            semid[length_remaining-1] = '\0';
+            // Convert all but the leading / to _
+            s = semid + 1;
+            while((s = strchr(s, '/'))) {
+              *s = '_';
+            }
+            length_remaining -= strlen(semid);
+            if(length_remaining > 0) {
+                strncat(semid, "_guppi_status", length_remaining-1);
+            }
+        }
+        fprintf(stderr, "using guppi status semaphore '%s'\n", semid);
+    }
+    return semid;
+}
 
 int guppi_status_attach(struct guppi_status *s) {
 
     /* Get shared mem id (creating it if necessary) */
-    s->shmid = shmget(GUPPI_STATUS_KEY, GUPPI_STATUS_SIZE, 0666 | IPC_CREAT);
+    key_t key = guppi_status_key();
+    if(key == GUPPI_KEY_ERROR) {
+        guppi_error("guppi_status_attach", "guppi_status_key error");
+        return(NULL);
+    }
+    s->shmid = shmget(key, GUPPI_STATUS_SIZE, 0666 | IPC_CREAT);
     if (s->shmid==-1) { 
         guppi_error("guppi_status_attach", "shmget error");
         return(GUPPI_ERR_SYS);
@@ -37,7 +80,7 @@ int guppi_status_attach(struct guppi_status *s) {
      * Final arg (1) means create in unlocked state (0=locked).
      */
     mode_t old_umask = umask(0);
-    s->lock = sem_open(GUPPI_STATUS_SEMID, O_CREAT, 0666, 1);
+    s->lock = sem_open(guppi_status_semname(), O_CREAT, 0666, 1);
     umask(old_umask);
     if (s->lock==SEM_FAILED) {
         guppi_error("guppi_status_attach", "sem_open");

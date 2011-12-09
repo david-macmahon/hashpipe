@@ -11,8 +11,6 @@
 
 #include "guppi_params.h"
 
-#define GUPPI_STATUS_KEY 16783408
-#define GUPPI_STATUS_SEMID "/guppi_status"
 #define GUPPI_STATUS_SIZE (2880*64) // FITS-style buffer
 #define GUPPI_STATUS_CARD 80 // Size of each FITS "card"
 
@@ -25,6 +23,17 @@ struct guppi_status {
     sem_t *lock; /* POSIX semaphore descriptor for locking */
     char *buf;   /* Pointer to data area */
 };
+
+/*
+ * Returns the guppi status (POSIX) semaphore name.
+ *
+ * The guppi status semaphore name is $GUPPI_STATUS_SEMNAME (if defined in the
+ * environment) or ${GUPPI_KEYFILE}_guppi_status (if defined in the environment)
+ * or ${HOME}_guppi_status (if defined in the environment) or "/tmp_guppi_status"
+ * (global fallback).  Any slashes after the leading slash are converted to
+ * underscores.
+ */
+const char * guppi_status_semname();
 
 /* Return a pointer to the status shared mem area, 
  * creating it if it doesn't exist.  Attaches/creates 

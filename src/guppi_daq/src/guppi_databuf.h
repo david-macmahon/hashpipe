@@ -22,8 +22,6 @@ struct guppi_databuf {
     int n_block;        /* Number of data blocks in buffer */
 };
 
-#define GUPPI_DATABUF_KEY 12987498
-
 /* union for semaphore ops.  Is this really needed? */
 union semun {
     int val;
@@ -77,6 +75,16 @@ struct databuf_index
 
 #endif
 
+/*
+ * Get the base key to use for *all* guppi databufs.  The base key is obtained
+ * by calling the ftok function, using the value of $GUPPI_KEYFILE, if defined,
+ * or $HOME from the environment or, if $HOME is not defined, by using "/tmp".
+ * By default (i.e. no GUPPI_KEYFILE in the environment), this will create and
+ * connect to a user specific set of shared memory buffers (provided $HOME
+ * exists in the environment), but if desired users can connect to any other
+ * set of memory buffers by setting GUPPI_KEYFILE appropraitely.
+ */
+key_t guppi_databuf_key();
 
 /* Create a new shared mem area with given params.  Returns 
  * pointer to the new area on success, or NULL on error.  Returns
