@@ -38,7 +38,8 @@ OBJS  = guppi_status.o guppi_databuf.o paper_databuf.o guppi_udp.o guppi_error.o
 THREAD_PROGS = test_net_thread vegas_hpc_hbw paper_xgpu
 THREAD_OBJS  = vegas_net_thread.o vegas_rawdisk_thread.o \
 	        guppi_sdfits_thread.o guppi_accum_thread.o \
-	        guppi_null_thread.o guppi_fake_net_thread.o paper_gpu_thread.o
+	        guppi_null_thread.o guppi_fake_net_thread.o \
+					paper_fake_net_thread.o paper_gpu_thread.o
 CUDA_OBJS = pfb_gpu.o pfb_gpu_kernels.o vegas_pfb_thread.o
 
 all: $(PROGS) $(THREAD_PROGS) vegas_hpc_lbw 

@@ -27,7 +27,11 @@
 #include "fitshead.h"
 
 /* Thread declarations */
+#ifdef FAKE_NET
+void *paper_fake_net_thread(void *args);
+#else
 void *guppi_net_thread(void *args);
+#endif
 void *paper_gpu_thread(void *args);
 //void *guppi_accum_thread(void *args);
 
@@ -173,7 +177,7 @@ exit(0);
     /* Launch net thread */
     pthread_t net_thread_id;
 #ifdef FAKE_NET
-    rv = pthread_create(&net_thread_id, NULL, guppi_fake_net_thread,
+    rv = pthread_create(&net_thread_id, NULL, paper_fake_net_thread,
             (void *)&net_args);
 #else
     rv = pthread_create(&net_thread_id, NULL, guppi_net_thread,
