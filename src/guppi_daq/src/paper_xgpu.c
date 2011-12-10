@@ -242,7 +242,6 @@ exit(0);
         sleep(1); 
         //if (disk_args.finished) run=0;
     }
-    while(1);
  
     //pthread_cancel(disk_thread_id);
     pthread_cancel(gpu_thread_id);
