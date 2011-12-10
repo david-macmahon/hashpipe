@@ -6,6 +6,8 @@
 #define N_CHAN 128
 #define N_INPUT 64
 
+#define PAGE_SIZE (4096)
+
 /*
  * INPUT BUFFER STRUCTURES
  */
@@ -39,6 +41,9 @@ typedef struct paper_input_block {
 
 typedef struct paper_input_databuf {
   struct guppi_databuf header;
+  // We need each block's sub_block field to start on a PAGE_SIZE boundary, so
+  // we must have a carefully calculated number of padding bytes here.
+  char padding[PAGE_SIZE-sizeof(struct guppi_databuf)-N_SUB_BLOCKS_PER_INPUT_BLOCK*sizeof(paper_input_header_t)];
   paper_input_block_t block[N_INPUT_BLOCKS];
 } paper_input_databuf_t;
 
@@ -58,6 +63,9 @@ typedef struct paper_output_block {
 
 typedef struct paper_output_databuf {
   struct guppi_databuf header;
+  // We need each block's data field to start on a PAGE_SIZE boundary, so we
+  // must have a carefully calculated number of padding bytes here.
+  char padding[PAGE_SIZE-sizeof(struct guppi_databuf)-sizeof(paper_output_header_t)];
   paper_output_block_t block[];
 } paper_output_databuf_t;
 
