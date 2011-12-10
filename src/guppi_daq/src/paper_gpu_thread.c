@@ -155,7 +155,7 @@ void paper_gpu_thread(void *_args)
         curblock_in = (curblock_in + 1) % db_in->header.n_block;
 
         /* Mark output block as full */
-        paper_output_databuf_set_filled(db_out, curblock_in);
+        paper_output_databuf_set_filled(db_out, curblock_out);
         /* Go to next output block */
         curblock_out = (curblock_out + 1) % db_out->header.n_block;
         // TODO Need to handle or at least check for overflow!
