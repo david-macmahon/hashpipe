@@ -27,15 +27,23 @@
 #include "fitshead.h"
 
 /* Thread declarations */
-#ifdef FAKE_NET
 void *paper_fake_net_thread(void *args);
-#else
-//void *guppi_net_thread(void *args);
 void *paper_net_thread(void *args);
-#endif
 void *paper_gpu_thread(void *args);
 
+typedef void *(* threadfunc)(void *);
+
 int main(int argc, char *argv[]) {
+
+    threadfunc net_thread = paper_net_thread;
+    threadfunc gpu_thread = paper_gpu_thread;
+
+    // If -n is given on command line, use fake net thread
+    // TODO Use getopt instead
+    if(argc > 1 && argv[1][0] == '-' && argv[1][1] == 'n') {
+        fprintf(stderr, "using fake net thread\n");
+        net_thread = paper_fake_net_thread;
+    }
 
     /* thread args */
     struct guppi_thread_args net_args, gpu_args;
@@ -113,15 +121,8 @@ printf("trying create of gpu buf\n");
 
     /* Launch net thread */
     pthread_t net_thread_id;
-#ifdef FAKE_NET
-    rv = pthread_create(&net_thread_id, NULL, paper_fake_net_thread,
+    rv = pthread_create(&net_thread_id, NULL, net_thread,
             (void *)&net_args);
-#else
-    //rv = pthread_create(&net_thread_id, NULL, guppi_net_thread,
-    //        (void *)&net_args);
-    rv = pthread_create(&net_thread_id, NULL, paper_net_thread,
-            (void *)&net_args);
-#endif
     if (rv) { 
         fprintf(stderr, "Error creating net thread.\n");
         perror("pthread_create");
@@ -131,7 +132,7 @@ printf("trying create of gpu buf\n");
     /* Launch GPU thread */
     pthread_t gpu_thread_id;
 
-    rv = pthread_create(&gpu_thread_id, NULL, paper_gpu_thread, (void *)&gpu_args);
+    rv = pthread_create(&gpu_thread_id, NULL, gpu_thread, (void *)&gpu_args);
 
     if (rv) { 
         fprintf(stderr, "Error creating GPU thread.\n");
