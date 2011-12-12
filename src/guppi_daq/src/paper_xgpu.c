@@ -33,7 +33,9 @@ void *paper_gpu_thread(void *args);
 
 typedef void *(* threadfunc)(void *);
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
+    int rv;
 
     threadfunc net_thread = paper_net_thread;
     threadfunc gpu_thread = paper_gpu_thread;
@@ -54,6 +56,7 @@ int main(int argc, char *argv[]) {
     gpu_args.input_buffer = net_args.output_buffer;
     gpu_args.output_buffer = 2;
 
+#if 0
     /* Init status shared mem */
     struct guppi_status stat;
     int rv = guppi_status_attach(&stat);
@@ -61,6 +64,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Error connecting to guppi_status\n");
         exit(1);
     }
+#endif
 
     // Get xGPU sizing parameters
     XGPUInfo xgpu_info;
@@ -69,53 +73,28 @@ int main(int argc, char *argv[]) {
 printf("trying attach of gpu buf\n");
     /* Init first shared data buffer */
     struct paper_input_databuf *gpu_input_dbuf=NULL;
-    gpu_input_dbuf = paper_input_databuf_attach(gpu_args.input_buffer);
-if(gpu_input_dbuf) printf("success %p\n", gpu_input_dbuf);
-
-    /* If attach fails, first try to create the databuf */
-    if (gpu_input_dbuf==NULL) { 
-printf("trying create of gpu buf\n");
-        gpu_input_dbuf = paper_input_databuf_create(4, xgpu_info.vecLength*sizeof(ComplexInput),
-                            gpu_args.input_buffer, GPU_INPUT_BUF);
-        /* If that also fails, exit */
-        if (gpu_input_dbuf==NULL) {
-            fprintf(stderr, "Error connecting to gpu_input_dbuf\n");
-            exit(1);
-        }
-    } else {
-        // Check size of existing shared memory
-        if(gpu_input_dbuf->header.block_size < xgpu_info.vecLength*sizeof(ComplexInput)) {
-            fprintf(stderr, "Connected to gpu_input_dbuf, but it has the wrong block_size\n");
-            exit(1);
-        }
+    gpu_input_dbuf = paper_input_databuf_create(4,
+        xgpu_info.vecLength*sizeof(ComplexInput),
+        gpu_args.input_buffer, GPU_INPUT_BUF);
+    /* If that fails, exit (TODO goto cleanup instead) */
+    if (gpu_input_dbuf==NULL) {
+        fprintf(stderr, "Error connecting to gpu_input_dbuf\n");
+        exit(1);
     }
-
-    paper_input_databuf_clear(gpu_input_dbuf);
 
     /* Init second shared data buffer */
     struct paper_output_databuf *gpu_output_dbuf=NULL;
-    gpu_output_dbuf = paper_output_databuf_attach(gpu_args.output_buffer);
+    gpu_output_dbuf = paper_output_databuf_create(16,
+        xgpu_info.matLength*sizeof(Complex),
+        gpu_args.output_buffer);
 
-    /* If attach fails, first try to create the databuf */
+    /* If that fails, exit (TODO goto cleanup instead) */
     if (gpu_output_dbuf==NULL) {
-        gpu_output_dbuf = paper_output_databuf_create(16, xgpu_info.matLength*sizeof(Complex),
-                            gpu_args.output_buffer);
-
-        /* If that also fails, exit */
-        if (gpu_output_dbuf==NULL) {
-            fprintf(stderr, "Error connecting to gpu_output_dbuf\n");
-            exit(1);
-        }
-    } else {
-        // Check size of existing shared memory
-        if(gpu_output_dbuf->header.block_size < xgpu_info.matLength*sizeof(Complex)) {
-            fprintf(stderr, "Connected to gpu_output_dbuf, but it has the wrong block_size\n");
-            exit(1);
-        }
+        fprintf(stderr, "Error connecting to gpu_output_dbuf\n");
+        exit(1);
     }
 
-    paper_output_databuf_clear(gpu_output_dbuf);
-
+    // Catch INT and TERM signals
     signal(SIGINT, cc);
     signal(SIGTERM, cc);
 

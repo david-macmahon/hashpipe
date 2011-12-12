@@ -64,17 +64,25 @@
  * should take a single overall size since in the general case it cannot know
  * what size to allocate.  It also performs some VEGAS specific initialization
  * which we do not replicate here.
+ *
+ * paper_input_databuf_create has different behavior if the databuf to be
+ * created already exists.  Instead of erroring out immediately, it will attach
+ * to the existing buffer and chek the sizes of the buffer with the sizes
+ * passed in.  If they match, a pointer to the existing databuf is returned.
+ * It the sizes do not match, NULL is returned (i.e. it is an error if the
+ * databuf exists but the sizes do not match).
  */
 struct paper_input_databuf *paper_input_databuf_create(int n_block, size_t block_size,
         int databuf_id, int buf_type)
 {
+    int init_buffer = 1;
 
     /* Calc databuf size */
     size_t paper_input_databuf_size = sizeof(paper_input_databuf_t);
 printf("paper_input_databuf_size %lu\n", paper_input_databuf_size);
 //exit(1);	// debug exit
 
-    /* Get shared memory block, error if it already exists */
+    /* Get shared memory block */
     key_t key = guppi_databuf_key();
     if(key == GUPPI_KEY_ERROR) {
         guppi_error(__FUNCTION__, "guppi_databuf_key error");
@@ -82,6 +90,12 @@ printf("paper_input_databuf_size %lu\n", paper_input_databuf_size);
     }
     int shmid;
     shmid = shmget(key + databuf_id - 1, paper_input_databuf_size, 0666 | IPC_CREAT | IPC_EXCL);
+    if (shmid==-1 && errno == EEXIST) {
+        // Already exists, call shmget again without IPC_CREAT
+        shmid = shmget(key + databuf_id - 1, paper_input_databuf_size, 0666);
+        // Do not init buffer
+        init_buffer = 0;
+    }
     if (shmid==-1) {
         perror("shmget");
         guppi_error(__FUNCTION__, "shmget error");
@@ -94,6 +108,18 @@ printf("paper_input_databuf_size %lu\n", paper_input_databuf_size);
     if (d==(void *)-1) {
         guppi_error(__FUNCTION__, "shmat error");
         return(NULL);
+    }
+
+    if(!init_buffer) {
+        // Make sure existing sizes match expectaions
+        if(d->n_block != n_block || d->block_size != block_size) {
+            guppi_error(__FUNCTION__, "existing databuf size mismatch");
+            if(shmdt(d)) {
+                guppi_error(__FUNCTION__, "shmdt error");
+            }
+            return(NULL);
+        }
+        return (struct paper_input_databuf *)d;
     }
 
     /* Try to lock in memory */
@@ -198,10 +224,18 @@ int paper_input_databuf_set_filled(struct paper_input_databuf *d, int block_id)
  * should take a single overall size since in the general case it cannot know
  * what size to allocate.  It also performs some VEGAS specific initialization
  * which we do not replicate here.
+ *
+ * paper_output_databuf_create has different behavior if the databuf to be
+ * created already exists.  Instead of erroring out immediately, it will attach
+ * to the existing buffer and chek the sizes of the buffer with the sizes
+ * passed in.  If they match, a pointer to the existing databuf is returned.
+ * It the sizes do not match, NULL is returned (i.e. it is an error if the
+ * databuf exists but the sizes do not match).
  */
 struct paper_output_databuf *paper_output_databuf_create(int n_block, size_t block_size,
         int databuf_id)
 {
+    int init_buffer = 1;
 
     /* Calc databuf size */
     size_t paper_output_block_size = sizeof(paper_output_block_t);
@@ -220,6 +254,12 @@ printf("databuf_size %lu\n", databuf_size);
     }
     int shmid;
     shmid = shmget(key + databuf_id - 1, databuf_size, 0666 | IPC_CREAT | IPC_EXCL);
+    if (shmid==-1 && errno == EEXIST) {
+        // Already exists, call shmget again without IPC_CREAT
+        shmid = shmget(key + databuf_id - 1, databuf_size, 0666);
+        // Do not init buffer
+        init_buffer = 0;
+    }
     if (shmid==-1) {
         perror("shmget");
         guppi_error(__FUNCTION__, "shmget error");
@@ -232,6 +272,18 @@ printf("databuf_size %lu\n", databuf_size);
     if (d==(void *)-1) {
         guppi_error(__FUNCTION__, "shmat error");
         return(NULL);
+    }
+
+    if(!init_buffer) {
+        // Make sure existing sizes match expectaions
+        if(d->n_block != n_block || d->block_size != block_size) {
+            guppi_error(__FUNCTION__, "existing databuf size mismatch");
+            if(shmdt(d)) {
+                guppi_error(__FUNCTION__, "shmdt error");
+            }
+            return(NULL);
+        }
+        return (struct paper_output_databuf *)d;
     }
 
     /* Try to lock in memory */
