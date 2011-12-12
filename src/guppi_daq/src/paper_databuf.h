@@ -72,7 +72,6 @@ struct paper_input_databuf *paper_input_databuf_create(int n_block, size_t block
 
 struct paper_input_databuf *paper_input_databuf_attach(int databuf_id);
 
-/* Mimicking guppi_databuf's "detach" mispelling. */
 int paper_input_databuf_detach(struct paper_input_databuf *d);
 
 void paper_input_databuf_clear(struct paper_input_databuf *d);
@@ -98,7 +97,6 @@ struct paper_output_databuf *paper_output_databuf_create(int n_block, size_t blo
 
 struct paper_output_databuf *paper_output_databuf_attach(int databuf_id);
 
-/* Mimicking guppi_databuf's "detach" mispelling. */
 int paper_output_databuf_detach(struct paper_output_databuf *d);
 
 void paper_output_databuf_clear(struct paper_output_databuf *d);
