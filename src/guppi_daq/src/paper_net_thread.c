@@ -163,7 +163,7 @@ void write_paper_packet_to_block(struct datablock_stats *d, struct guppi_udp_pac
 	sample_imag = temp   >> 4;
 
 	time_i      = payload_i / 2 % N_TIME;
-	input_i     = (2 * (payload_i / (N_TIME_PER_INPUT_PER_PACKET * 2))) + payload_i % 2;
+	input_i     =  2 * (payload_i / (N_TIME_PER_INPUT_PER_PACKET * 2)) + payload_i % 2;
 
 	paper_input_databuf_p->block[block_i].sub_block[sub_block_i].time[time_i].chan[chan_i].input[input_i].imag = sample_imag; 
 	paper_input_databuf_p->block[block_i].sub_block[sub_block_i].time[time_i].chan[chan_i].input[input_i].real = sample_real;
