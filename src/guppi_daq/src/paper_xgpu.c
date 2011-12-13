@@ -14,6 +14,7 @@
 #include <poll.h>
 #include <getopt.h>
 #include <errno.h>
+#include <dlfcn.h>
 
 #include <xgpu.h>
 
@@ -25,6 +26,10 @@
 #include "guppi_thread_main.h"
 #include "guppi_defines.h"
 #include "fitshead.h"
+
+// Typedefs for loadable module functions
+typedef int (* initfunc_t)(struct guppi_thread_args *);
+typedef void *(* runfunc_t)(void *);
 
 /* Thread declarations */
 void *paper_fake_net_thread(void *args);
@@ -38,7 +43,6 @@ int main(int argc, char *argv[])
     int rv;
 
     threadfunc net_thread = paper_net_thread;
-    threadfunc gpu_thread = paper_gpu_thread;
 
     // If -n is given on command line, use fake net thread
     // TODO Use getopt instead
@@ -56,16 +60,6 @@ int main(int argc, char *argv[])
     gpu_args.input_buffer = net_args.output_buffer;
     gpu_args.output_buffer = 2;
 
-#if 0
-    /* Init status shared mem */
-    struct guppi_status stat;
-    int rv = guppi_status_attach(&stat);
-    if (rv!=GUPPI_OK) {
-        fprintf(stderr, "Error connecting to guppi_status\n");
-        exit(1);
-    }
-#endif
-
     // Get xGPU sizing parameters
     XGPUInfo xgpu_info;
     xgpuInfo(&xgpu_info);
@@ -82,16 +76,27 @@ printf("trying attach of gpu buf\n");
         exit(1);
     }
 
-    /* Init second shared data buffer */
-    struct paper_output_databuf *gpu_output_dbuf=NULL;
-    gpu_output_dbuf = paper_output_databuf_create(16,
-        xgpu_info.matLength*sizeof(Complex),
-        gpu_args.output_buffer);
-
-    /* If that fails, exit (TODO goto cleanup instead) */
-    if (gpu_output_dbuf==NULL) {
-        fprintf(stderr, "Error connecting to gpu_output_dbuf\n");
-        exit(1);
+    char *thread_module = "./paper_gpu_thread.so";
+    void * handle = dlopen(thread_module, RTLD_LAZY | RTLD_LOCAL);
+    if(!handle) {
+      char * s = dlerror();
+      if(s) fprintf(stderr, "%s\n", s);
+      // TODO Go to cleanup instead
+      exit(1);
+    }
+    initfunc_t initfunc = (initfunc_t)dlsym(handle, "init");
+    if(!initfunc) {
+      char * s = dlerror();
+      if(s) fprintf(stderr, "%s\n", s);
+      // TODO Go to cleanup instead
+      exit(1);
+    }
+    runfunc_t runfunc = (runfunc_t)dlsym(handle, "run");
+    if(!runfunc) {
+      char * s = dlerror();
+      if(s) fprintf(stderr, "%s\n", s);
+      // TODO Go to cleanup instead
+      exit(1);
     }
 
     // Catch INT and TERM signals
@@ -108,20 +113,23 @@ printf("trying attach of gpu buf\n");
         exit(1);
     }
 
+    // Init thread
+    initfunc(&gpu_args);
+
     /* Launch GPU thread */
     pthread_t gpu_thread_id;
 
-    rv = pthread_create(&gpu_thread_id, NULL, gpu_thread, (void *)&gpu_args);
+    rv = pthread_create(&gpu_thread_id, NULL, runfunc, (void *)&gpu_args);
 
     if (rv) { 
-        fprintf(stderr, "Error creating GPU thread.\n");
+        fprintf(stderr, "Error creating thread for %s.\n", thread_module);
         perror("pthread_create");
         exit(1);
     }
 
     /* Wait for SIGINT (i.e. control-c) or SIGTERM (aka "kill <pid>") */
-    run=1;
-    while (run) { 
+    run_threads=1;
+    while (run_threads) { 
         sleep(1); 
     }
  

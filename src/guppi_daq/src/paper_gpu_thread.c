@@ -27,22 +27,79 @@
 #define STATUS_KEY "GPUSTAT"
 #include "guppi_threads.h"
 
-/* Parse info from buffer into param struct */
-extern void guppi_read_subint_params(char *buf,
-                                     struct guppi_params *g,
-                                     struct sdfits *p);
-extern void guppi_read_obs_params(char *buf,
-                                     struct guppi_params *g,
-                                     struct sdfits *p);
-
-void paper_gpu_thread(void *_args)
+int init(struct guppi_thread_args *args)
 {
+    int rv;
 
-    /* Get args */
+    /* Attach to status shared mem area */
+    struct guppi_status st;
+    rv = guppi_status_attach(&st);
+    if (rv!=GUPPI_OK) {
+        guppi_error(__FUNCTION__,
+                "Error attaching to status shared memory.");
+        return 1;
+    }
+
+    /* Init status */
+    guppi_status_lock_safe(&st);
+    hputs(st.buf, STATUS_KEY, "init");
+    guppi_status_unlock_safe(&st);
+
+    /* Detach from status shared mem area */
+    rv = guppi_status_detach(&st);
+    if (rv!=GUPPI_OK) {
+        guppi_error(__FUNCTION__,
+                "Error detaching from status shared memory.");
+        return 1;
+    }
+
+    // Get sizing parameters
+    XGPUInfo xgpu_info;
+    xgpuInfo(&xgpu_info);
+
+    /* Create (and attach to) paper_input_databuf */
+    struct paper_input_databuf *db_in;
+    db_in = paper_input_databuf_create(4,
+        xgpu_info.vecLength*sizeof(ComplexInput),
+        args->input_buffer, GPU_INPUT_BUF);
+    if (db_in==NULL) {
+        char msg[256];
+        sprintf(msg, "Error attaching to databuf(%d) shared memory.",
+                args->input_buffer);
+        guppi_error(__FUNCTION__, msg);
+        return 1;
+    }
+    // Detach from paper_input_databuf
+    paper_input_databuf_detach(db_in);
+
+    /* Create (and attach to) paper_ouput_databuf */
+    struct paper_output_databuf *db_out;
+    db_out = paper_output_databuf_create(16,
+        xgpu_info.matLength*sizeof(Complex),
+        args->output_buffer);
+    if (db_out==NULL) {
+        char msg[256];
+        sprintf(msg, "Error attaching to databuf(%d) shared memory.",
+                args->output_buffer);
+        guppi_error(__FUNCTION__, msg);
+        return 1;
+    }
+    // Detach from paper_output_databuf
+    paper_output_databuf_detach(db_out);
+
+    // Success!
+    return 0;
+}
+
+void *run(void * _args)
+{
+    // Cast _args
     struct guppi_thread_args *args = (struct guppi_thread_args *)_args;
+
     int rv;
 
     /* Set cpu affinity */
+    // TODO Pass values in via args
     cpu_set_t cpuset, cpuset_orig;
     sched_getaffinity(0, sizeof(cpu_set_t), &cpuset_orig);
     //CPU_ZERO(&cpuset);
@@ -52,6 +109,7 @@ void paper_gpu_thread(void *_args)
     if (rv<0) {
         guppi_error(__FUNCTION__, "Error setting cpu affinity.");
         perror("sched_setaffinity");
+        pthread_exit(args);
     }
 
     /* Set priority */
@@ -59,7 +117,10 @@ void paper_gpu_thread(void *_args)
     if (rv<0) {
         guppi_error(__FUNCTION__, "Error setting priority level.");
         perror("set_priority");
+        pthread_exit(args);
     }
+
+    pthread_cleanup_push((void *)guppi_thread_set_finished, args);
 
     /* Attach to status shared mem area */
     struct guppi_status st;
@@ -67,18 +128,12 @@ void paper_gpu_thread(void *_args)
     if (rv!=GUPPI_OK) {
         guppi_error(__FUNCTION__,
                 "Error attaching to status shared memory.");
-        pthread_exit(NULL);
+        pthread_exit(args);
     }
     pthread_cleanup_push((void *)guppi_status_detach, &st);
     pthread_cleanup_push((void *)set_exit_status, &st);
-    pthread_cleanup_push((void *)guppi_thread_set_finished, args);
 
-    /* Init status */
-    guppi_status_lock_safe(&st);
-    hputs(st.buf, STATUS_KEY, "init");
-    guppi_status_unlock_safe(&st);
-
-    /* Attach to databuf shared mem */
+    /* Attach to paper_input_databuf */
     struct paper_input_databuf *db_in;
     db_in = paper_input_databuf_attach(args->input_buffer);
     if (db_in==NULL) {
@@ -86,10 +141,11 @@ void paper_gpu_thread(void *_args)
         sprintf(msg, "Error attaching to databuf(%d) shared memory.",
                 args->input_buffer);
         guppi_error(__FUNCTION__, msg);
-        pthread_exit(NULL);
+        pthread_exit(args);
     }
     pthread_cleanup_push((void *)paper_input_databuf_detach, db_in);
 
+    /* Create (and attach) to paper_ouput_databuf */
     struct paper_output_databuf *db_out;
     db_out = paper_output_databuf_attach(args->output_buffer);
     if (db_out==NULL) {
@@ -97,7 +153,7 @@ void paper_gpu_thread(void *_args)
         sprintf(msg, "Error attaching to databuf(%d) shared memory.",
                 args->output_buffer);
         guppi_error(__FUNCTION__, msg);
-        pthread_exit(NULL);
+        pthread_exit(args);
     }
     pthread_cleanup_push((void *)paper_output_databuf_detach, db_out);
 
@@ -105,8 +161,6 @@ void paper_gpu_thread(void *_args)
     int xgpu_error = 0;
     int curblock_in=0;
     int curblock_out=0;
-    int first=1;
-    signal(SIGINT,cc);
 
     // Get sizing parameters
     XGPUInfo xgpu_info;
@@ -121,10 +175,10 @@ void paper_gpu_thread(void *_args)
     xgpu_error = xgpuInit(&context);
     if (XGPU_OK != xgpu_error) {
         fprintf(stderr, "ERROR: xGPU initialisation failed (error code %d)\n", xgpu_error);
-        run = 0;
+        pthread_exit(args);
     }
 
-    while (run) {
+    while (run_threads) {
 
         /* Note waiting status */
         guppi_status_lock_safe(&st);
@@ -168,22 +222,22 @@ void paper_gpu_thread(void *_args)
 
         /* Check for cancel */
         pthread_testcancel();
-
-        if (first) {
-            first=0;
-        }
     }
-    run=0;
-
-    //cudaThreadExit();
-    pthread_exit(NULL);
+    run_threads=0;
 
     xgpuFree(&context);
 
-    pthread_cleanup_pop(0); /* Closes guppi_databuf_detach(out) */
-    pthread_cleanup_pop(0); /* Closes guppi_databuf_detach(in) */
-    pthread_cleanup_pop(0); /* Closes guppi_thread_set_finished */
+    pthread_exit(NULL);
+
+    /*
+     * Have to close all push's since they are preprocessor macros that open
+     * but do not close new lexical scopes.
+     */
+    pthread_cleanup_pop(0); /* Closes paper_output_databuf_detach */
+    pthread_cleanup_pop(0); /* Closes paper_input_databuf_detach */
     pthread_cleanup_pop(0); /* Closes set_exit_status */
     pthread_cleanup_pop(0); /* Closes guppi_status_detach */
+    pthread_cleanup_pop(0); /* Closes guppi_thread_set_finished */
 
+    return NULL;
 }
