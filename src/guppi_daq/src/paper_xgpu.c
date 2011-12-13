@@ -30,7 +30,8 @@
 #ifdef FAKE_NET
 void *paper_fake_net_thread(void *args);
 #else
-void *guppi_net_thread(void *args);
+//void *guppi_net_thread(void *args);
+void *paper_net_thread(void *args);
 #endif
 void *paper_gpu_thread(void *args);
 
@@ -116,7 +117,9 @@ printf("trying create of gpu buf\n");
     rv = pthread_create(&net_thread_id, NULL, paper_fake_net_thread,
             (void *)&net_args);
 #else
-    rv = pthread_create(&net_thread_id, NULL, guppi_net_thread,
+    //rv = pthread_create(&net_thread_id, NULL, guppi_net_thread,
+    //        (void *)&net_args);
+    rv = pthread_create(&net_thread_id, NULL, paper_net_thread,
             (void *)&net_args);
 #endif
     if (rv) { 
