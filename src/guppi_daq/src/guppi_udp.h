@@ -46,6 +46,7 @@ struct guppi_udp_packet {
     char data[GUPPI_MAX_PACKET_SIZE] __attribute__ ((aligned(32))); /* packet data */
 };
 unsigned long long guppi_udp_packet_seq_num(const struct guppi_udp_packet *p);
+unsigned long long guppi_udp_packet_mcnt(const struct guppi_udp_packet *p);
 char *guppi_udp_packet_data(const struct guppi_udp_packet *p);
 size_t guppi_udp_packet_datasize(size_t packet_size);
 size_t parkes_udp_packet_datasize(size_t packet_size);

@@ -104,7 +104,7 @@ int guppi_udp_recv(struct guppi_udp_params *p, struct guppi_udp_packet *b) {
     if (rv==-1) { return(GUPPI_ERR_SYS); }
     else if (p->packet_size) {
 #ifdef SPEAD
-
+printf("SPEAD\n");
     	if (strncmp(p->packet_format, "SPEAD", 5) == 0)
             return guppi_chk_spead_pkt_size(b);
 		else if (rv!=p->packet_size)
@@ -112,6 +112,7 @@ int guppi_udp_recv(struct guppi_udp_params *p, struct guppi_udp_packet *b) {
 		else
             return(GUPPI_OK);
 #else
+printf("NOT SPEAD\n");
         if (rv!=p->packet_size) { return(GUPPI_ERR_PACKET); }
         else { return(GUPPI_OK); }
 #endif
@@ -137,6 +138,16 @@ unsigned long long guppi_udp_packet_seq_num(const struct guppi_udp_packet *p) {
 
     unsigned long long tmp = change_endian64((unsigned long long *)p->data);
     tmp &= 0x00FFFFFFFFFFFFFF;
+    return(tmp);
+    //return(change_endian64((unsigned long long *)(p->data)));
+}
+
+unsigned long long guppi_udp_packet_mcnt(const struct guppi_udp_packet *p) {
+    // XXX Temp for new baseband mode, blank out top 16 bits which 
+    // should contain zeros anyway.
+
+    unsigned long long tmp = change_endian64((unsigned long long *)p->data);
+    tmp &= 0x0000FFFFFFFFFFFF;
     return(tmp);
     //return(change_endian64((unsigned long long *)(p->data)));
 }
