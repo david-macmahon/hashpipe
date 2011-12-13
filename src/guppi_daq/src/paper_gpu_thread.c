@@ -26,66 +26,26 @@
 
 #define STATUS_KEY "GPUSTAT"
 #include "guppi_threads.h"
+#include "paper_thread.h"
 
 int init(struct guppi_thread_args *args)
 {
-    int rv;
-
     /* Attach to status shared mem area */
-    struct guppi_status st;
-    rv = guppi_status_attach(&st);
-    if (rv!=GUPPI_OK) {
-        guppi_error(__FUNCTION__,
-                "Error attaching to status shared memory.");
-        return 1;
-    }
-
-    /* Init status */
-    guppi_status_lock_safe(&st);
-    hputs(st.buf, STATUS_KEY, "init");
-    guppi_status_unlock_safe(&st);
-
-    /* Detach from status shared mem area */
-    rv = guppi_status_detach(&st);
-    if (rv!=GUPPI_OK) {
-        guppi_error(__FUNCTION__,
-                "Error detaching from status shared memory.");
-        return 1;
-    }
+    THREAD_INIT_STATUS(STATUS_KEY);
 
     // Get sizing parameters
     XGPUInfo xgpu_info;
     xgpuInfo(&xgpu_info);
 
-    /* Create (and attach to) paper_input_databuf */
-    struct paper_input_databuf *db_in;
-    db_in = paper_input_databuf_create(4,
+    /* Create paper_input_databuf */
+    THREAD_INIT_DATABUF(paper_input_databuf, 4,
         xgpu_info.vecLength*sizeof(ComplexInput),
         args->input_buffer);
-    if (db_in==NULL) {
-        char msg[256];
-        sprintf(msg, "Error attaching to databuf(%d) shared memory.",
-                args->input_buffer);
-        guppi_error(__FUNCTION__, msg);
-        return 1;
-    }
-    // Detach from paper_input_databuf
-    paper_input_databuf_detach(db_in);
 
-    /* Create (and attach to) paper_ouput_databuf */
-    struct paper_output_databuf *db_out;
-    db_out = paper_output_databuf_create(16,
+    /* Create paper_ouput_databuf */
+    THREAD_INIT_DATABUF(paper_output_databuf, 16,
         xgpu_info.matLength*sizeof(Complex),
         args->output_buffer);
-    if (db_out==NULL) {
-        char msg[256];
-        sprintf(msg, "Error attaching to databuf(%d) shared memory.",
-                args->output_buffer);
-        guppi_error(__FUNCTION__, msg);
-        return 1;
-    }
-    // Detach from paper_output_databuf
-    paper_output_databuf_detach(db_out);
 
     // Success!
     return 0;
@@ -96,76 +56,21 @@ void *run(void * _args)
     // Cast _args
     struct guppi_thread_args *args = (struct guppi_thread_args *)_args;
 
-    int rv;
-
-    /* Set cpu affinity */
-    // TODO Pass values in via args
-    cpu_set_t cpuset, cpuset_orig;
-    sched_getaffinity(0, sizeof(cpu_set_t), &cpuset_orig);
-    //CPU_ZERO(&cpuset);
-    CPU_CLR(13, &cpuset);
-    CPU_SET(11, &cpuset);
-    rv = sched_setaffinity(0, sizeof(cpu_set_t), &cpuset);
-    if (rv<0) {
-        guppi_error(__FUNCTION__, "Error setting cpu affinity.");
-        perror("sched_setaffinity");
-        pthread_exit(args);
-    }
-
-    /* Set priority */
-    rv = setpriority(PRIO_PROCESS, 0, args->priority);
-    if (rv<0) {
-        guppi_error(__FUNCTION__, "Error setting priority level.");
-        perror("set_priority");
-        pthread_exit(args);
-    }
-
-    pthread_cleanup_push((void *)guppi_thread_set_finished, args);
+    THREAD_RUN_SET_AFFINITY_PRIORITY(args);
 
     /* Attach to status shared mem area */
-    struct guppi_status st;
-    rv = guppi_status_attach(&st);
-    if (rv!=GUPPI_OK) {
-        guppi_error(__FUNCTION__,
-                "Error attaching to status shared memory.");
-        pthread_exit(args);
-    }
-    pthread_cleanup_push((void *)guppi_status_detach, &st);
-    pthread_cleanup_push((void *)set_exit_status, &st);
+    THREAD_RUN_ATTACH_STATUS(st);
 
     /* Attach to paper_input_databuf */
-    struct paper_input_databuf *db_in;
-    db_in = paper_input_databuf_attach(args->input_buffer);
-    if (db_in==NULL) {
-        char msg[256];
-        sprintf(msg, "Error attaching to databuf(%d) shared memory.",
-                args->input_buffer);
-        guppi_error(__FUNCTION__, msg);
-        pthread_exit(args);
-    }
-    pthread_cleanup_push((void *)paper_input_databuf_detach, db_in);
+    THREAD_RUN_ATTACH_DATABUF(paper_input_databuf, db_in, args->input_buffer);
 
-    /* Create (and attach) to paper_ouput_databuf */
-    struct paper_output_databuf *db_out;
-    db_out = paper_output_databuf_attach(args->output_buffer);
-    if (db_out==NULL) {
-        char msg[256];
-        sprintf(msg, "Error attaching to databuf(%d) shared memory.",
-                args->output_buffer);
-        guppi_error(__FUNCTION__, msg);
-        pthread_exit(args);
-    }
-    pthread_cleanup_push((void *)paper_output_databuf_detach, db_out);
+    /* Attach to paper_ouput_databuf */
+    THREAD_RUN_ATTACH_DATABUF(paper_output_databuf, db_out, args->output_buffer);
 
     /* Loop */
     int xgpu_error = 0;
     int curblock_in=0;
     int curblock_out=0;
-
-    // Get sizing parameters
-    XGPUInfo xgpu_info;
-    xgpuInfo(&xgpu_info);
-    // TODO Check sizes against data buffer sizes
 
     // Initialize context to point at first input and output memory blocks
     XGPUContext context;
@@ -175,7 +80,7 @@ void *run(void * _args)
     xgpu_error = xgpuInit(&context);
     if (XGPU_OK != xgpu_error) {
         fprintf(stderr, "ERROR: xGPU initialisation failed (error code %d)\n", xgpu_error);
-        pthread_exit(args);
+        return THREAD_ERROR;
     }
 
     while (run_threads) {
@@ -186,7 +91,7 @@ void *run(void * _args)
         guppi_status_unlock_safe(&st);
 
         /* Wait for buf to have data */
-        rv = paper_input_databuf_wait_filled(db_in, curblock_in);
+        int rv = paper_input_databuf_wait_filled(db_in, curblock_in);
         if (rv!=0) continue;
 
         /* Note waiting status, current input block */
@@ -227,6 +132,7 @@ void *run(void * _args)
 
     xgpuFree(&context);
 
+    // Thread success!
     pthread_exit(NULL);
 
     /*
@@ -237,7 +143,7 @@ void *run(void * _args)
     pthread_cleanup_pop(0); /* Closes paper_input_databuf_detach */
     pthread_cleanup_pop(0); /* Closes set_exit_status */
     pthread_cleanup_pop(0); /* Closes guppi_status_detach */
-    pthread_cleanup_pop(0); /* Closes guppi_thread_set_finished */
+    pthread_cleanup_pop(0); /* Closes guppi_status_detach */
 
     return NULL;
 }
