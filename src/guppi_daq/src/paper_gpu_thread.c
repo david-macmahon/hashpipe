@@ -61,7 +61,7 @@ int init(struct guppi_thread_args *args)
     struct paper_input_databuf *db_in;
     db_in = paper_input_databuf_create(4,
         xgpu_info.vecLength*sizeof(ComplexInput),
-        args->input_buffer, GPU_INPUT_BUF);
+        args->input_buffer);
     if (db_in==NULL) {
         char msg[256];
         sprintf(msg, "Error attaching to databuf(%d) shared memory.",

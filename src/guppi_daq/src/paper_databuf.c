@@ -73,7 +73,7 @@
  * databuf exists but the sizes do not match).
  */
 struct paper_input_databuf *paper_input_databuf_create(int n_block, size_t block_size,
-        int databuf_id, int buf_type)
+        int databuf_id)
 {
     int init_buffer = 1;
 
@@ -136,12 +136,7 @@ printf("paper_input_databuf_size %lu\n", paper_input_databuf_size);
     d->shmid = shmid;
     d->semid = 0;
     d->n_block = n_block;
-    //d->struct_size = struct_size;
     d->block_size = block_size;
-    //d->header_size = header_size;
-    //d->index_size = index_size;
-    //sprintf(d->data_type, "unknown");
-    //d->buf_type = buf_type;
 
     /* Get semaphores set up */
     d->semid = semget(key + databuf_id - 1, n_block, 0666 | IPC_CREAT);
@@ -300,12 +295,7 @@ printf("databuf_size %lu\n", databuf_size);
     d->shmid = shmid;
     d->semid = 0;
     d->n_block = n_block;
-    //d->struct_size = struct_size;
     d->block_size = block_size;
-    //d->header_size = header_size;
-    //d->index_size = index_size;
-    //sprintf(d->data_type, "unknown");
-    //d->buf_type = buf_type;
 
     /* Get semaphores set up */
     d->semid = semget(key + databuf_id - 1, n_block, 0666 | IPC_CREAT);

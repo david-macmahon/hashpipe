@@ -69,7 +69,7 @@ printf("trying attach of gpu buf\n");
     struct paper_input_databuf *gpu_input_dbuf=NULL;
     gpu_input_dbuf = paper_input_databuf_create(4,
         xgpu_info.vecLength*sizeof(ComplexInput),
-        gpu_args.input_buffer, GPU_INPUT_BUF);
+        gpu_args.input_buffer);
     /* If that fails, exit (TODO goto cleanup instead) */
     if (gpu_input_dbuf==NULL) {
         fprintf(stderr, "Error connecting to gpu_input_dbuf\n");

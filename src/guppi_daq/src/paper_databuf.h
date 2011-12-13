@@ -68,7 +68,7 @@ typedef struct paper_output_databuf {
  */
 
 struct paper_input_databuf *paper_input_databuf_create(int n_block, size_t block_size,
-        int databuf_id, int buf_type);
+        int databuf_id);
 
 struct paper_input_databuf *paper_input_databuf_attach(int databuf_id);
 
