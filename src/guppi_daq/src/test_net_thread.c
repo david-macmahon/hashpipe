@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
     }
     guppi_databuf_clear(dbuf);
 
-    run=1;
+    run_threads=1;
     signal(SIGINT, cc);
 
     /* Launch net thread */
@@ -125,7 +125,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* Wait for end */
-    while (run) { sleep(1); }
+    while (run_threads) { sleep(1); }
     if (disk_thread_id) pthread_cancel(disk_thread_id);
     pthread_cancel(net_thread_id);
     if (disk_thread_id) pthread_kill(disk_thread_id,SIGINT);

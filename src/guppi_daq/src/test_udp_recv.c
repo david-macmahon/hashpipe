@@ -25,8 +25,8 @@ void usage() {
 }
 
 /* control-c handler */
-int run=1;
-void stop_running(int sig) { run=0; }
+int run_threads=1;
+void stop_running(int sig) { run_threads=0; }
 
 int main(int argc, char *argv[]) {
 
@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
     int first=1;
     signal(SIGINT, stop_running);
     printf("Waiting for data (sock=%d).\n", p.sock);
-    while (run) {
+    while (run_threads) {
         rv = guppi_udp_wait(&p);
         if (rv==GUPPI_OK) {
             /* recv data ,etc */
@@ -103,9 +103,9 @@ int main(int argc, char *argv[]) {
                 if (seq_num>max_id) { max_id=seq_num; }
             }
         } else if (rv==GUPPI_TIMEOUT) {
-            if (first==0) { run=0; }
+            if (first==0) { run_threads=0; }
         } else {
-            if (run) {
+            if (run_threads) {
                 perror("poll");
                 guppi_udp_close(&p);
                 exit(1);

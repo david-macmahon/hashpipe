@@ -124,10 +124,10 @@ void vegas_pfb_thread(void *_args) {
                                  nchan))
     {
         (void) fprintf(stderr, "ERROR: GPU initialisation failed!\n");
-        run = 0;
+        run_threads = 0;
     }
 
-    while (run) {
+    while (run_threads) {
 
         /* Note waiting status */
         guppi_status_lock_safe(&st);
@@ -171,7 +171,7 @@ void vegas_pfb_thread(void *_args) {
             first=0;
         }
     }
-    run=0;
+    run_threads=0;
 
     //cudaThreadExit();
     pthread_exit(NULL);

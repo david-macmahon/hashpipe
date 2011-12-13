@@ -9,7 +9,7 @@
 #include "guppi_thread_args.h"
 
 /* Control-C handler */
-int run=1;
-void cc(int sig) { run=0; }
+int run_threads=1;
+void cc(int sig) { run_threads=0; }
 
 #endif

@@ -119,7 +119,7 @@ void guppi_null_thread(void *_args) {
 #endif
     int curblock=0;
     signal(SIGINT,cc);
-    while (run) {
+    while (run_threads) {
 
         /* Note waiting status */
         guppi_status_lock_safe(&st);

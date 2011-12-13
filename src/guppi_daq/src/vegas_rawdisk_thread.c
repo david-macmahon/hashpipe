@@ -114,7 +114,7 @@ void guppi_rawdisk_thread(void *_args) {
 
     signal(SIGINT,cc);
 
-    while (run) {
+    while (run_threads) {
 
         /* Note waiting status */
         guppi_status_lock_safe(&st);

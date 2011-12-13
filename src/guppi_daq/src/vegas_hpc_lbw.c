@@ -187,10 +187,10 @@ int main(int argc, char *argv[]) {
     }
 
     /* Wait for end */
-    run=1;
-    while (run) { 
+    run_threads=1;
+    while (run_threads) { 
         sleep(1); 
-        if (disk_args.finished) run=0;
+        if (disk_args.finished) run_threads=0;
     }
  
     pthread_cancel(disk_thread_id);

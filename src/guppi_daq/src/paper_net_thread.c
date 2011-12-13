@@ -423,7 +423,7 @@ void *guppi_net_thread(void *_args) {
     /* Main loop */
     unsigned force_new_block=0, waiting=-1;
     signal(SIGINT,cc);
-    while (run) {
+    while (run_threads) {
 
         /* Wait for data */
         rv = guppi_udp_wait(&up);
@@ -622,7 +622,7 @@ void *guppi_net_thread(void *_args) {
                 } else {
                     guppi_error("guppi_net_thread", 
                             "error waiting for free databuf");
-                    run=0;
+                    run_threads=0;
                     pthread_exit(NULL);
                     break;
                 }
@@ -827,7 +827,7 @@ void *paper_net_thread(void *_args) {
     /* Main loop */
     unsigned force_new_block=0, waiting=-1;
     signal(SIGINT,cc);
-    while (run) {
+    while (run_threads) {
 
         /* Wait for data */
         rv = guppi_udp_wait(&up);
@@ -1027,7 +1027,7 @@ void *paper_net_thread(void *_args) {
                 } else {
                     guppi_error("guppi_net_thread", 
                             "error waiting for free databuf");
-                    run=0;
+                    run_threads=0;
                     pthread_exit(NULL);
                     break;
                 }

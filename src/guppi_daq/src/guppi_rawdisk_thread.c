@@ -138,7 +138,7 @@ void guppi_rawdisk_thread(void *_args) {
     int requantize = 0;
     char *ptr, *hend;
     signal(SIGINT,cc);
-    while (run) {
+    while (run_threads) {
 
         /* Note waiting status */
         guppi_status_lock_safe(&st);

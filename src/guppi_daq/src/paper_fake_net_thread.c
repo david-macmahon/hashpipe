@@ -92,7 +92,7 @@ void *paper_fake_net_thread(void *_args) {
     int block_idx = 0;
     signal(SIGINT,cc);
     signal(SIGTERM,cc);
-    while (run) {
+    while (run_threads) {
 
         guppi_status_lock_safe(&st);
         hputs(st.buf, STATUS_KEY, "waiting");
@@ -116,7 +116,7 @@ void *paper_fake_net_thread(void *_args) {
                 continue;
             } else {
                 guppi_error(__FUNCTION__, "error waiting for free databuf");
-                run=0;
+                run_threads=0;
                 pthread_exit(NULL);
                 break;
             }

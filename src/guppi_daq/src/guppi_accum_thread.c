@@ -230,7 +230,7 @@ void guppi_accum_thread(void *_args) {
     int nblock_int=0, npacket=0, n_pkt_drop=0, n_heap_drop=0;
 
     signal(SIGINT,cc);
-    while (run) {
+    while (run_threads) {
 
         /* Note waiting status */
         guppi_status_lock_safe(&st);
@@ -348,7 +348,7 @@ void guppi_accum_thread(void *_args) {
                                     continue;
                                 } else {
                                     guppi_error("guppi_accum_thread", "error waiting for free databuf");
-                                    run=0;
+                                    run_threads=0;
                                     pthread_exit(NULL);
                                     break;
                                 }

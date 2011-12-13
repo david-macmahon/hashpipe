@@ -100,7 +100,7 @@ void guppi_sdfits_thread(void *_args) {
     pthread_cleanup_push((void *)guppi_databuf_detach, db);
     
     /* Loop */
-    int curblock=0, total_status=0, firsttime=1, run=1, got_packet_0=0, dataset=0;
+    int curblock=0, total_status=0, firsttime=1, got_packet_0=0, dataset=0;
     char *ptr;
     char tmpstr[256];
     int scan_finished=0, first_heap_in_blk, old_filenum;
@@ -184,7 +184,7 @@ void guppi_sdfits_thread(void *_args) {
         /* Check for cancel */
         pthread_testcancel();
         
-    } while (run && !scan_finished);
+    } while (run_threads && !scan_finished);
     
     /* Cleanup */
     pthread_exit(NULL);

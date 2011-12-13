@@ -28,7 +28,7 @@ extern "C" {
 
 /* ASSUMPTIONS: 1. All blocks contain the same number of heaps. */
 
-extern int run;
+extern int run_threads;
 
 /**
  * Global variables: maybe move this to a struct that is passed to each function?
@@ -102,7 +102,7 @@ int init_gpu(size_t input_block_sz, size_t output_block_sz, int num_subbands, in
     if (0 == iDevCount)
     {
         (void) fprintf(stderr, "ERROR: No CUDA-capable device found!\n");
-        run = 0;
+        run_threads = 0;
         return EXIT_FAILURE;
     }
 
@@ -216,7 +216,7 @@ int init_gpu(size_t input_block_sz, size_t output_block_sz, int num_subbands, in
     if (iCUFFTRet != CUFFT_SUCCESS)
     {
         (void) fprintf(stderr, "ERROR: Plan creation failed!\n");
-        run = 0;
+        run_threads = 0;
         return EXIT_FAILURE;
     }
 
@@ -294,7 +294,7 @@ void do_pfb(struct guppi_databuf *db_in,
         if ((g_iBlockInDataSize % (g_iNumSubBands * g_nchan * sizeof(char4))) != 0)
         {
             (void) fprintf(stderr, "ERROR: Data size mismatch!\n");
-            run = 0;
+            run_threads = 0;
             return;
         }
         CUDASafeCall(cudaMemcpy(g_pc4Data_d,
@@ -381,7 +381,7 @@ void do_pfb(struct guppi_databuf *db_in,
                                    "ERROR: Heap count %d exceeds available number of heaps %d!\n",
                                    heap_in,
                                    num_in_heaps_gpu_buffer);
-                    run = 0;
+                    run_threads = 0;
                     return;
                 }
                 heap_addr_in = (char*)(guppi_databuf_data(db_in, curblock_in) +
@@ -403,7 +403,7 @@ void do_pfb(struct guppi_databuf *db_in,
                            __FILE__,
                            __LINE__,
                            cudaGetErrorString(iCUDARet));
-            run = 0;
+            run_threads = 0;
             break;
         }
          
@@ -411,7 +411,7 @@ void do_pfb(struct guppi_databuf *db_in,
         if (iRet != GUPPI_OK)
         {
             (void) fprintf(stderr, "ERROR: FFT failed!\n");
-            run = 0;
+            run_threads = 0;
             break;
         }
 
@@ -423,7 +423,7 @@ void do_pfb(struct guppi_databuf *db_in,
             if (iRet != GUPPI_OK)
             {
                 (void) fprintf(stderr, "ERROR: Accumulation failed!\n");
-                run = 0;
+                run_threads = 0;
                 break;
             }
             ++g_iSpecPerAcc;
@@ -467,7 +467,7 @@ void do_pfb(struct guppi_databuf *db_in,
                 if (iRet != GUPPI_OK)
                 {
                     (void) fprintf(stderr, "ERROR: Getting accumulated spectrum failed!\n");
-                    run = 0;
+                    run_threads = 0;
                     break;
                 }
 
@@ -517,7 +517,7 @@ void do_pfb(struct guppi_databuf *db_in,
             if (iRet != GUPPI_OK)
             {
                 (void) fprintf(stderr, "ERROR: Getting accumulated spectrum failed!\n");
-                run = 0;
+                run_threads = 0;
                 break;
             }
 
@@ -569,7 +569,7 @@ void do_pfb(struct guppi_databuf *db_in,
 
             /*  Wait for next output block */
             g_iPFBCurBlockOut = (g_iPFBCurBlockOut + 1) % db_out->n_block;
-            while ((guppi_databuf_wait_free(db_out, g_iPFBCurBlockOut)!=0) && run) {
+            while ((guppi_databuf_wait_free(db_out, g_iPFBCurBlockOut)!=0) && run_threads) {
                 //guppi_status_lock_safe(&st);
                     pthread_cleanup_push((void (*)(void *))&guppi_status_unlock, (void *) &st);
                     guppi_status_lock(&st);
@@ -610,7 +610,7 @@ int do_fft()
     if (iCUFFTRet != CUFFT_SUCCESS)
     {
         (void) fprintf(stderr, "ERROR: FFT failed!");
-        run = 0;
+        run_threads = 0;
         return GUPPI_ERR_GEN;
     }
 
@@ -628,7 +628,7 @@ int accumulate()
     if (iCUDARet != cudaSuccess)
     {
         (void) fprintf(stderr, "%s", cudaGetErrorString(iCUDARet));
-        run = 0;
+        run_threads = 0;
         return GUPPI_ERR_GEN;
     }
 
@@ -706,7 +706,7 @@ void __CUDASafeCall(cudaError_t iCUDARet,
                        pcFile,
                        iLine,
                        cudaGetErrorString(iCUDARet));
-        run = 0;
+        run_threads = 0;
         return;
     }
 

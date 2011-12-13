@@ -9,7 +9,7 @@
 #include "guppi_thread_args.h"
 
 /* SIGINT handling capability */
-extern int run;
+extern int run_threads;
 extern void cc(int sig);
 
 /* Safe lock/unlock functions for status shared mem. */
