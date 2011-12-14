@@ -27,84 +27,76 @@
 #include "fitshead.h"
 #include "paper_thread.h"
 
-/* Thread declarations */
-void *paper_fake_net_thread(void *args);
-void *paper_net_thread(void *args);
-
-typedef void *(* threadfunc)(void *);
+#define MAX_THREADS (1024)
 
 int main(int argc, char *argv[])
 {
-    int rv;
-
-    threadfunc net_thread = paper_net_thread;
-
-    // If -n is given on command line, use fake net thread
-    // TODO Use getopt instead
-    if(argc > 1 && argv[1][0] == '-' && argv[1][1] == 'n') {
-        fprintf(stderr, "using fake net thread\n");
-        net_thread = paper_fake_net_thread;
-    }
-
-    /* thread args */
-    struct guppi_thread_args net_args, gpu_args;
-    guppi_thread_args_init(&net_args);
-    guppi_thread_args_init(&gpu_args);
-
-    net_args.output_buffer = 1;
-    gpu_args.input_buffer = net_args.output_buffer;
-    gpu_args.output_buffer = 2;
-
-    // Get xGPU sizing parameters
-    XGPUInfo xgpu_info;
-    xgpuInfo(&xgpu_info);
-
-printf("trying attach of gpu buf\n");
-    /* Init first shared data buffer */
-    struct paper_input_databuf *gpu_input_dbuf=NULL;
-    gpu_input_dbuf = paper_input_databuf_create(4,
-        xgpu_info.vecLength*sizeof(ComplexInput),
-        gpu_args.input_buffer);
-    /* If that fails, exit (TODO goto cleanup instead) */
-    if (gpu_input_dbuf==NULL) {
-        fprintf(stderr, "Error connecting to gpu_input_dbuf\n");
-        exit(1);
-    }
+    int i, rv;
+    int num_threads = 0;
+    pthread_t threads[MAX_THREADS];
+    pipeline_thread_module_t *modules[MAX_THREADS];
+    struct guppi_thread_args args;
 
     // Catch INT and TERM signals
     signal(SIGINT, cc);
     signal(SIGTERM, cc);
 
-    /* Launch net thread */
-    pthread_t net_thread_id;
-    rv = pthread_create(&net_thread_id, NULL, net_thread,
-            (void *)&net_args);
-    if (rv) { 
-        fprintf(stderr, "Error creating net thread.\n");
-        perror("pthread_create");
-        exit(1);
-    }
+    guppi_thread_args_init(&args);
+    args.input_buffer  = 0;
+    args.output_buffer = 1;
 
-    // Find paper_gpu_thread
-    pipeline_thread_module_t * module = find_pipeline_thread_module("paper_gpu_thread");
-    if (!module) { 
-        fprintf(stderr, "Error finding '%s' module.\n", "paper_gpu_thread");
-        perror("find_pipeline_thread_module");
-        exit(1);
-    }
+    // Walk through command line for names of threads to instantiate
+    for(i=1; i<argc; i++) {
+      // Handle options
+      if(argv[i][0] == '-') {
+        switch(argv[i][1]) {
+          case 'b':
+            // "-b B" jumps to input buffer B, output buffer B+1
+            // TODO
+            break;
+          case 'c':
+            // "-c C" sets CPU core for next thread
+            // (only single core supported)
+            // TODO
+            break;
+          case 'm':
+            // "-m M" sets CPU affinity mask for next thread
+            // TODO
+            break;
+        }
+      } else {
+        // argv[i] is name of thread to start
+        modules[num_threads] = find_pipeline_thread_module(argv[i]);
 
-    // Init thread
-    module->init(&gpu_args);
+        if (!modules[num_threads]) { 
+            fprintf(stderr, "Error finding '%s' module.\n", argv[i]);
+            exit(1);
+        }
 
-    /* Launch GPU thread */
-    pthread_t gpu_thread_id;
+        // Init thread
+        rv = modules[num_threads]->init(&args);
 
-    rv = pthread_create(&gpu_thread_id, NULL, module->run, (void *)&gpu_args);
+        if (rv) { 
+            fprintf(stderr, "Error initializing thread for '%s'.\n",
+                modules[num_threads]->name);
+            exit(1);
+        }
 
-    if (rv) { 
-        fprintf(stderr, "Error creating thread for '%s'.\n", module->name);
-        perror("pthread_create");
-        exit(1);
+        // Launch thread
+        rv = pthread_create(&threads[num_threads], NULL,
+            modules[num_threads]->run, (void *)&args);
+
+        if (rv) { 
+            fprintf(stderr, "Error creating thread for '%s'.\n",
+                modules[num_threads]->name);
+            exit(1);
+        }
+
+        // Setup for next thread
+        num_threads++;
+        args.input_buffer++;
+        args.output_buffer++;
+      }
     }
 
     /* Wait for SIGINT (i.e. control-c) or SIGTERM (aka "kill <pid>") */
@@ -113,17 +105,19 @@ printf("trying attach of gpu buf\n");
         sleep(1); 
     }
  
-    pthread_cancel(gpu_thread_id);
-    pthread_cancel(net_thread_id);
-    pthread_kill(gpu_thread_id,SIGINT);
-    pthread_kill(net_thread_id,SIGINT);
-    pthread_join(net_thread_id,NULL);
-    printf("Joined net thread\n"); fflush(stdout);
-    pthread_join(gpu_thread_id,NULL);
-    printf("Joined GPU thread\n"); fflush(stdout);
+    for(i=num_threads-1; i>=0; i--) {
+      pthread_cancel(threads[i]);
+    }
+    for(i=num_threads-1; i>=0; i--) {
+      pthread_kill(threads[i], SIGINT);
+    }
+    for(i=num_threads-1; i>=0; i--) {
+      pthread_join(threads[i], NULL);
+      printf("Joined thread '%s'\n", modules[i]->name);
+      fflush(stdout);
+    }
 
-    guppi_thread_args_destroy(&net_args);
-    guppi_thread_args_destroy(&gpu_args);
+    guppi_thread_args_destroy(&args);
 
     exit(0);
 }
