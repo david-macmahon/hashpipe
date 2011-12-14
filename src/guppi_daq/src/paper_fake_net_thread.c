@@ -32,62 +32,41 @@
 #define STATUS_KEY "NETSTAT"  /* Define before guppi_threads.h */
 #include "guppi_threads.h"
 #include "guppi_defines.h"
+#include "paper_thread.h"
 
-/* This thread is passed a single arg, pointer
- * to the guppi_udp_params struct.  This thread should 
- * be cancelled and restarted if any hardware params
- * change, as this potentially affects packet size, etc.
- */
-void *paper_fake_net_thread(void *_args) {
+static int init(struct guppi_thread_args *args)
+{
+    /* Attach to status shared mem area */
+    THREAD_INIT_STATUS(STATUS_KEY);
 
-    /* Get arguments */
+    // Get sizing parameters
+    XGPUInfo xgpu_info;
+    xgpuInfo(&xgpu_info);
+
+    /* Create paper_input_databuf for output buffer */
+    THREAD_INIT_DATABUF(paper_input_databuf, 4,
+        xgpu_info.vecLength*sizeof(ComplexInput),
+        args->output_buffer);
+
+    // Success!
+    return 0;
+}
+
+static void *run(void * _args)
+{
+    // Cast _args
     struct guppi_thread_args *args = (struct guppi_thread_args *)_args;
 
-    /* Set cpu affinity */
-    cpu_set_t cpuset, cpuset_orig;
-    sched_getaffinity(0, sizeof(cpu_set_t), &cpuset_orig);
-    CPU_ZERO(&cpuset);
-    //CPU_SET(2, &cpuset);
-    CPU_SET(3, &cpuset);
-    int rv = sched_setaffinity(0, sizeof(cpu_set_t), &cpuset);
-    if (rv<0) { 
-        guppi_error(__FUNCTION__, "Error setting cpu affinity.");
-        perror("sched_setaffinity");
-    }
-
-    /* Set priority */
-    rv = setpriority(PRIO_PROCESS, 0, args->priority);
-    if (rv<0) {
-        guppi_error(__FUNCTION__, "Error setting priority level.");
-        perror("set_priority");
-    }
+    THREAD_RUN_SET_AFFINITY_PRIORITY(args);
 
     /* Attach to status shared mem area */
-    struct guppi_status st;
-    rv = guppi_status_attach(&st);
-    if (rv!=GUPPI_OK) {
-        guppi_error(__FUNCTION__, "Error attaching to status shared memory.");
-        pthread_exit(NULL);
-    }
-    pthread_cleanup_push((void *)guppi_status_detach, &st);
-    pthread_cleanup_push((void *)set_exit_status, &st);
+    THREAD_RUN_ATTACH_STATUS(st);
 
-    /* Init status, read info */
-    guppi_status_lock_safe(&st);
-    hputs(st.buf, STATUS_KEY, "init");
-    guppi_status_unlock_safe(&st);
-
-    /* Attach to databuf shared mem */
-    struct paper_input_databuf *db;
-    db = paper_input_databuf_attach(args->output_buffer); 
-    if (db==NULL) {
-        guppi_error(__FUNCTION__, "Error attaching to databuf shared memory.");
-        pthread_exit(NULL);
-    }
-    pthread_cleanup_push((void *)paper_input_databuf_detach, db);
+    /* Attach to paper_input_databuf */
+    THREAD_RUN_ATTACH_DATABUF(paper_input_databuf, db, args->output_buffer);
 
     /* Main loop */
-    int i;
+    int i, rv;
     uint64_t mcnt = 0;
     int block_idx = 0;
     signal(SIGINT,cc);
@@ -151,10 +130,23 @@ void *paper_fake_net_thread(void *_args) {
         pthread_testcancel();
     }
 
-    pthread_exit(NULL);
+    // Have to close all pushes
+    THREAD_RUN_DETACH_DATAUF;
+    THREAD_RUN_DETACH_STATUS;
+    THREAD_RUN_POP_AFFINITY_PRIORITY;
 
-    /* Have to close all push's */
-    pthread_cleanup_pop(0); /* Closes set_exit_status */
-    pthread_cleanup_pop(0); /* Closes guppi_status_detach */
-    pthread_cleanup_pop(0); /* Closes paper_input_databuf_detach */
+    // Thread success!
+    return NULL;
+}
+
+static pipeline_thread_module_t module = {
+    name: "paper_fake_net_thread",
+    type: PIPELINE_INPUT_THREAD,
+    init: init,
+    run:  run
+};
+
+static __attribute__((constructor)) void ctor()
+{
+  register_pipeline_thread_module(&module);
 }
