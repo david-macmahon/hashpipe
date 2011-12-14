@@ -15,7 +15,7 @@
 //
 // Pipeline thread modules are identified by their name.  The pipeline
 // executable can find (registered) pipeline thread modules by their name.
-// Pipeline threads can be a PIPELINE_INPUT threads, a PIPELINE_OUTPUT threads,
+// A pipeline thread can be a PIPELINE_INPUT_THREAD, a PIPELINE_OUTPUT_THREAD,
 // or both.
 //
 // PIPELINE_INPUT-only threads source data into the pipeline.  They do not get
@@ -32,9 +32,9 @@
 // data from one shared memory region, process it, and store the output data in
 // another shared memory region.
 
-#define PIPELINE_INPUT_THREAD (1)
-#define PIPELINE_OUPUT_THREAD (2)
-#define PIPELINE_INOUT_THREAD (PIPELINE_OUPUT_THREAD|PIPELINE_INPUT_THREAD)
+#define PIPELINE_INPUT_THREAD  (1)
+#define PIPELINE_OUTPUT_THREAD (2)
+#define PIPELINE_INOUT_THREAD  (PIPELINE_OUTPUT_THREAD|PIPELINE_INPUT_THREAD)
 
 // These typedefs are used to declare pointers to a pipeline thread module's
 // init and run functions.
