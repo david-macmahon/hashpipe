@@ -28,7 +28,7 @@
 #include "guppi_threads.h"
 #include "paper_thread.h"
 
-int init(struct guppi_thread_args *args)
+static int init(struct guppi_thread_args *args)
 {
     /* Attach to status shared mem area */
     THREAD_INIT_STATUS(STATUS_KEY);
@@ -51,7 +51,7 @@ int init(struct guppi_thread_args *args)
     return 0;
 }
 
-void *run(void * _args)
+static void *run(void * _args)
 {
     // Cast _args
     struct guppi_thread_args *args = (struct guppi_thread_args *)_args;
@@ -146,4 +146,16 @@ void *run(void * _args)
     pthread_cleanup_pop(0); /* Closes guppi_status_detach */
 
     return NULL;
+}
+
+static pipeline_thread_module_t module = {
+    name: "paper_gpu_thread",
+    type: PIPELINE_INOUT_THREAD,
+    init: init,
+    run:  run
+};
+
+static __attribute__((constructor)) void ctor()
+{
+  register_pipeline_thread_module(&module);
 }

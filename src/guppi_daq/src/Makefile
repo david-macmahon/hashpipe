@@ -32,7 +32,7 @@ CUDA_LIBS = -L$(CUDA)/lib64 -lcufft -lcuda -lcudart -lrt -lm -lpthread
 
 PROGS = check_guppi_databuf check_guppi_status clean_guppi_shmem test_udp_recv
 OBJS  = guppi_status.o guppi_databuf.o paper_databuf.o guppi_udp.o guppi_error.o \
-	guppi_params.o guppi_time.o guppi_thread_args.o \
+	guppi_params.o guppi_time.o guppi_thread_args.o paper_thread.o \
 	write_sdfits.o misc_utils.o guppi_ipckey.o \
 	hget.o hput.o
 THREAD_PROGS = test_net_thread vegas_hpc_hbw paper_xgpu

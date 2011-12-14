@@ -1,6 +1,67 @@
 #ifndef _PAPER_THREAD
 #define _PAPER_THREAD
 
+#include "guppi_thread_args.h"
+
+// A pipeline thread module encapsulates metadata and functionality for onr or more
+// threads that can be used in a processing pipeline.  The pipeline executable
+// dynamically assembles a pipeline at runtime consisting of multiple pipeline
+// threads.
+//
+// Pipeline thread modules must register themselves with the pipeline
+// executable via a call to register_pipeline_thread_module().  This is
+// typically performed from a static C function with the constructor attribute
+// in the pipeline thread module's source file.
+//
+// Pipeline thread modules are identified by their name.  The pipeline
+// executable can find (registered) pipeline thread modules by their name.
+// Pipeline threads can be a PIPELINE_INPUT threads, a PIPELINE_OUTPUT threads,
+// or both.
+//
+// PIPELINE_INPUT-only threads source data into the pipeline.  They do not get
+// their input data from a shared memory ring buffer.  They get their data from
+// external sources (e.g.  files or the network) or generate it internally
+// (e.g.  for test vectors).
+//
+// PIPELINE_OUTPUT-only threads sink data from the pipeline.  Thy do not put
+// their output data into a shared memory ring buffer.  They send theor data to
+// external sinks (e.g. files or the network) of consume it internally (e.g.
+// comparing against expected output).
+//
+// Threads that are both PIPELINE_INPUT and PIPELINE_OUTPUT get their input
+// data from one shared memory region, process it, and store the output data in
+// another shared memory region.
+
+#define PIPELINE_INPUT_THREAD (1)
+#define PIPELINE_OUPUT_THREAD (2)
+#define PIPELINE_INOUT_THREAD (PIPELINE_OUPUT_THREAD|PIPELINE_INPUT_THREAD)
+
+// These typedefs are used to declare pointers to a pipeline thread module's
+// init and run functions.
+typedef int (* initfunc_t)(struct guppi_thread_args *);
+typedef void *(* runfunc_t)(void *);
+
+// This structure is used to store metadata about a pipeline thread module.
+// Typically a pipeline thread module will define one of these as a static
+// (i.e. file private) variable.
+typedef struct {
+  char * name;
+  int type;
+  initfunc_t init;
+  runfunc_t run;
+} pipeline_thread_module_t;
+
+// This function is used by pipeline thread modules to register themselves with
+// the pipeline executable.
+int register_pipeline_thread_module(pipeline_thread_module_t * ptm);
+
+// This function is used by the pipeline executable to find pipeline thread
+// modules by name.  Returns a pointer to its pipeline_thread_module_t
+// structure or NULL if a test with the given name is not found.
+//
+// NB: Names are case sensitive.
+pipeline_thread_module_t * find_pipeline_thread_module(char *name);
+
 // Preprocessor macros to simplify creation of loadable thread modules.
 
 // Used to return error status via return from run
