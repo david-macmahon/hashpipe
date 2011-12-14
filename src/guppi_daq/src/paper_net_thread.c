@@ -40,6 +40,7 @@
 
 #define DEBUG_NET
 
+#if 0
 // Read a status buffer all of the key observation paramters
 extern void guppi_read_obs_params(char *buf, 
                                   struct guppi_params *g, 
@@ -124,6 +125,7 @@ int block_heap_check(struct datablock_stats *d, unsigned int heap_cntr) {
         return(1);
     else return(0);
 }
+#endif // 0
 
 //void write_paper_packet_to_blocks(struct datablock_stats *d, struct guppi_udp_packet *p) {
 void write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, struct guppi_udp_packet *p) {
@@ -191,7 +193,7 @@ void write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, 
 }
 
 
-
+#if 0
 /*
  *  Write a SPEAD packet into the datablock.  Also zeroes out any dropped packets.
  */
@@ -658,6 +660,7 @@ void *guppi_net_thread(void *_args) {
     pthread_cleanup_pop(0); /* Closes guppi_status_detach */
     pthread_cleanup_pop(0); /* Closes guppi_databuf_detach */
 }
+#endif // 0
 
 /* This thread is passed a single arg, pointer
  * to the guppi_udp_params struct.  This thread should 
