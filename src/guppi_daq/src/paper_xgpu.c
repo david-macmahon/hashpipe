@@ -37,6 +37,12 @@ int main(int argc, char *argv[])
     pipeline_thread_module_t *modules[MAX_THREADS];
     struct guppi_thread_args args;
 
+    // Handle initial -l option as request to list all known threads
+    if(argv[1] && argv[1][0] == '-' && argv[1][1] == 'l') {
+        list_pipeline_thread_modules(stdout);
+        return 0;
+    }
+
     // Catch INT and TERM signals
     signal(SIGINT, cc);
     signal(SIGTERM, cc);
@@ -97,6 +103,13 @@ int main(int argc, char *argv[])
         args.input_buffer++;
         args.output_buffer++;
       }
+    }
+
+    // If no threads started
+    if(num_threads == 0) {
+      printf("No threads specified!\n");
+      list_pipeline_thread_modules(stdout);
+      return 1;
     }
 
     /* Wait for SIGINT (i.e. control-c) or SIGTERM (aka "kill <pid>") */

@@ -62,6 +62,9 @@ int register_pipeline_thread_module(pipeline_thread_module_t * ptm);
 // NB: Names are case sensitive.
 pipeline_thread_module_t * find_pipeline_thread_module(char *name);
 
+// List all known pipeline thread modules to FILE f.
+void list_pipeline_thread_modules(FILE * f);
+
 // Preprocessor macros to simplify creation of loadable thread modules.
 
 // Used to return error status via return from run

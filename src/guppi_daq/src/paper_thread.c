@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <string.h>
 #include "paper_thread.h"
 
@@ -29,3 +30,26 @@ find_pipeline_thread_module(char *name)
   return NULL;
 }
 
+void
+list_pipeline_thread_modules(FILE * f)
+{
+  int i;
+  printf("Known input thread modules:\n");
+  for(i=0; i<num_modules; i++) {
+    if(module_list[i]->type == PIPELINE_INPUT_THREAD) {
+      fprintf(f, "  %s\n", module_list[i]->name);
+    }
+  }
+  printf("Known input/output thread modules:\n");
+  for(i=0; i<num_modules; i++) {
+    if(module_list[i]->type == PIPELINE_INOUT_THREAD) {
+      fprintf(f, "  %s\n", module_list[i]->name);
+    }
+  }
+  printf("Known output thread modules:\n");
+  for(i=0; i<num_modules; i++) {
+    if(module_list[i]->type == PIPELINE_OUTPUT_THREAD) {
+      fprintf(f, "  %s\n", module_list[i]->name);
+    }
+  }
+}
