@@ -137,6 +137,11 @@ void set_obs_params_gb(char *buf,
 }
 #endif
 
+void paper_read_net_params(char *buf, struct guppi_udp_params *u) {
+    get_str("DATAHOST", u->sender, 80, "192.168.2.2");
+    get_int("DATAPORT", u->port, 8080);
+}
+
 // Read networking parameters
 void guppi_read_net_params(char *buf, struct guppi_udp_params *u) {
     get_str("DATAHOST", u->sender, 80, "bee2-10");

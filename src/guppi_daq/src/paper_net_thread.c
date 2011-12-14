@@ -716,7 +716,8 @@ void *paper_net_thread(void *_args) {
 
     /* Read network params */
     struct guppi_udp_params up;
-    guppi_read_net_params(status_buf, &up);
+    //guppi_read_net_params(status_buf, &up);
+    paper_read_net_params(status_buf, &up);
 
     /* Attach to databuf shared mem */
     struct guppi_databuf *db;
