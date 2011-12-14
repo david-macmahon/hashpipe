@@ -63,11 +63,18 @@ int main(int argc, char *argv[])
           case 'c':
             // "-c C" sets CPU core for next thread
             // (only single core supported)
-            // TODO
+            if(i < argc-1) {
+              // TODO Warn on errors
+              unsigned int cpu = strtoul(argv[++i], NULL, 0);
+              args.cpu_mask = (1<<cpu);
+            }
             break;
           case 'm':
             // "-m M" sets CPU affinity mask for next thread
-            // TODO
+            if(i < argc-1) {
+              // TODO Warn on errors
+              args.cpu_mask = strtoul(argv[++i], NULL, 0);
+            }
             break;
         }
       } else {
@@ -102,6 +109,7 @@ int main(int argc, char *argv[])
         num_threads++;
         args.input_buffer++;
         args.output_buffer++;
+        args.cpu_mask = 0;
       }
     }
 

@@ -65,6 +65,12 @@ pipeline_thread_module_t * find_pipeline_thread_module(char *name);
 // List all known pipeline thread modules to FILE f.
 void list_pipeline_thread_modules(FILE * f);
 
+// Set CPU affinity of calling thread
+int set_cpu_affinity(unsigned int mask);
+
+// Set priority of calling thread
+int set_priority(int priority);
+
 // Preprocessor macros to simplify creation of loadable thread modules.
 
 // Used to return error status via return from run
@@ -115,53 +121,44 @@ void list_pipeline_thread_modules(FILE * f);
 
 // Macros for the run function
 
-// Set CPU affinity and process priority from args.
+// Sets up call to set state to finished on thread exit
 // Does 1 pthread_cleanup_push.
-// Use THREAD_RUN_POP_AFFINITY_PRIORITY to pop it.
-#define THREAD_RUN_SET_AFFINITY_PRIORITY(args)                      \
-  {                                                                 \
-    /* Set cpu affinity */                                          \
-    /* TODO Pass values in via args */                              \
-    cpu_set_t cpuset, cpuset_orig;                                  \
-    sched_getaffinity(0, sizeof(cpu_set_t), &cpuset_orig);          \
-    /*CPU_ZERO(&cpuset);*/                                          \
-    CPU_CLR(13, &cpuset);                                           \
-    CPU_SET(11, &cpuset);                                           \
-    int rv = sched_setaffinity(0, sizeof(cpu_set_t), &cpuset);      \
-    if (rv<0) {                                                     \
-        guppi_error(__FUNCTION__, "Error setting cpu affinity.");   \
-        perror("sched_setaffinity");                                \
-        return THREAD_ERROR;                                        \
-    }                                                               \
-    /* Set priority */                                              \
-    rv = setpriority(PRIO_PROCESS, 0,                               \
-        ((struct guppi_thread_args *)args)->priority);              \
-    if (rv<0) {                                                     \
-        guppi_error(__FUNCTION__, "Error setting priority level."); \
-        perror("set_priority");                                     \
-        return THREAD_ERROR;                                        \
-    }                                                               \
-  }                                                                 \
+// Use THREAD_RUN_END to pop it.
+#define THREAD_RUN_BEGIN(args) \
   pthread_cleanup_push((void *)guppi_thread_set_finished, args);
 
-// Pops pthread cleanup for THREAD_RUN_SET_AFFINITY_PRIORITY
-#define THREAD_RUN_POP_AFFINITY_PRIORITY \
-    pthread_cleanup_pop(0);
+// Pops pthread cleanup for THREAD_RUN_BEGIN
+#define THREAD_RUN_END pthread_cleanup_pop(0);
+
+// Set CPU affinity and process priority from args.
+#define THREAD_RUN_SET_AFFINITY_PRIORITY(args)                        \
+  do {                                                                \
+    unsigned int mask = ((struct guppi_thread_args *)args)->cpu_mask; \
+    int priority = ((struct guppi_thread_args *)args)->priority;      \
+    if(set_cpu_affinity(mask) < 0) {                                  \
+        perror("set_cpu_affinity");                                   \
+        return THREAD_ERROR;                                          \
+    }                                                                 \
+    if(set_priority(priority) < 0) {                                  \
+        perror("set_priority");                                       \
+        return THREAD_ERROR;                                          \
+    }                                                                 \
+  } while(0)
 
 // Attaches to status memory and creates variable st for it.
-// Does 2 pthread_cleanup_push.
+// Does 3 pthread_cleanup_push.
 // Use THREAD_RUN_DETACH_STATUS to pop them.
-#define THREAD_RUN_ATTACH_STATUS(st)                          \
-  struct guppi_status st;                                     \
-  {                                                           \
-    int rv = guppi_status_attach(&st);                        \
-    if (rv!=GUPPI_OK) {                                       \
-        guppi_error(__FUNCTION__,                             \
-                "Error attaching to status shared memory.");  \
-        return THREAD_ERROR;                                  \
-    }                                                         \
-  }                                                           \
-  pthread_cleanup_push((void *)guppi_status_detach, &st);     \
+#define THREAD_RUN_ATTACH_STATUS(st)                             \
+  struct guppi_status st;                                        \
+  {                                                              \
+    int rv = guppi_status_attach(&st);                           \
+    if (rv!=GUPPI_OK) {                                          \
+        guppi_error(__FUNCTION__,                                \
+                "Error attaching to status shared memory.");     \
+        return THREAD_ERROR;                                     \
+    }                                                            \
+  }                                                              \
+  pthread_cleanup_push((void *)guppi_status_detach, &st);        \
   pthread_cleanup_push((void *)set_exit_status, &st);
 
 // Pops pthread cleanup for THREAD_RUN_ATTACH_STATUS

@@ -57,9 +57,10 @@ static void *run(void * _args)
     // Cast _args
     struct guppi_thread_args *args = (struct guppi_thread_args *)_args;
 
+    THREAD_RUN_BEGIN(args);
+
     THREAD_RUN_SET_AFFINITY_PRIORITY(args);
 
-    /* Attach to status shared mem area */
     THREAD_RUN_ATTACH_STATUS(st);
 
     /* Attach to paper_input_databuf */
@@ -133,7 +134,7 @@ static void *run(void * _args)
     // Have to close all pushes
     THREAD_RUN_DETACH_DATAUF;
     THREAD_RUN_DETACH_STATUS;
-    THREAD_RUN_POP_AFFINITY_PRIORITY;
+    THREAD_RUN_END;
 
     // Thread success!
     return NULL;
