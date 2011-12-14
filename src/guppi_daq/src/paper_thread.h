@@ -112,8 +112,9 @@ pipeline_thread_module_t * find_pipeline_thread_module(char *name);
 
 // Macros for the run function
 
-// Set CPU affinity and process priority from args
-// Does 1 pthread_cleanup_push
+// Set CPU affinity and process priority from args.
+// Does 1 pthread_cleanup_push.
+// Use THREAD_RUN_POP_AFFINITY_PRIORITY to pop it.
 #define THREAD_RUN_SET_AFFINITY_PRIORITY(args)                      \
   {                                                                 \
     /* Set cpu affinity */                                          \
@@ -140,8 +141,13 @@ pipeline_thread_module_t * find_pipeline_thread_module(char *name);
   }                                                                 \
   pthread_cleanup_push((void *)guppi_thread_set_finished, args);
 
+// Pops pthread cleanup for THREAD_RUN_SET_AFFINITY_PRIORITY
+#define THREAD_RUN_POP_AFFINITY_PRIORITY \
+    pthread_cleanup_pop(0);
+
 // Attaches to status memory and creates variable st for it.
-// Does 2 pthread_cleanup_push
+// Does 2 pthread_cleanup_push.
+// Use THREAD_RUN_DETACH_STATUS to pop them.
 #define THREAD_RUN_ATTACH_STATUS(st)                          \
   struct guppi_status st;                                     \
   {                                                           \
@@ -155,9 +161,15 @@ pipeline_thread_module_t * find_pipeline_thread_module(char *name);
   pthread_cleanup_push((void *)guppi_status_detach, &st);     \
   pthread_cleanup_push((void *)set_exit_status, &st);
 
+// Pops pthread cleanup for THREAD_RUN_ATTACH_STATUS
+#define THREAD_RUN_DETACH_STATUS \
+    pthread_cleanup_pop(0);      \
+    pthread_cleanup_pop(0);
+
 // Attaches to paper databuf of <type> identified by databuf_id
 // and creates variable db for it.
 // Does 1 pthread_cleanup_push
+// Use THREAD_RUN_DETACH_DATAUF to pop it.
 #define THREAD_RUN_ATTACH_DATABUF(type,db,databuf_id)               \
   struct type *db = type##_attach(databuf_id);                      \
   if (db==NULL) {                                                   \
@@ -168,5 +180,9 @@ pipeline_thread_module_t * find_pipeline_thread_module(char *name);
       return THREAD_ERROR;                                          \
   }                                                                 \
   pthread_cleanup_push((void *)type##_detach, db);
+
+// Pops pthread cleanup for THREAD_RUN_ATTACH_STATUS
+#define THREAD_RUN_DETACH_DATAUF \
+    pthread_cleanup_pop(0);
 
 #endif // _PAPER_THREAD

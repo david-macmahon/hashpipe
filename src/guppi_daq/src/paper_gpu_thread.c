@@ -132,19 +132,13 @@ static void *run(void * _args)
 
     xgpuFree(&context);
 
+    // Have to close all pushes
+    THREAD_RUN_DETACH_DATAUF;
+    THREAD_RUN_DETACH_DATAUF;
+    THREAD_RUN_DETACH_STATUS;
+    THREAD_RUN_POP_AFFINITY_PRIORITY;
+
     // Thread success!
-    pthread_exit(NULL);
-
-    /*
-     * Have to close all push's since they are preprocessor macros that open
-     * but do not close new lexical scopes.
-     */
-    pthread_cleanup_pop(0); /* Closes paper_output_databuf_detach */
-    pthread_cleanup_pop(0); /* Closes paper_input_databuf_detach */
-    pthread_cleanup_pop(0); /* Closes set_exit_status */
-    pthread_cleanup_pop(0); /* Closes guppi_status_detach */
-    pthread_cleanup_pop(0); /* Closes guppi_status_detach */
-
     return NULL;
 }
 
