@@ -39,16 +39,13 @@ THREAD_PROGS = test_net_thread vegas_hpc_hbw paper_xgpu
 THREAD_OBJS  = vegas_net_thread.o vegas_rawdisk_thread.o \
 	        guppi_sdfits_thread.o guppi_accum_thread.o \
 	        guppi_null_thread.o guppi_fake_net_thread.o \
-	        paper_net_thread.o paper_fake_net_thread.o
-
-DL_THREAD_OBJS = paper_gpu_thread.o
-DL_THREAD_LIBS = $(DL_THREAD_OBJS:.o=.so)
+					paper_net_thread.o paper_fake_net_thread.o paper_gpu_thread.o
 
 CUDA_OBJS = pfb_gpu.o pfb_gpu_kernels.o vegas_pfb_thread.o
 
-all: $(PROGS) $(THREAD_PROGS) vegas_hpc_lbw $(DL_THREAD_LIBS)
+all: $(PROGS) $(THREAD_PROGS) vegas_hpc_lbw
 clean:
-	rm -f $(PROGS) $(THREAD_PROGS) vegas_hpc_lbw $(DL_THREAD_LIBS) *~ *.o sdfits.tgz test_psrfits_0*.fits *.ptx tags
+	rm -f $(PROGS) $(THREAD_PROGS) vegas_hpc_lbw *~ *.o sdfits.tgz test_psrfits_0*.fits *.ptx tags
 INSTALL_DIR = ../bin
 install: $(PROGS) $(THREAD_PROGS) vegas_hpc_lbw
 	mkdir -p $(INSTALL_DIR) && \
@@ -69,11 +66,6 @@ tags:
 vegas_hpc_lbw: vegas_hpc_lbw.c $(THREAD_OBJS) $(OBJS) $(CUDA_OBJS)
 	$(CC) $(CFLAGS) $(CUDA_CFLAGS) $< -o $@ $(THREAD_OBJS) \
 		$(CUDA_OBJS) $(OBJS) $(LIBS) $(CUDA_LIBS)
-
-# Static pattern rule for building dlopen-able .so files from corresponding .o
-# files.
-$(DL_THREAD_LIBS) : %.so : %.o
-	$(CC) -shared -o $@ $(OBJS) $^
 
 .SECONDEXPANSION:
 $(PROGS): $$@.c $(OBJS)

@@ -14,7 +14,6 @@
 #include <poll.h>
 #include <getopt.h>
 #include <errno.h>
-#include <dlfcn.h>
 
 #include <xgpu.h>
 
@@ -26,15 +25,11 @@
 #include "guppi_thread_main.h"
 #include "guppi_defines.h"
 #include "fitshead.h"
-
-// Typedefs for loadable module functions
-typedef int (* initfunc_t)(struct guppi_thread_args *);
-typedef void *(* runfunc_t)(void *);
+#include "paper_thread.h"
 
 /* Thread declarations */
 void *paper_fake_net_thread(void *args);
 void *paper_net_thread(void *args);
-void *paper_gpu_thread(void *args);
 
 typedef void *(* threadfunc)(void *);
 
@@ -76,29 +71,6 @@ printf("trying attach of gpu buf\n");
         exit(1);
     }
 
-    char *thread_module = "./paper_gpu_thread.so";
-    void * handle = dlopen(thread_module, RTLD_LAZY | RTLD_LOCAL);
-    if(!handle) {
-      char * s = dlerror();
-      if(s) fprintf(stderr, "%s\n", s);
-      // TODO Go to cleanup instead
-      exit(1);
-    }
-    initfunc_t initfunc = (initfunc_t)dlsym(handle, "init");
-    if(!initfunc) {
-      char * s = dlerror();
-      if(s) fprintf(stderr, "%s\n", s);
-      // TODO Go to cleanup instead
-      exit(1);
-    }
-    runfunc_t runfunc = (runfunc_t)dlsym(handle, "run");
-    if(!runfunc) {
-      char * s = dlerror();
-      if(s) fprintf(stderr, "%s\n", s);
-      // TODO Go to cleanup instead
-      exit(1);
-    }
-
     // Catch INT and TERM signals
     signal(SIGINT, cc);
     signal(SIGTERM, cc);
@@ -113,16 +85,24 @@ printf("trying attach of gpu buf\n");
         exit(1);
     }
 
+    // Find paper_gpu_thread
+    pipeline_thread_module_t * module = find_pipeline_thread_module("paper_gpu_thread");
+    if (!module) { 
+        fprintf(stderr, "Error finding '%s' module.\n", "paper_gpu_thread");
+        perror("find_pipeline_thread_module");
+        exit(1);
+    }
+
     // Init thread
-    initfunc(&gpu_args);
+    module->init(&gpu_args);
 
     /* Launch GPU thread */
     pthread_t gpu_thread_id;
 
-    rv = pthread_create(&gpu_thread_id, NULL, runfunc, (void *)&gpu_args);
+    rv = pthread_create(&gpu_thread_id, NULL, module->run, (void *)&gpu_args);
 
     if (rv) { 
-        fprintf(stderr, "Error creating thread for %s.\n", thread_module);
+        fprintf(stderr, "Error creating thread for '%s'.\n", module->name);
         perror("pthread_create");
         exit(1);
     }
