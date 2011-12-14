@@ -1,6 +1,7 @@
 #include "guppi_thread_args.h"
 
 void guppi_thread_args_init(struct guppi_thread_args *a) {
+    a->cpu_mask=0;
     a->priority=0;
     a->finished=0;
     pthread_cond_init(&a->finished_c,NULL);

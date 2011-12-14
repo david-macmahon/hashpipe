@@ -10,6 +10,7 @@
 struct guppi_thread_args {
     int input_buffer;
     int output_buffer;
+    unsigned int cpu_mask; // 0 means use inherited
     int priority;
     int finished;
     pthread_cond_t finished_c;
