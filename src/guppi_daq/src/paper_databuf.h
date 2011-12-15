@@ -1,3 +1,7 @@
+#ifndef _PAPER_DATABUF_H
+#define _PAPER_DATABUF_H
+
+#include <stdint.h>
 #include "guppi_databuf.h"
 
 #define N_INPUT_BLOCKS 4
@@ -112,3 +116,5 @@ int paper_output_databuf_wait_filled(struct paper_output_databuf *d, int block_i
 int paper_output_databuf_set_free(struct paper_output_databuf *d, int block_id);
 
 int paper_output_databuf_set_filled(struct paper_output_databuf *d, int block_id);
+
+#endif // _PAPER_DATABUF_H

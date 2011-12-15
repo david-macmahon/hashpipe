@@ -6,6 +6,8 @@
 #ifndef _GUPPI_THREADS_H
 #define _GUPPI_THREADS_H
 
+#include "fitshead.h"
+#include "guppi_status.h"
 #include "guppi_thread_args.h"
 
 /* SIGINT handling capability */

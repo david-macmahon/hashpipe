@@ -1,6 +1,7 @@
-#ifndef _PAPER_THREAD
-#define _PAPER_THREAD
+#ifndef _PAPER_THREAD_H
+#define _PAPER_THREAD_H
 
+#include <stdio.h>
 #include "guppi_thread_args.h"
 
 // A pipeline thread module encapsulates metadata and functionality for onr or more
@@ -185,4 +186,4 @@ int set_priority(int priority);
 #define THREAD_RUN_DETACH_DATAUF \
     pthread_cleanup_pop(0);
 
-#endif // _PAPER_THREAD
+#endif // _PAPER_THREAD_H
