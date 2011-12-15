@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
     int num_threads = 0;
     pthread_t threads[MAX_THREADS];
     pipeline_thread_module_t *modules[MAX_THREADS];
-    struct guppi_thread_args args;
+    struct guppi_thread_args args[MAX_THREADS];
 
     // Handle initial -l option as request to list all known threads
     if(argv[1] && argv[1][0] == '-' && argv[1][1] == 'l') {
@@ -47,9 +47,12 @@ int main(int argc, char *argv[])
     signal(SIGINT, cc);
     signal(SIGTERM, cc);
 
-    guppi_thread_args_init(&args);
-    args.input_buffer  = 0;
-    args.output_buffer = 1;
+    int input_buffer  = 0;
+    int output_buffer = 1;
+
+    guppi_thread_args_init(&args[num_threads]);
+    args[num_threads].input_buffer  = input_buffer;
+    args[num_threads].output_buffer = output_buffer;
 
     // Walk through command line for names of threads to instantiate
     for(i=1; i<argc; i++) {
@@ -66,14 +69,14 @@ int main(int argc, char *argv[])
             if(i < argc-1) {
               // TODO Warn on errors
               unsigned int cpu = strtoul(argv[++i], NULL, 0);
-              args.cpu_mask = (1<<cpu);
+              args[num_threads].cpu_mask = (1<<cpu);
             }
             break;
           case 'm':
             // "-m M" sets CPU affinity mask for next thread
             if(i < argc-1) {
               // TODO Warn on errors
-              args.cpu_mask = strtoul(argv[++i], NULL, 0);
+              args[num_threads].cpu_mask = strtoul(argv[++i], NULL, 0);
             }
             break;
         }
@@ -87,7 +90,10 @@ int main(int argc, char *argv[])
         }
 
         // Init thread
-        rv = modules[num_threads]->init(&args);
+        printf("initing  thread '%s' with databufs %d and %d\n",
+            modules[num_threads]->name, args[num_threads].input_buffer, args[num_threads].output_buffer);
+
+        rv = modules[num_threads]->init(&args[num_threads]);
 
         if (rv) { 
             fprintf(stderr, "Error initializing thread for '%s'.\n",
@@ -96,8 +102,10 @@ int main(int argc, char *argv[])
         }
 
         // Launch thread
+        printf("starting thread '%s' with databufs %d and %d\n",
+            modules[num_threads]->name, args[num_threads].input_buffer, args[num_threads].output_buffer);
         rv = pthread_create(&threads[num_threads], NULL,
-            modules[num_threads]->run, (void *)&args);
+            modules[num_threads]->run, (void *)&args[num_threads]);
 
         if (rv) { 
             fprintf(stderr, "Error creating thread for '%s'.\n",
@@ -107,9 +115,11 @@ int main(int argc, char *argv[])
 
         // Setup for next thread
         num_threads++;
-        args.input_buffer++;
-        args.output_buffer++;
-        args.cpu_mask = 0;
+        input_buffer++;
+        output_buffer++;
+        guppi_thread_args_init(&args[num_threads]);
+        args[num_threads].input_buffer  = input_buffer;
+        args[num_threads].output_buffer = output_buffer;
       }
     }
 
@@ -137,8 +147,9 @@ int main(int argc, char *argv[])
       printf("Joined thread '%s'\n", modules[i]->name);
       fflush(stdout);
     }
-
-    guppi_thread_args_destroy(&args);
+    for(i=num_threads; i>=0; i--) {
+      guppi_thread_args_destroy(&args[i]);
+    }
 
     exit(0);
 }
