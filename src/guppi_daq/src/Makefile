@@ -22,12 +22,26 @@ ifdef EXT_DISK
 	OPT_FLAGS += -DEXT_DISK
 endif
 
-CFLAGS = -g -fPIC -O3 -Wall -D_GNU_SOURCE \
-		-I$(PYSLALIB) -I$(GUPPI_DIR)/src $(OPT_FLAGS) -fno-strict-aliasing
+CFLAGS = -g -fPIC -O3 -Wall -D_GNU_SOURCE $(OPT_FLAGS) -fno-strict-aliasing
+
+ifdef PYSLALIB
+	CFLAGS += -I$(PYSLALIB)
+endif
+
+ifdef GUPPI_DIR
+	CFLAGS += -I$(GUPPI_DIR)/src
+endif
 
 NVCCFLAGS = -arch=sm_20 -I$(CUDA)/include
 
-LIBS = -L$(PYSLALIB) -L$(VEGAS_LIB) -lcfitsio -lm -lpthread -lxgpu
+LIBS =
+ifdef PYSLALIB
+	LIBS += -L$(PYSLALIB)
+endif
+ifdef VEGAS_LIB
+	LIBS += -L$(VEGAS_LIB)
+endif
+LIBS += -lcfitsio -lm -lpthread -lxgpu
 CUDA_LIBS = -L$(CUDA)/lib64 -lcufft -lcuda -lcudart -lrt -lm -lpthread
 
 PROGS = check_guppi_databuf check_guppi_status clean_guppi_shmem test_udp_recv
