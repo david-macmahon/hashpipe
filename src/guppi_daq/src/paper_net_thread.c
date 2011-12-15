@@ -835,9 +835,9 @@ static void *run(void * _args)
         }
 	
         /* Read packet */
-        rv = guppi_udp_recv(&up, &p);
-        if (rv!=GUPPI_OK) {
-            if (rv==GUPPI_ERR_PACKET) {
+        p.packet_size = recv(up.sock, p.data, GUPPI_MAX_PACKET_SIZE, 0);
+        if (up.packet_size != p.packet_size) {
+            if (p.packet_size != -1) {
                 #ifdef DEBUG_NET
                 guppi_warn("guppi_net_thread", "Incorrect pkt size");
                 #endif
