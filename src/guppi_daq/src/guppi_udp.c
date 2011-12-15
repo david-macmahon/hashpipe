@@ -305,8 +305,6 @@ void parkes_to_guppi(struct guppi_udp_packet *b, const int acc_len,
 }
 
 
-#ifdef SPEAD
-
 /* Check that the size of the received SPEAD packet is correct.
  * This is acheived by reading the size fields in the SPEAD packet header,
  * and comparing them to the actual size of the received packet. */
@@ -449,8 +447,6 @@ int guppi_spead_packet_copy(struct guppi_udp_packet *p, char *header_addr,
 
     return 0;
 }
-
-#endif
 
 
 int guppi_udp_close(struct guppi_udp_params *p) {
