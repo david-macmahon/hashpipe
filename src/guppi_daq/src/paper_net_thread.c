@@ -18,6 +18,8 @@
 #include <sys/resource.h>
 #include <sys/types.h>
 
+#include <xgpu.h>
+
 #include "fitshead.h"
 #include "guppi_params.h"
 #include "guppi_error.h"
@@ -30,6 +32,9 @@
 #include "guppi_threads.h"
 #include "guppi_defines.h"
 
+#include "paper_thread.h"
+
+#if 0
 /* This file will only compile if the FITS_TYPE is set to SDFITS */
 #if FITS_TYPE != SDFITS
 #error "FITS_TYPE not set to SDFITS."
@@ -37,6 +42,7 @@
 
 #include "sdfits.h"
 #include "spead_heap.h"
+#endif
 
 #define DEBUG_NET
 
@@ -662,50 +668,37 @@ void *guppi_net_thread(void *_args) {
 }
 #endif // 0
 
-/* This thread is passed a single arg, pointer
- * to the guppi_udp_params struct.  This thread should 
- * be cancelled and restarted if any hardware params
- * change, as this potentially affects packet size, etc.
- */
-void *paper_net_thread(void *_args) {
-
-    /* Get arguments */
-    struct guppi_thread_args *args = (struct guppi_thread_args *)_args;
-    int rv;
-
-    /* Set cpu affinity */
-    cpu_set_t cpuset, cpuset_orig;
-    sched_getaffinity(0, sizeof(cpu_set_t), &cpuset_orig);
-    //CPU_ZERO(&cpuset);
-    CPU_SET(13, &cpuset);
-    rv = sched_setaffinity(0, sizeof(cpu_set_t), &cpuset);
-    if (rv<0) { 
-        guppi_error("guppi_net_thread", "Error setting cpu affinity.");
-        perror("sched_setaffinity");
-    }
-
-    /* Set priority */
-    rv = setpriority(PRIO_PROCESS, 0, args->priority);
-    if (rv<0) {
-        guppi_error("guppi_net_thread", "Error setting priority level.");
-        perror("set_priority");
-    }
-
+static int init(struct guppi_thread_args *args)
+{
     /* Attach to status shared mem area */
-    struct guppi_status st;
-    rv = guppi_status_attach(&st);
-    if (rv!=GUPPI_OK) {
-        guppi_error("guppi_net_thread", 
-                "Error attaching to status shared memory.");
-        pthread_exit(NULL);
-    }
-    pthread_cleanup_push((void *)guppi_status_detach, &st);
-    pthread_cleanup_push((void *)set_exit_status, &st);
+    THREAD_INIT_STATUS(STATUS_KEY);
 
-    /* Init status, read info */
-    guppi_status_lock_safe(&st);
-    hputs(st.buf, STATUS_KEY, "init");
-    guppi_status_unlock_safe(&st);
+    // Get sizing parameters
+    XGPUInfo xgpu_info;
+    xgpuInfo(&xgpu_info);
+
+    /* Create paper_input_databuf for output buffer */
+    THREAD_INIT_DATABUF(paper_input_databuf, 4,
+        xgpu_info.vecLength*sizeof(ComplexInput),
+        args->output_buffer);
+
+    // Success!
+    return 0;
+}
+
+static void *run(void * _args)
+{
+    // Cast _args
+    struct guppi_thread_args *args = (struct guppi_thread_args *)_args;
+
+    THREAD_RUN_BEGIN(args);
+
+    THREAD_RUN_SET_AFFINITY_PRIORITY(args);
+
+    THREAD_RUN_ATTACH_STATUS(st);
+
+    /* Attach to paper_input_databuf */
+    THREAD_RUN_ATTACH_DATABUF(paper_input_databuf, db, args->output_buffer);
 
     /* Read in general parameters */
     struct guppi_params gp;
@@ -721,17 +714,6 @@ void *paper_net_thread(void *_args) {
     struct guppi_udp_params up;
     //guppi_read_net_params(status_buf, &up);
     paper_read_net_params(status_buf, &up);
-
-    /* Attach to databuf shared mem */
-    struct guppi_databuf *db;
-    //db = guppi_databuf_attach(args->output_buffer); 
-    db = (struct guppi_databuf *)paper_input_databuf_attach(args->output_buffer); 
-    if (db==NULL) {
-        guppi_error("guppi_net_thread",
-                "Error attaching to databuf shared memory.");
-        pthread_exit(NULL);
-    }
-    pthread_cleanup_push((void *)guppi_databuf_detach, db);
 
 #if 0
     /* Time parameters */
@@ -819,7 +801,7 @@ void *paper_net_thread(void *_args) {
     sleep(1);
 
     /* Set up UDP socket */
-    rv = guppi_udp_init(&up);
+    int rv = guppi_udp_init(&up);
     if (rv!=GUPPI_OK) {
         guppi_error("guppi_net_thread",
                 "Error opening UDP socket.");
@@ -1061,12 +1043,24 @@ void *paper_net_thread(void *_args) {
         pthread_testcancel();
     }
 
-    pthread_exit(NULL);
-
     /* Have to close all push's */
     pthread_cleanup_pop(0); /* Closes push(guppi_udp_close) */
-    pthread_cleanup_pop(0); /* Closes set_exit_status */
     pthread_cleanup_pop(0); /* Closes guppi_free_psrfits */
-    pthread_cleanup_pop(0); /* Closes guppi_status_detach */
-    pthread_cleanup_pop(0); /* Closes guppi_databuf_detach */
+    THREAD_RUN_DETACH_DATAUF;
+    THREAD_RUN_DETACH_STATUS;
+    THREAD_RUN_END;
+
+    return NULL;
+}
+
+static pipeline_thread_module_t module = {
+    name: "paper_net_thread",
+    type: PIPELINE_INPUT_THREAD,
+    init: init,
+    run:  run
+};
+
+static __attribute__((constructor)) void ctor()
+{
+  register_pipeline_thread_module(&module);
 }
