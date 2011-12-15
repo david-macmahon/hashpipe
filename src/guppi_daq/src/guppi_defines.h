@@ -12,7 +12,7 @@
 #define NEW_GBT		1
 
 // Defining SPEAD enables the decoding of SPEAD packets
-#define SPEAD       1
+//#define SPEAD       1
 
 // Defining FAKE_NET enables the generation of fake network data
 // and hence disables the network portion of GUPPI.
