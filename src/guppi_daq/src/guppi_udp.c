@@ -12,6 +12,7 @@
 #include <netdb.h>
 #include <fcntl.h>
 #include <poll.h>
+#include <endian.h>
 
 #include "guppi_udp.h"
 #include "guppi_databuf.h"
@@ -122,34 +123,22 @@ printf("NOT SPEAD\n");
     }
 }
 
-unsigned long long change_endian64(const unsigned long long *d) {
-    unsigned long long tmp;
-    char *in=(char *)d, *out=(char *)&tmp;
-    int i;
-    for (i=0; i<8; i++) {
-        out[i] = in[7-i];
-    }
-    return(tmp);
-}
-
 unsigned long long guppi_udp_packet_seq_num(const struct guppi_udp_packet *p) {
     // XXX Temp for new baseband mode, blank out top 8 bits which 
     // contain channel info.
 
-    unsigned long long tmp = change_endian64((unsigned long long *)p->data);
+    unsigned long long tmp = be64toh(*(unsigned long long *)p->data);
     tmp &= 0x00FFFFFFFFFFFFFF;
     return(tmp);
-    //return(change_endian64((unsigned long long *)(p->data)));
 }
 
 unsigned long long guppi_udp_packet_mcnt(const struct guppi_udp_packet *p) {
     // XXX Temp for new baseband mode, blank out top 16 bits which 
     // should contain zeros anyway.
 
-    unsigned long long tmp = change_endian64((unsigned long long *)p->data);
+    unsigned long long tmp = be64toh(*(unsigned long long *)p->data);
     tmp &= 0x0000FFFFFFFFFFFF;
     return(tmp);
-    //return(change_endian64((unsigned long long *)(p->data)));
 }
 
 
@@ -279,9 +268,9 @@ void parkes_to_guppi(struct guppi_udp_packet *b, const int acc_len,
      */
     const unsigned int counts_per_packet = (nchan/2) * acc_len;
     unsigned long long *packet_idx = (unsigned long long *)b->data;
-    (*packet_idx) = change_endian64(packet_idx);
-    (*packet_idx) /= counts_per_packet;
-    (*packet_idx) = change_endian64(packet_idx);
+    (*packet_idx) = be64toh(*packet_idx); // Convert to host byte order
+    (*packet_idx) /= counts_per_packet;   // Do math
+    (*packet_idx) = htobe64(*packet_idx); // Convert to big endian byte order
 
     /* Reorder from the 2-pol Parkes ordering */
     int i;
