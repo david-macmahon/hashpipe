@@ -70,6 +70,7 @@ static void *run(void * _args)
     THREAD_RUN_ATTACH_DATABUF(paper_output_databuf, db_out, args->output_buffer);
 
     /* Loop */
+    int rv;
     int xgpu_error = 0;
     int curblock_in=0;
     int curblock_out=0;
@@ -92,9 +93,20 @@ static void *run(void * _args)
         hputs(st.buf, STATUS_KEY, "waiting");
         guppi_status_unlock_safe(&st);
 
-        /* Wait for buf to have data */
-        int rv = paper_input_databuf_wait_filled(db_in, curblock_in);
-        if (rv!=0) continue;
+        // Wait for new block to be filled
+        while ((rv=paper_input_databuf_wait_filled(db_in, curblock_in)) != GUPPI_OK) {
+            if (rv==GUPPI_TIMEOUT) {
+                guppi_status_lock_safe(&st);
+                hputs(st.buf, STATUS_KEY, "blocked");
+                guppi_status_unlock_safe(&st);
+                continue;
+            } else {
+                guppi_error(__FUNCTION__, "error waiting for free databuf");
+                run_threads=0;
+                pthread_exit(NULL);
+                break;
+            }
+        }
 
         /* Note waiting status, current input block */
         guppi_status_lock_safe(&st);
