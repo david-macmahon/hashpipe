@@ -93,11 +93,26 @@ static void *run(void * _args)
         hputs(st.buf, STATUS_KEY, "waiting");
         guppi_status_unlock_safe(&st);
 
-        // Wait for new block to be filled
+        // Wait for new input block to be filled
         while ((rv=paper_input_databuf_wait_filled(db_in, curblock_in)) != GUPPI_OK) {
             if (rv==GUPPI_TIMEOUT) {
                 guppi_status_lock_safe(&st);
-                hputs(st.buf, STATUS_KEY, "blocked");
+                hputs(st.buf, STATUS_KEY, "blocked_in");
+                guppi_status_unlock_safe(&st);
+                continue;
+            } else {
+                guppi_error(__FUNCTION__, "error waiting for filled databuf");
+                run_threads=0;
+                pthread_exit(NULL);
+                break;
+            }
+        }
+
+        // Wait for new output block to be free
+        while ((rv=paper_input_databuf_wait_free(db_out, curblock_out)) != GUPPI_OK) {
+            if (rv==GUPPI_TIMEOUT) {
+                guppi_status_lock_safe(&st);
+                hputs(st.buf, STATUS_KEY, "blocked_out");
                 guppi_status_unlock_safe(&st);
                 continue;
             } else {
