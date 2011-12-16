@@ -72,10 +72,8 @@ static void *run(void * _args)
         hputs(st.buf, STATUS_KEY, "waiting");
         guppi_status_unlock_safe(&st);
 
-        /* Wait for new block to be free, then clear it
-         * if necessary and fill its header with new values.
-         */
-        while ((rv=guppi_databuf_wait_free(db, block_idx)) != GUPPI_OK) {
+        // Wait for new block to be filled
+        while ((rv=guppi_databuf_wait_filled(db, block_idx)) != GUPPI_OK) {
             if (rv==GUPPI_TIMEOUT) {
                 guppi_status_lock_safe(&st);
                 hputs(st.buf, STATUS_KEY, "blocked");
@@ -89,14 +87,14 @@ static void *run(void * _args)
             }
         }
 
-        /* Note waiting status, current input block */
+        // Note processing status, current input block
         guppi_status_lock_safe(&st);
         hputs(st.buf, STATUS_KEY, "processing");
         hputi4(st.buf, "NULBLKIN", block_idx);
         guppi_status_unlock_safe(&st);
 
         // Mark block as free
-        guppi_databuf_set_filled(db, block_idx);
+        guppi_databuf_set_free(db, block_idx);
 
         // Setup for next block
         block_idx = (block_idx + 1) % db->n_block;
