@@ -2,7 +2,7 @@ from guppi_utils import guppi_status, guppi_databuf
 import curses, curses.wrapper
 import time
 
-def display_status(stdscr,stat,data):
+def display_status(stdscr,stat):
     # Set non-blocking input
     stdscr.nodelay(1)
     run = 1
@@ -33,7 +33,7 @@ def display_status(stdscr,stat,data):
         onecol = False # Set True for one-column format
         col = 2
         curline = 0
-        stdscr.addstr(curline,col,"Current GUPPI status:", keycol);
+        stdscr.addstr(curline,col,"Current pipeline status:", keycol);
         curline += 2
         flip=0
         for k,v in stat.hdr.items():
@@ -52,54 +52,6 @@ def display_status(stdscr,stat,data):
         col = 2
         if (flip and not onecol):
             curline += 1
-
-        # Refresh current block info
-        try:
-            curblock = stat["CURBLOCK"]
-        except KeyError:
-            curblock=-1
-
-        # Display current packet index, etc
-        if (curblock>=0 and curline < ymax-4):
-            curline += 1
-            stdscr.addstr(curline,col,"Current data block info:",keycol)
-            curline += 1
-            data.read_hdr(curblock)
-            try:
-                pktidx = data.hdr[curblock]["PKTIDX"]
-            except KeyError:
-                pktidx = "Unknown"
-            stdscr.addstr(curline,col,"%8s : " % "PKTIDX", keycol)
-            stdscr.addstr("%s" % pktidx, valcol)
-
-        # Figure out if we're folding
-        foldmode = False
-        try:
-            foldstat = stat["FOLDSTAT"]
-            curfold = stat["CURFOLD"]
-            if (foldstat!="exiting"):
-                foldmode = True
-        except KeyError:
-            foldmode = False
-
-        # Display fold info
-        if (foldmode and curline < ymax-4):
-            folddata = guppi_databuf(2)
-            curline += 2
-            stdscr.addstr(curline,col,"Current fold block info:",keycol)
-            curline += 1
-            folddata.read_hdr(curfold)
-            try:
-                npkt = folddata.hdr[curfold]["NPKT"]
-                ndrop = folddata.hdr[curfold]["NDROP"]
-            except KeyError:
-                npkt = "Unknown"
-                ndrop = "Unknown"
-            stdscr.addstr(curline,col,"%8s : " % "NPKT", keycol)
-            stdscr.addstr("%s" % npkt, valcol)
-            curline += 1
-            stdscr.addstr(curline,col,"%8s : " % "NDROP", keycol)
-            stdscr.addstr("%s" % ndrop, valcol)
 
         # Bottom info line
         stdscr.addstr(ymax-2,col,"Last update: " + time.asctime() \
@@ -120,11 +72,10 @@ def display_status(stdscr,stat,data):
 
 # Connect to guppi status, data bufs
 g = guppi_status()
-d = guppi_databuf()
 
 # Wrapper calls the main func
 try:
-    curses.wrapper(display_status,g,d)
+    curses.wrapper(display_status,g)
 except KeyboardInterrupt:
     print "Exiting..."
 
