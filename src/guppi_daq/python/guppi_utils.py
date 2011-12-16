@@ -5,6 +5,7 @@ import numpy as n
 #import psr_utils as psr
 import astro_utils as astro
 import slalib as s
+import os
 
 DEGTORAD = 0.017453292519943295769236907684
 RADTODEG = 57.29577951308232087679815481410
@@ -45,20 +46,47 @@ def cardlist_from_string(str):
     return cardlist
 
 
-GUPPI_STATUS_KEY = 16783408
-GUPPI_STATUS_SEMID = "/guppi_status"
+def guppi_ipckey(proj_id):
+    keyfile = os.getenv('GUPPI_KEYFILE')
+    if keyfile == None:
+        keyfile = os.getenv('HOME')
+        if keyfile == None:
+            keyfile = '/tmp'
+    return shm.shm.ftok(keyfile, ord(proj_id))
 
 class guppi_status:
 
     def __init__(self):
-        self.stat_buf = shm.SharedMemoryHandle(GUPPI_STATUS_KEY)
-        self.sem = possem.sem_open(GUPPI_STATUS_SEMID, possem.O_CREAT, 00644, 1)
+        self.stat_buf = shm.SharedMemoryHandle(guppi_status.ipckey())
+        self.sem = possem.sem_open(guppi_status.semname(), possem.O_CREAT, 00644, 1)
         self.hdr = None
         self.gbtstat = None
         self.read()
 
     def __getitem__(self, key):
         return self.hdr[key]
+
+    @staticmethod
+    def ipckey():
+        databuf_key = os.getenv("GUPPI_STATUS_KEY")
+        if databuf_key:
+            key = int(databuf_key, 0)
+        else:
+            key = guppi_ipckey('S')
+        return key
+
+    @staticmethod
+    def semname():
+        semid = os.getenv('GUPPI_STATUS_SEMNAME')
+        if semid == None:
+            semid = os.getenv('GUPPI_KEYFILE')
+            if semid == None:
+                semid = os.getenv('HOME')
+                if semid == None:
+                    semid = os.getenv('/tmp')
+            semid = '/' + semid[1:].replace('/', '_')
+            semid += '_guppi_status'
+        return semid
 
     def keys(self):
         return [k for k, v in self.hdr.items()]
@@ -147,12 +175,10 @@ class guppi_status:
         self.update("AZ", az)
         self.update("ZA", za)
 
-GUPPI_DATABUF_KEY = 12987498
-
 class guppi_databuf:
 
     def __init__(self,databuf_id=1):
-        self.buf = shm.SharedMemoryHandle(GUPPI_DATABUF_KEY+databuf_id-1)
+        self.buf = shm.SharedMemoryHandle(guppi_databuf.ipckey()+databuf_id-1)
         self.data_type = self.buf.read(NumberOfBytes=64, offset=0)
         
         if NEW_GBT:
@@ -178,6 +204,15 @@ class guppi_databuf:
         self.dtype = n.int8
         self.read_size = self.block_size
         self.read_all_hdr()
+
+    @staticmethod
+    def ipckey():
+        databuf_key = os.getenv("GUPPI_DATABUF_KEY")
+        if databuf_key:
+            key = int(databuf_key, 0)
+        else:
+            key = guppi_ipckey('D')
+        return key
 
     def read_hdr(self,block):
         if (block<0 or block>=self.n_block):
