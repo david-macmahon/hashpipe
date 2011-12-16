@@ -17,8 +17,8 @@
  */
 
 typedef struct paper_input_input {
-    uint8_t real;
-    uint8_t imag;
+    int8_t real;
+    int8_t imag;
 } paper_input_input_t;
 
 typedef struct paper_input_chan {
