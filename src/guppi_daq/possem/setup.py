@@ -1,24 +1,24 @@
 #!/usr/bin/env python
 
-"""GUPPI DAQ package
+"""POSIX Semaphore Package
 
-Data acquisition Python package for the Green Bank Ultimate Pulsar Processing
-Instrument (GUPPI).
+Python package for interacting with POSIX semaphores.
 """
 
 from distutils.core import setup, Extension
 import os
 import sys
 
-srcdir = 'python'
+srcdir = '.'
 doclines = __doc__.split("\n")
 
 setup(
-    name        = 'guppi_daq'
+    name        = 'possem'
   , version     = '0.1'
-  , packages    = ['guppi_daq']
-  , package_dir = {'guppi_daq' : srcdir}
+  , py_modules  = ['possem']
   , maintainer = "NRAO"
+  , ext_modules=[Extension('_possem',
+                           [os.path.join(srcdir, 'possem.i')])]
   # , maintainer_email = ""
   # , url = ""
   , license = "http://www.gnu.org/copyleft/gpl.html"

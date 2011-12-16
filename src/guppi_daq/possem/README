@@ -1,0 +1,9 @@
+To install, run these *three* steps...
+
+python setup.py build
+python setup.py build
+sudo python setup.py install
+
+The two build steps are needed since the possem.py file is created during the
+first build step only after its presence is needed.  It gets properly picked up
+on the second build step.  Maybe someone will eventually fix this.

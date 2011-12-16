@@ -22,6 +22,8 @@ bin/test_dedisp_thread
 bin/vegas_hpc_hbw
 bin/vegas_hpc_lbw
 build/
+possem/possem.py
+possem/possem_wrap.c
 src/check_guppi_databuf
 src/check_guppi_status
 src/clean_guppi_shmem
