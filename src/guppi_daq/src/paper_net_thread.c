@@ -163,6 +163,7 @@ void write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, 
 
     paper_input_databuf_wait_free(paper_input_databuf_p, block_i);	// should block_i be block_idx for consistency?
 
+    paper_input_databuf_p->block[block_i].header[sub_block_i].mcnt = count;  // will happen 127x more than neccessary
     paper_input_databuf_p->block[block_i].header[sub_block_i].chan_present[chan_i/64] |= (uint64_t)1<<chan_i%64;
 
     //payload_p = (uint8_t *)p+8;		// get past mcnt
