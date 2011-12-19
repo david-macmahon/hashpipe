@@ -81,10 +81,10 @@ int set_priority(int priority);
 
 // Attach to guppi status shared memory and set status_key to "init".
 // Returns 1 from current function on error.
-#define THREAD_INIT_STATUS(status_key)                         \
+#define THREAD_INIT_ATTACH_STATUS(st, status_key)              \
+  /* Attach to status shared mem area */                       \
+  struct guppi_status st;                                      \
   do {                                                         \
-    /* Attach to status shared mem area */                     \
-    struct guppi_status st;                                    \
     int rv = guppi_status_attach(&st);                         \
     if (rv!=GUPPI_OK) {                                        \
         guppi_error(__FUNCTION__,                              \
@@ -95,13 +95,27 @@ int set_priority(int priority);
     guppi_status_lock_safe(&st);                               \
     hputs(st.buf, STATUS_KEY, "init");                         \
     guppi_status_unlock_safe(&st);                             \
+  } while(0)
+
+// Detach from guppi status shared memory.
+// Returns 1 from current function on error.
+#define THREAD_INIT_DETACH_STATUS(st)                          \
+  do {                                                         \
     /* Detach from status shared mem area */                   \
-    rv = guppi_status_detach(&st);                             \
+    int rv = guppi_status_detach(&st);                         \
     if (rv!=GUPPI_OK) {                                        \
         guppi_error(__FUNCTION__,                              \
                 "Error detaching from status shared memory."); \
         return 1;                                              \
     }                                                          \
+  } while(0)
+
+// Attach to guppi status shared memory and set status_key to "init".
+// Returns 1 from current function on error.
+#define THREAD_INIT_STATUS(status_key) \
+  do {                                 \
+    THREAD_INIT_ATTACH_STATUS(st, status_key);     \
+    THREAD_INIT_DETACH_STATUS(st);     \
   } while(0)
 
 // Create paper databuf of <type>
