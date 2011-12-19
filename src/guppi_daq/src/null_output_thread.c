@@ -80,7 +80,7 @@ static void *run(void * _args)
                 guppi_status_unlock_safe(&st);
                 continue;
             } else {
-                guppi_error(__FUNCTION__, "error waiting for free databuf");
+                guppi_error(__FUNCTION__, "error waiting for filled databuf");
                 run_threads=0;
                 pthread_exit(NULL);
                 break;
