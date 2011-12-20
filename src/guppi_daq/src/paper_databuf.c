@@ -232,13 +232,20 @@ struct paper_output_databuf *paper_output_databuf_create(int n_block, size_t blo
 {
     int init_buffer = 1;
 
+    if(block_size != N_OUTPUT_MATRIX*sizeof(float)) {
+        char msg[256];
+        sprintf(msg, "block_size %lu != expected block size of %lu",
+                block_size, N_OUTPUT_MATRIX*sizeof(float));
+        guppi_error(__FUNCTION__, msg);
+        return(NULL);
+    }
     /* Calc databuf size */
     size_t paper_output_block_size = sizeof(paper_output_block_t);
 printf("paper_output_block_size %lu\n", paper_output_block_size);
     size_t paper_output_databuf_size = sizeof(paper_output_databuf_t);
 printf("paper_output_databuf_size %lu\n", paper_output_databuf_size);
     size_t databuf_size = paper_output_databuf_size +
-                            (paper_output_block_size + block_size) * n_block;
+                          paper_output_block_size * n_block;
 printf("databuf_size %lu\n", databuf_size);
 
     /* Get shared memory block, error if it already exists */

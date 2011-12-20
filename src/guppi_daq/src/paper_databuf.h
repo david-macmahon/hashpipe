@@ -10,6 +10,9 @@
 #define N_CHAN 128
 #define N_INPUT 64
 
+// Number of floats in xGPU's "register tile order" output matrix.
+#define N_OUTPUT_MATRIX (2 * N_CHAN * (N_INPUT/2 + 2) * N_INPUT)
+
 #define PAGE_SIZE (4096)
 
 /*
@@ -59,7 +62,7 @@ typedef struct paper_output_header {
 
 typedef struct paper_output_block {
   paper_output_header_t header;
-  char data[];
+  float data[N_OUTPUT_MATRIX];
 } paper_output_block_t;
 
 typedef struct paper_output_databuf {
