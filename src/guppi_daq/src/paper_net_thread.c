@@ -137,7 +137,6 @@ void write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, 
 
 #define N_TIME_PER_INPUT_PER_PACKET 128   
 
-    static const int64_t max_count  = ((int64_t)1<<(48-11))-1;
     static const int payload_size   = 128 * 64;
     static int64_t start_count      = -1;
     uint8_t * payload_p;
