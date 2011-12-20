@@ -133,7 +133,6 @@ int block_heap_check(struct datablock_stats *d, unsigned int heap_cntr) {
 }
 #endif // 0
 
-//void write_paper_packet_to_blocks(struct datablock_stats *d, struct guppi_udp_packet *p) {
 void write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, struct guppi_udp_packet *p) {
 
 #define N_TIME_PER_INPUT_PER_PACKET 128   
@@ -141,17 +140,13 @@ void write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, 
     static const int64_t max_count  = ((int64_t)1<<(48-11))-1;
     static const int payload_size   = 128 * 64;
     static int64_t start_count      = -1;
-    //paper_input_databuf_t * paper_input_databuf_p;
     uint8_t * payload_p;
     int8_t sample, sample_real, sample_imag, temp;
     uint64_t mcnt, count; 
     static uint64_t count_offset; 
     int payload_i, block_i, sub_block_i, time_i, chan_group, chan_i, input_i;
 
-    //paper_input_databuf_p = (paper_input_databuf_t *)d->db;
-
     mcnt = guppi_udp_packet_mcnt(p);
-    //mcnt       &= 0x0000FFFFFFFFFFFF; // make sure it is clean, not needed - see guppi_udp_packet_mcnt()
     chan_group = mcnt        & 0x000000000000000F;
     chan_i     = (mcnt >> 4) & 0x000000000000007F;
     count      = mcnt >> 11;
@@ -179,7 +174,6 @@ void write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, 
     paper_input_databuf_p->block[block_i].header[sub_block_i].mcnt = count;  // will happen 127x more than neccessary
     paper_input_databuf_p->block[block_i].header[sub_block_i].chan_present[chan_i/64] |= ((uint64_t)1<<(chan_i%64));
 
-    //payload_p = (uint8_t *)p+8;		// get past mcnt
     payload_p = (uint8_t *)&(p->data[0])+8;		// get past mcnt
     for(payload_i=0; payload_i<payload_size; payload_i++) {
 	sample      = *(payload_p+payload_i);
