@@ -136,6 +136,8 @@ static void *run(void * _args)
          * (dump every time for now)
          */
         xgpuCudaXengine(&context, 1);
+        xgpuClearDeviceIntegrationBuffer(&context);
+        //xgpuOmpXengine((Complex *)db_out->block[curblock_out].data, context.array_h);
 
         /* Mark input block as free */
         paper_input_databuf_set_free(db_in, curblock_in);
