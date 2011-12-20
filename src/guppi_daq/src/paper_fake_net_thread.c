@@ -107,6 +107,7 @@ static void *run(void * _args)
 
         guppi_status_lock_safe(&st);
         hputs(st.buf, STATUS_KEY, "receiving");
+        hputi4(st.buf, "NETBKOUT", block_idx);
         guppi_status_unlock_safe(&st);
  
         // Fill in sub-block headers
