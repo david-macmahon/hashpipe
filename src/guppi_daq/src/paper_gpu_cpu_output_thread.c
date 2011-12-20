@@ -1,0 +1,182 @@
+/*
+ * paper_gpu_cpu_output_thread.c
+ *
+ * Routine to sink data from the paper_gpu_cpu_thread.
+ */
+
+#define _GNU_SOURCE 1
+#include <stdio.h>
+#include <signal.h>
+#include <time.h>
+
+#include <xgpu.h>
+
+#include "guppi_error.h"
+#include "paper_databuf.h"
+
+#define STATUS_KEY "CGOUT"  /* Define before guppi_threads.h */
+#include "guppi_threads.h"
+#include "paper_thread.h"
+
+#define TOL (1e-5)
+
+static XGPUInfo xgpu_info;
+
+static int init(struct guppi_thread_args *args)
+{
+    /* Attach to status shared mem area */
+    THREAD_INIT_ATTACH_STATUS(st, STATUS_KEY);
+
+    guppi_status_lock_safe(&st);
+    hputr4(st.buf, "CGMAXERR", 0.0);
+    hputi4(st.buf, "CGERRCNT", 0);
+    hputi4(st.buf, "CGMXERCT", 0);
+    guppi_status_unlock_safe(&st);
+
+    THREAD_INIT_DETACH_STATUS(st);
+
+    // Get sizing parameters
+    xgpuInfo(&xgpu_info);
+
+    // Create paper_ouput_databuf
+    THREAD_INIT_DATABUF(paper_output_databuf, 16,
+        xgpu_info.matLength*sizeof(Complex),
+        args->input_buffer);
+
+    // Success!
+    return 0;
+}
+
+#define zabs(x,i) hypot(x[i],x[i+1])
+
+static void *run(void * _args)
+{
+    // Cast _args
+    struct guppi_thread_args *args = (struct guppi_thread_args *)_args;
+
+    THREAD_RUN_BEGIN(args);
+
+    THREAD_RUN_SET_AFFINITY_PRIORITY(args);
+
+    THREAD_RUN_ATTACH_STATUS(st);
+
+    // Attach to paper_ouput_databuf
+    THREAD_RUN_ATTACH_DATABUF(paper_output_databuf, db, args->input_buffer);
+
+    /* Main loop */
+    int i, rv, debug=20;
+    int block_idx[2] = {0, 1};
+    int error_count, max_error_count = 0;
+    float *gpu_data, *cpu_data;
+    float error, max_error = 0.0;
+    signal(SIGINT,cc);
+    signal(SIGTERM,cc);
+    while (run_threads) {
+
+        guppi_status_lock_safe(&st);
+        hputs(st.buf, STATUS_KEY, "waiting");
+        guppi_status_unlock_safe(&st);
+
+        // Wait for two new blocks to be filled
+        for(i=0; i<2; i++) {
+            while ((rv=paper_output_databuf_wait_filled(db, block_idx[i]))
+                    != GUPPI_OK) {
+                if (rv==GUPPI_TIMEOUT) {
+                    guppi_status_lock_safe(&st);
+                    hputs(st.buf, STATUS_KEY, "blocked");
+                    guppi_status_unlock_safe(&st);
+                    continue;
+                } else {
+                    guppi_error(__FUNCTION__, "error waiting for filled databuf");
+                    run_threads=0;
+                    pthread_exit(NULL);
+                    break;
+                }
+            }
+        }
+
+        // Note processing status, current input block
+        guppi_status_lock_safe(&st);
+        hputs(st.buf, STATUS_KEY, "processing");
+        hputi4(st.buf, "CGBLKIN", block_idx[0]);
+        guppi_status_unlock_safe(&st);
+
+        // Reorder GPU block
+        if(debug==20) {
+          fprintf(stderr, "GPU block in == %d\n", block_idx[0]);
+          fprintf(stderr, "CPU block in == %d\n", block_idx[1]);
+        }
+        xgpuReorderMatrix((Complex *)db->block[block_idx[0]].data);
+
+        // Compare blocks
+        error_count = 0.0;
+        gpu_data = db->block[block_idx[0]].data;
+        cpu_data = db->block[block_idx[1]].data;
+        for(i=0; i<xgpu_info.matLength; i+=2) {
+            if(zabs(cpu_data,i) == 0) {
+                error = zabs(gpu_data,i);
+            } else {
+                error = hypotf(gpu_data[i]-cpu_data[i], gpu_data[i+1]-cpu_data[i+1]);
+                error /= zabs(cpu_data,i);
+            }
+            if(error > 3*TOL) {
+                error_count++;
+                if(debug) {
+                    fprintf(stderr,
+                        "%3d: GPU:(%+4e, %+4e) CPU:(%+4e, %+4e) err %+4e\n", i,
+                        gpu_data[i], gpu_data[i+1],
+                        cpu_data[i], cpu_data[i+1],
+                        error
+                        );
+                    debug--;
+                }
+            }
+            if(error > max_error) {
+                max_error = error;
+            }
+        }
+        if(error_count > max_error_count) {
+            max_error_count = error_count;
+        }
+
+        // Update status values
+        guppi_status_lock_safe(&st);
+        hputr4(st.buf, "CGMAXERR", max_error);
+        hputi4(st.buf, "CGERRCNT", error_count);
+        hputi4(st.buf, "CGMXERCT", max_error_count);
+        guppi_status_unlock_safe(&st);
+
+        // Mark blocks as free
+        for(i=0; i<2; i++) {
+            paper_output_databuf_set_free(db, block_idx[i]);
+        }
+
+        // Setup for next block
+        for(i=0; i<2; i++) {
+            block_idx[i] = (block_idx[i] + 2) % db->header.n_block;
+        }
+
+        /* Will exit if thread has been cancelled */
+        pthread_testcancel();
+    }
+
+    // Have to close all pushes
+    pthread_cleanup_pop(0);
+    THREAD_RUN_DETACH_STATUS;
+    THREAD_RUN_END;
+
+    // Thread success!
+    return NULL;
+}
+
+static pipeline_thread_module_t module = {
+    name: "paper_gpu_cpu_output_thread",
+    type: PIPELINE_OUTPUT_THREAD,
+    init: init,
+    run:  run
+};
+
+static __attribute__((constructor)) void ctor()
+{
+  register_pipeline_thread_module(&module);
+}

@@ -54,7 +54,8 @@ THREAD_OBJS  = vegas_net_thread.o vegas_rawdisk_thread.o \
 	        guppi_sdfits_thread.o guppi_accum_thread.o \
 	        guppi_null_thread.o guppi_fake_net_thread.o \
 	        paper_net_thread.o paper_fake_net_thread.o \
-	        paper_gpu_thread.o null_output_thread.o
+	        paper_gpu_thread.o paper_gpu_cpu_output_thread.o \
+					null_output_thread.o
 
 CUDA_OBJS = pfb_gpu.o pfb_gpu_kernels.o vegas_pfb_thread.o
 
