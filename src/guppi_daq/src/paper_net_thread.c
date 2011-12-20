@@ -138,13 +138,15 @@ void write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, 
 
 #define N_TIME_PER_INPUT_PER_PACKET 128   
 
-    static int64_t start_count=-1;
+    static const int64_t max_count  = ((int64_t)1<<(48-11))-1;
+    static const int payload_size   = 128 * 64;
+    static int64_t start_count      = -1;
     //paper_input_databuf_t * paper_input_databuf_p;
     uint8_t * payload_p;
     int8_t sample, sample_real, sample_imag, temp;
     uint64_t mcnt, count; 
-    int payload_i, payload_size=128*64;
-    int block_i, sub_block_i, time_i, chan_group, chan_i, input_i;
+    static uint64_t count_offset; 
+    int payload_i, block_i, sub_block_i, time_i, chan_group, chan_i, input_i;
 
     //paper_input_databuf_p = (paper_input_databuf_t *)d->db;
 
@@ -158,10 +160,21 @@ void write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, 
 	start_count = count;
     }
 
-    block_i     = (count - start_count) / N_SUB_BLOCKS_PER_INPUT_BLOCK % N_INPUT_BLOCKS; 
-    sub_block_i = (count - start_count) % N_SUB_BLOCKS_PER_INPUT_BLOCK; 
+    // calculate block and sub_block subscripts while taking care of count rollover
+    // This may not work if the rollover has occurred after a long hiatus, eg after
+    // a cable disconnect/reconnect. TODO: Account for such a hiatus.
+    if(count >= start_count) {
+	count_offset = count - start_count;
+    } else {								// we have a count rollover
+	count_offset = count_offset + count + 1; 			// assumes that count is now very small, probably zero
+    } 
+    block_i     = (count_offset) / N_SUB_BLOCKS_PER_INPUT_BLOCK % N_INPUT_BLOCKS; 
+    sub_block_i = (count_offset) % N_SUB_BLOCKS_PER_INPUT_BLOCK; 
+    if(count < start_count && block_i == 0 && sub_block_i == 0) {
+	start_count = count;						// reset on block,sub 0
+    }
 
-    paper_input_databuf_wait_free(paper_input_databuf_p, block_i);	// should block_i be block_idx for consistency?
+    paper_input_databuf_wait_free(paper_input_databuf_p, block_i);	// should return very quickly
 
     paper_input_databuf_p->block[block_i].header[sub_block_i].mcnt = count;  // will happen 127x more than neccessary
     paper_input_databuf_p->block[block_i].header[sub_block_i].chan_present[chan_i/64] |= ((uint64_t)1<<(chan_i%64));
@@ -188,7 +201,7 @@ void write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, 
     int i;
     for(i=0; i < N_SUB_BLOCKS_PER_INPUT_BLOCK; i++) {
     	if((paper_input_databuf_p->block[block_i].header[i].chan_present[0] &
-            paper_input_databuf_p->block[block_i].header[i].chan_present[1]) < 0xFFFFFFFFFFFFFFFF) {
+            paper_input_databuf_p->block[block_i].header[i].chan_present[1]) < (uint8_t)0xFFFFFFFFFFFFFFFF) {
 		block_full = 0;
 		break;
     	}
