@@ -75,12 +75,23 @@
 struct paper_input_databuf *paper_input_databuf_create(int n_block, size_t block_size,
         int databuf_id)
 {
+    int rv = 0;
     int init_buffer = 1;
 
     /* Calc databuf size */
     size_t paper_input_databuf_size = sizeof(paper_input_databuf_t);
-printf("paper_input_databuf_size %lu\n", paper_input_databuf_size);
-//exit(1);	// debug exit
+    struct rlimit rlim;
+    getrlimit(RLIMIT_MEMLOCK, &rlim);
+    if(rlim.rlim_cur < paper_input_databuf_size) {
+	printf("Incresing RLIMIT_MEMLOCK from %lu to %lu for paper_input_databuf. Hard limit is %lu.\n", 
+		rlim.rlim_cur, paper_input_databuf_size, rlim.rlim_max);
+	rlim.rlim_cur = paper_input_databuf_size;
+	rv = setrlimit(RLIMIT_MEMLOCK, &rlim);
+	if(rv) {
+		perror("setrlimit");
+        	guppi_error(__FUNCTION__, "Error increasing RLIMIT_MEMLOCK");
+	}
+    }
 
     /* Get shared memory block */
     key_t key = guppi_databuf_key();
@@ -123,7 +134,7 @@ printf("paper_input_databuf_size %lu\n", paper_input_databuf_size);
     }
 
     /* Try to lock in memory */
-    int rv = shmctl(shmid, SHM_LOCK, NULL);
+    rv = shmctl(shmid, SHM_LOCK, NULL);
     if (rv==-1) {
         perror("shmctl");
         guppi_error(__FUNCTION__, "Error locking shared memory.");

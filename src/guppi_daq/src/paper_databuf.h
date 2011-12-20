@@ -5,7 +5,7 @@
 #include "guppi_databuf.h"
 
 #define N_INPUT_BLOCKS 4
-#define N_SUB_BLOCKS_PER_INPUT_BLOCK 3
+#define N_SUB_BLOCKS_PER_INPUT_BLOCK 4
 #define N_TIME 128
 #define N_CHAN 128
 #define N_INPUT 64

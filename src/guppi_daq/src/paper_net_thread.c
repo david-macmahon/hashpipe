@@ -53,6 +53,9 @@ void write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, 
     count      = mcnt >> 11;
 
     if(start_count == -1) {
+    	if(count % N_SUB_BLOCKS_PER_INPUT_BLOCK != 0) {
+		return;				// insist that we start on a multiple of sub_blocks/block
+	}
 	start_count = count;
     }
 
@@ -69,7 +72,7 @@ void write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, 
     if(count < start_count && block_i == 0 && sub_block_i == 0) {
 	start_count = count;						// reset on block,sub 0
     }
-
+printf("%llu %llu %llu %llu %d %d\n", (long long unsigned)time(NULL), (long long unsigned)start_count, (long long unsigned)count, (long long unsigned)count_offset, block_i, sub_block_i);
     paper_input_databuf_wait_free(paper_input_databuf_p, block_i);	// should return very quickly
 
     paper_input_databuf_p->block[block_i].header[sub_block_i].mcnt = count;  // will happen 127x more than neccessary
