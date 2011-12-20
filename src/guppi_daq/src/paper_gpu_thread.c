@@ -51,7 +51,7 @@ static int init(struct guppi_thread_args *args)
     return 0;
 }
 
-static void *run(void * _args)
+static void *run(void * _args, int doCPU)
 {
     // Cast _args
     struct guppi_thread_args *args = (struct guppi_thread_args *)_args;
@@ -75,7 +75,10 @@ static void *run(void * _args)
     int curblock_in=0;
     int curblock_out=0;
 
-    // Initialize context to point at first input and output memory blocks
+    // Initialize context to point at first input and output memory blocks.
+    // This seems redundant since we do this just before calling
+    // xgpuCudaXengine, but we need to pass something in for array_h and
+    // matrix_x to prevent xgpuInit from allocating memory.
     XGPUContext context;
     context.array_h = (ComplexInput *)db_in->block[curblock_in].sub_block;
     context.matrix_h = (Complex *)db_out->block[curblock_out].data;
@@ -112,7 +115,7 @@ static void *run(void * _args)
         while ((rv=paper_output_databuf_wait_free(db_out, curblock_out)) != GUPPI_OK) {
             if (rv==GUPPI_TIMEOUT) {
                 guppi_status_lock_safe(&st);
-                hputs(st.buf, STATUS_KEY, "blocked_out");
+                hputs(st.buf, STATUS_KEY, "blocked gpu out");
                 guppi_status_unlock_safe(&st);
                 continue;
             } else {
@@ -123,38 +126,70 @@ static void *run(void * _args)
             }
         }
 
-        /* Note waiting status, current input block */
+        // Note processing status, current input block
         guppi_status_lock_safe(&st);
-        hputs(st.buf, STATUS_KEY, "processing");
+        hputs(st.buf, STATUS_KEY, "processing gpu");
         hputi4(st.buf, "GPUBLKIN", curblock_in);
         guppi_status_unlock_safe(&st);
 
-        // TODO Get start time and integration duration from somewhere
-
-        /*
-         * Call CUDA X engine function
-         * (dump every time for now)
-         */
-        xgpuCudaXengine(&context, 1);
-        xgpuClearDeviceIntegrationBuffer(&context);
-        //xgpuOmpXengine((Complex *)db_out->block[curblock_out].data, context.array_h);
-
-        /* Mark input block as free */
-        paper_input_databuf_set_free(db_in, curblock_in);
-        /* Go to next input block */
-        curblock_in = (curblock_in + 1) % db_in->header.n_block;
-
-        /* Mark output block as full */
-        paper_output_databuf_set_filled(db_out, curblock_out);
-        /* Go to next output block */
-        curblock_out = (curblock_out + 1) % db_out->header.n_block;
-        // TODO Need to handle or at least check for overflow!
-
-        // Setup for next chunk
+        // Setup for current chunk
         context.array_h = (ComplexInput *)db_in->block[curblock_in].sub_block;
         context.matrix_h = (Complex *)db_out->block[curblock_out].data;
         xgpuSetHostInputBuffer(&context);
         xgpuSetHostOutputBuffer(&context);
+
+        // Call CUDA X engine function (dump every time for now)
+        // TODO Get start time and integration duration from somewhere
+        xgpuCudaXengine(&context, 1);
+        xgpuClearDeviceIntegrationBuffer(&context);
+        //xgpuOmpXengine((Complex *)db_out->block[curblock_out].data, context.array_h);
+
+        // Mark output block as full and advance
+        paper_output_databuf_set_filled(db_out, curblock_out);
+        curblock_out = (curblock_out + 1) % db_out->header.n_block;
+        // TODO Need to handle or at least check for overflow!
+
+        if(doCPU) {
+
+            /* Note waiting status */
+            guppi_status_lock_safe(&st);
+            hputs(st.buf, STATUS_KEY, "waiting");
+            guppi_status_unlock_safe(&st);
+
+            // Wait for new output block to be free
+            while ((rv=paper_output_databuf_wait_free(db_out, curblock_out)) != GUPPI_OK) {
+                if (rv==GUPPI_TIMEOUT) {
+                    guppi_status_lock_safe(&st);
+                    hputs(st.buf, STATUS_KEY, "blocked cpu out");
+                    guppi_status_unlock_safe(&st);
+                    continue;
+                } else {
+                    guppi_error(__FUNCTION__, "error waiting for free databuf");
+                    run_threads=0;
+                    pthread_exit(NULL);
+                    break;
+                }
+            }
+
+            // Note "processing cpu" status, current input block
+            guppi_status_lock_safe(&st);
+            hputs(st.buf, STATUS_KEY, "processing cpu");
+            guppi_status_unlock_safe(&st);
+
+            /*
+             * Call CPU X engine function
+             */
+            xgpuOmpXengine((Complex *)db_out->block[curblock_out].data, context.array_h);
+
+            // Mark output block as full and advance
+            paper_output_databuf_set_filled(db_out, curblock_out);
+            curblock_out = (curblock_out + 1) % db_out->header.n_block;
+            // TODO Need to handle or at least check for overflow!
+        }
+
+        // Mark input block as free and advance
+        paper_input_databuf_set_free(db_in, curblock_in);
+        curblock_in = (curblock_in + 1) % db_in->header.n_block;
 
         /* Check for cancel */
         pthread_testcancel();
@@ -173,14 +208,32 @@ static void *run(void * _args)
     return NULL;
 }
 
-static pipeline_thread_module_t module = {
+static void *run_gpu_only(void * _args)
+{
+  return run(_args, 0);
+}
+
+static void *run_gpu_cpu(void * _args)
+{
+  return run(_args, 1);
+}
+
+static pipeline_thread_module_t module1 = {
     name: "paper_gpu_thread",
     type: PIPELINE_INOUT_THREAD,
     init: init,
-    run:  run
+    run:  run_gpu_only
+};
+
+static pipeline_thread_module_t module2 = {
+    name: "paper_gpu_cpu_thread",
+    type: PIPELINE_INOUT_THREAD,
+    init: init,
+    run:  run_gpu_cpu
 };
 
 static __attribute__((constructor)) void ctor()
 {
-  register_pipeline_thread_module(&module);
+  register_pipeline_thread_module(&module1);
+  register_pipeline_thread_module(&module2);
 }
