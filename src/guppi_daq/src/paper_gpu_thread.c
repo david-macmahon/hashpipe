@@ -109,7 +109,7 @@ static void *run(void * _args)
         }
 
         // Wait for new output block to be free
-        while ((rv=paper_input_databuf_wait_free(db_out, curblock_out)) != GUPPI_OK) {
+        while ((rv=paper_output_databuf_wait_free(db_out, curblock_out)) != GUPPI_OK) {
             if (rv==GUPPI_TIMEOUT) {
                 guppi_status_lock_safe(&st);
                 hputs(st.buf, STATUS_KEY, "blocked_out");
