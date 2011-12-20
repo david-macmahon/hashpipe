@@ -22,7 +22,7 @@ ifdef EXT_DISK
 	OPT_FLAGS += -DEXT_DISK
 endif
 
-CFLAGS = -g -fPIC -O3 -Wall -D_GNU_SOURCE $(OPT_FLAGS) -fno-strict-aliasing
+CFLAGS = -g -fPIC -O3 -Wall -Werror -D_GNU_SOURCE $(OPT_FLAGS) -fno-strict-aliasing
 
 ifdef PYSLALIB
 	CFLAGS += -I$(PYSLALIB)

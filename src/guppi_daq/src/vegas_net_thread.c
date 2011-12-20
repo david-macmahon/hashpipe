@@ -278,8 +278,8 @@ void *guppi_net_thread(void *_args) {
      */
     int block_size;
     struct guppi_udp_packet p;
-    size_t heap_size, spead_hdr_size;
-    unsigned int heaps_per_block, packets_per_heap; 
+    size_t heap_size=0, spead_hdr_size=0;
+    unsigned int heaps_per_block=0, packets_per_heap=0;
     char bw_mode[16];
 
     if (hgets(status_buf, "BW_MODE", 16, bw_mode))
@@ -334,7 +334,7 @@ void *guppi_net_thread(void *_args) {
     unsigned int seq_num=0, last_seq_num=1050;
     int heap_cntr_diff, seq_num_diff;
     unsigned int obs_started = 0;
-    unsigned long long npacket_total, npacket_this_block=0, ndropped_total;
+    unsigned long long npacket_total=0, npacket_this_block=0, ndropped_total=0;
     double drop_frac_avg=0.0;
     const double drop_lpf = 0.25;
     prev_heap_cntr = 0;

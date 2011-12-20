@@ -817,7 +817,7 @@ static void *run(void * _args)
     pthread_cleanup_push((void *)guppi_udp_close, &up);
 
     /* Main loop */
-    unsigned force_new_block=0, waiting=-1;
+    unsigned waiting=-1;
     signal(SIGINT,cc);
     while (run_threads) {
 

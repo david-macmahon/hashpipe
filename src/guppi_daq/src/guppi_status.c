@@ -60,7 +60,7 @@ int guppi_status_attach(struct guppi_status *s) {
     key_t key = guppi_status_key();
     if(key == GUPPI_KEY_ERROR) {
         guppi_error("guppi_status_attach", "guppi_status_key error");
-        return(NULL);
+        return(0);
     }
     s->shmid = shmget(key, GUPPI_STATUS_SIZE, 0666 | IPC_CREAT);
     if (s->shmid==-1) { 

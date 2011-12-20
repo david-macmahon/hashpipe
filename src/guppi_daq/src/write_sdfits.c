@@ -34,7 +34,9 @@ int sdfits_create(struct sdfits *sf) {
             printf("Using directory '%s' for output.\n", datadir);
             char cmd[1024];
             sprintf(cmd, "mkdir -m 1777 -p %s", datadir);
-            system(cmd);
+            if(system(cmd)) {
+                printf("System command '%s' failed.\n", cmd);
+            }
         }
         sf->new_file = 0;
     }

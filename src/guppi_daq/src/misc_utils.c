@@ -69,8 +69,7 @@ void split_path_file(char *input, char **path, char **file)
     len = strlen(input);
     sptr = strrchr(input, '/');
     if (sptr == NULL) {
-        getcwd(stmp, 200);
-        if (stmp == NULL) {
+        if(!getcwd(stmp, 200)) {
             printf("\nCurrent directory name is too long.\n");
             printf("Exiting\n\n");
             exit(1);

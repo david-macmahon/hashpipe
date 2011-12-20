@@ -123,7 +123,7 @@ void guppi_accum_thread(void *_args) {
     float **accumulator;      //indexed accumulator[accum_id][chan][subband][stokes]
     char accum_dirty[NUM_SW_STATES];
     struct sdfits_data_columns data_cols[NUM_SW_STATES];
-    int payload_type;
+    int payload_type=0;
     int i, j, k, rv;
 
     /* Get arguments */
@@ -222,7 +222,7 @@ void guppi_accum_thread(void *_args) {
     int first=1;
     float reqd_exposure=0;
     double accum_time=0;
-    float pfb_rate;
+    float pfb_rate=0.0;
     int heap, accumid, struct_offset, array_offset;
     char *hdr_in=NULL, *hdr_out=NULL;
     struct databuf_index *index_in, *index_out;
