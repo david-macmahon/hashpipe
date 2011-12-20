@@ -78,11 +78,14 @@ static void *run(void * _args)
         hputs(st.buf, STATUS_KEY, "waiting");
         guppi_status_unlock_safe(&st);
  
-        /* Wait for data */
-        struct timespec sleep_dur, rem_sleep_dur;
-        sleep_dur.tv_sec = 0;
-        sleep_dur.tv_nsec = 2e6; // TODO replace with correct value
-        nanosleep(&sleep_dur, &rem_sleep_dur);
+#if 0
+        // xgpuRandomComplex is super-slow so no need to sleep
+        // Wait for data
+        //struct timespec sleep_dur, rem_sleep_dur;
+        //sleep_dur.tv_sec = 0;
+        //sleep_dur.tv_nsec = 0;
+        //nanosleep(&sleep_dur, &rem_sleep_dur);
+#endif
 	
         /* Wait for new block to be free, then clear it
          * if necessary and fill its header with new values.
@@ -101,9 +104,6 @@ static void *run(void * _args)
                 break;
             }
         }
-
-        // Zero out block
-        memset(&(db->block[block_idx]), 0, sizeof(paper_input_block_t));
 
         guppi_status_lock_safe(&st);
         hputs(st.buf, STATUS_KEY, "receiving");
