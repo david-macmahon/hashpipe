@@ -82,16 +82,17 @@ struct paper_input_databuf *paper_input_databuf_create(int n_block, size_t block
     size_t paper_input_databuf_size = sizeof(paper_input_databuf_t);
     struct rlimit rlim;
     getrlimit(RLIMIT_MEMLOCK, &rlim);
-    if(rlim.rlim_cur < paper_input_databuf_size) {
-	printf("Incresing RLIMIT_MEMLOCK from %lu to %lu for paper_input_databuf. Hard limit is %lu.\n", 
-		rlim.rlim_cur, (long unsigned)67108864, rlim.rlim_max);
-	//rlim.rlim_cur = paper_input_databuf_size;
-	rlim.rlim_cur = 67108864;
+    if(paper_input_databuf_size < rlim.rlim_max) {
+	printf("Preemptive increse of RLIMIT_MEMLOCK from %lu to %lu (max) for a paper_input_databuf size of %lu.\n", 
+		rlim.rlim_cur, rlim.rlim_max, paper_input_databuf_size);
+	rlim.rlim_cur = rlim.rlim_max;
 	rv = setrlimit(RLIMIT_MEMLOCK, &rlim);
 	if(rv) {
 		perror("setrlimit");
         	guppi_error(__FUNCTION__, "Error increasing RLIMIT_MEMLOCK");
 	}
+    } else {
+	guppi_error(__FUNCTION__, "Shared memory request is more than the max allowed");
     }
 
     /* Get shared memory block */
