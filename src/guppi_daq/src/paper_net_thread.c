@@ -42,7 +42,7 @@ void write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, 
     static const int payload_size   = 128 * 64;
     static int64_t start_count      = -1;
     uint8_t * payload_p;
-    int8_t sample, sample_real, sample_imag, temp;
+    int8_t sample, sample_real, sample_imag;
     uint64_t mcnt, count; 
     static uint64_t count_offset; 
     int payload_i, block_i, sub_block_i, time_i, chan_group, chan_i, input_i;
@@ -82,10 +82,7 @@ void write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, 
     for(payload_i=0; payload_i<payload_size; payload_i++) {
 	sample      = *(payload_p+payload_i);
 	sample_real = sample >> 4;
-	//sample_real = (int)(char)(sample % 0xf0);	// alternate method
-	temp        = sample << 4;	// insure sign extension
-	sample_imag = temp   >> 4;
-	//sample_imag = (int)(char)(sample<<4);		// alternate method, replaces previous 2 lines
+	sample_imag = (int8_t)(sample << 4) >> 4;	// the cast removes the "memory" of the shifted out bits
 
 	time_i      = payload_i / 2 % N_TIME;
 	input_i     = 2 * (payload_i / (N_TIME_PER_INPUT_PER_PACKET * 2)) + payload_i % 2;
