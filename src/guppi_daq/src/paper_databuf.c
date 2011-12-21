@@ -84,8 +84,9 @@ struct paper_input_databuf *paper_input_databuf_create(int n_block, size_t block
     getrlimit(RLIMIT_MEMLOCK, &rlim);
     if(rlim.rlim_cur < paper_input_databuf_size) {
 	printf("Incresing RLIMIT_MEMLOCK from %lu to %lu for paper_input_databuf. Hard limit is %lu.\n", 
-		rlim.rlim_cur, paper_input_databuf_size, rlim.rlim_max);
-	rlim.rlim_cur = paper_input_databuf_size;
+		rlim.rlim_cur, (long unsigned)67108864, rlim.rlim_max);
+	//rlim.rlim_cur = paper_input_databuf_size;
+	rlim.rlim_cur = 67108864;
 	rv = setrlimit(RLIMIT_MEMLOCK, &rlim);
 	if(rv) {
 		perror("setrlimit");
