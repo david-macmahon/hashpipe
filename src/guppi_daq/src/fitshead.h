@@ -51,6 +51,10 @@ extern "C" {
         const char* keyword,    /* FITS keyword */
         const char* wchar,      /* WCS to use (A-Z or null) */
         int* val);              /* integer value (returned) */
+    long long hgeti8(           /* Extract long long value from FITS header */
+        const char* hstring,    /* FITS header string */
+        const char* keyword,    /* FITS keyword */
+        long long* val);        /* integer value (returned) */
     int hgeti4(                 /* Extract int value from FITS header */
         const char* hstring,    /* FITS header string */
         const char* keyword,    /* FITS keyword */
@@ -297,6 +301,7 @@ extern "C" {
 
 /* Extract a value from a FITS header for given keyword */
 extern int hgeti4();    /* int (Multiple WCS) */
+extern long long hgeti8(); /* long long */
 extern int hgeti4c();   /* int */
 extern int hgeti2();    /* short */
 extern int hgetr4();    /* float */

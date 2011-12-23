@@ -29,6 +29,7 @@
  * Module:      hput.c (Put FITS Header parameter values)
  * Purpose:     Implant values for parameters into FITS header string
  * Subroutine:  hputi4 (hstring,keyword,ival) sets int ival
+ * Subroutine:  hputi8 (hstring,keyword,ival) sets long long ival
  * Subroutine:  hputr4 (hstring,keyword,rval) sets real*4 rval
  * Subroutine:  hputr8 (hstring,keyword,dval) sets real*8 dval
  * Subroutine:  hputnr8 (hstring,keyword,ndec,dval) sets real*8 dval

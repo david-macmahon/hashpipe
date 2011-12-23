@@ -30,6 +30,7 @@
  * Purpose:     Extract values for variables from FITS header string
  * Subroutine:  hgeti2 (hstring,keyword,ival) returns short integer
  * Subroutine:  hgeti4c (hstring,keyword,wchar,ival) returns long integer
+ * Subroutine:  hgeti8 (hstring,keyword,ival) returns long long integer
  * Subroutine:  hgeti4 (hstring,keyword,ival) returns long integer
  * Subroutine:  hgetr4 (hstring,keyword,rval) returns real
  * Subroutine:  hgetra (hstring,keyword,ra) returns double RA in degrees
@@ -158,6 +159,41 @@ int     *ival;          /* Keyword value returned */
         }
 }
 
+
+/* Extract integer*8 value for variable from FITS header string */
+
+long long
+hgeti8 (hstring,keyword,i8val)
+
+const char *hstring;    /* character string containing FITS header information
+                   in the format <keyword>= <value> {/ <comment>} */
+const char *keyword;    /* character string containing the name of the keyword
+                   the value of which is returned.  hget searches for a
+                   line beginning with this string.  if "[n]" is present,
+                   the n'th token in the value is returned.
+                   (the first 8 characters must be unique) */
+long long *i8val;
+{
+    char *value;
+    char *endptr;
+
+    /* Get value and comment from header string */
+    value = hgetc (hstring,keyword);
+
+    /* Translate value from ASCII to binary */
+    if (value != NULL) {
+        if (value[0] == '#') value++;
+        *i8val = strtoll(value, &endptr, 0);
+        if(endptr && endptr[0]) {
+            fprintf(stderr, "%s:%s got invalid integer character '%c' (%d)\n",
+                __FUNCTION__, keyword, endptr[0], endptr[0]);
+            *i8val = (long long)atof(value);
+        }
+        return 1;
+    } else {
+        return 0;
+    }
+}
 
 /* Extract long value for variable from FITS header string */
 
