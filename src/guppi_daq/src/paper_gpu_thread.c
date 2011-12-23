@@ -69,8 +69,18 @@ static void *run(void * _args, int doCPU)
     /* Attach to paper_ouput_databuf */
     THREAD_RUN_ATTACH_DATABUF(paper_output_databuf, db_out, args->output_buffer);
 
+    // Init integration control status variables
+    guppi_status_lock_safe(&st);
+    hputs(st.buf,  "INTSTAT", "off");
+    hputi8(st.buf, "INTSYNC", 0);
+    hputi4(st.buf, "INTCOUNT", N_SUB_BLOCKS_PER_INPUT_BLOCK);
+    guppi_status_unlock_safe(&st);
+
     /* Loop */
     int rv;
+    char integ_status[17];
+    uint64_t start_mcount, last_mcount=0;
+    int int_count;
     int xgpu_error = 0;
     int curblock_in=0;
     int curblock_out=0;
@@ -91,9 +101,13 @@ static void *run(void * _args, int doCPU)
 
     while (run_threads) {
 
-        /* Note waiting status */
+        // Note waiting status,
+        // query integrating status
+        // and, if armed, start count
         guppi_status_lock_safe(&st);
         hputs(st.buf, STATUS_KEY, "waiting");
+        hgets(st.buf,  "INTSTAT", 16, integ_status);
+        hgeti8(st.buf, "INTSYNC", (long long*)&start_mcount);
         guppi_status_unlock_safe(&st);
 
         // Wait for new input block to be filled
@@ -111,6 +125,51 @@ static void *run(void * _args, int doCPU)
             }
         }
 
+        // Got a new data block, update status and determine how to handle it
+        guppi_status_lock_safe(&st);
+        hputi4(st.buf, "GPUBLKIN", curblock_in);
+        hputi8(st.buf, "GPUMCNT", db_in->block[curblock_in].header[0].mcnt);
+        guppi_status_unlock_safe(&st);
+
+        // If integration status "off"
+        if(!strcmp(integ_status, "off")) {
+            // Mark input block as free and advance
+            paper_input_databuf_set_free(db_in, curblock_in);
+            curblock_in = (curblock_in + 1) % db_in->header.n_block;
+            // Skip to next input buffer
+            continue;
+        }
+
+        // If integration status is "start"
+        if(!strcmp(integ_status, "start")) {
+            // If buffer mcount < start_mcount (i.e. not there yet)
+            if(db_in->block[curblock_in].header[0].mcnt < start_mcount) {
+              // Drop input buffer
+              // Mark input block as free and advance
+              paper_input_databuf_set_free(db_in, curblock_in);
+              curblock_in = (curblock_in + 1) % db_in->header.n_block;
+              // Skip to next input buffer
+              continue;
+            // Else if mcount == start_mcount (time to start)
+            } else if(db_in->block[curblock_in].header[0].mcnt == start_mcount) {
+              // Set integration status to "on"
+              // Read integration count (INTCOUNT)
+              strcpy(integ_status, "on");
+              guppi_status_lock_safe(&st);
+              hputs(st.buf,  "INTSTAT", integ_status);
+              hgeti4(st.buf, "INTCOUNT", &int_count);
+              guppi_status_unlock_safe(&st);
+              // Compute last mcount
+              last_mcount = start_mcount + int_count - N_SUB_BLOCKS_PER_INPUT_BLOCK;
+            // Else (missed starting mcount)
+            } else {
+              // Handle missed start of integration
+              // TODO!
+            }
+        }
+
+        // Integration status is "on" or "stop"
+
         // Wait for new output block to be free
         while ((rv=paper_output_databuf_wait_free(db_out, curblock_out)) != GUPPI_OK) {
             if (rv==GUPPI_TIMEOUT) {
@@ -126,10 +185,9 @@ static void *run(void * _args, int doCPU)
             }
         }
 
-        // Note processing status, current input block
+        // Note processing status
         guppi_status_lock_safe(&st);
         hputs(st.buf, STATUS_KEY, "processing gpu");
-        hputi4(st.buf, "GPUBLKIN", curblock_in);
         guppi_status_unlock_safe(&st);
 
         // Setup for current chunk
@@ -138,16 +196,38 @@ static void *run(void * _args, int doCPU)
         xgpuSetHostInputBuffer(&context);
         xgpuSetHostOutputBuffer(&context);
 
-        // Call CUDA X engine function (dump every time for now)
-        // TODO Get start time and integration duration from somewhere
-        xgpuCudaXengine(&context, 1);
-        xgpuClearDeviceIntegrationBuffer(&context);
-        //xgpuOmpXengine((Complex *)db_out->block[curblock_out].data, context.array_h);
+        // Call CUDA X engine function
+        int doDump = 0;
+        // Dump if this is the last block or we are doing both CPU and GPU
+        // (GPU and CPU test mode always dumps every input block)
+        if(db_in->block[curblock_in].header[0].mcnt == last_mcount || doCPU) {
+          doDump = 1;
+        } else if(db_in->block[curblock_in].header[0].mcnt > last_mcount) {
+          // Handle missed end of integration
+          // TODO!
+        }
 
-        // Mark output block as full and advance
-        paper_output_databuf_set_filled(db_out, curblock_out);
-        curblock_out = (curblock_out + 1) % db_out->header.n_block;
-        // TODO Need to handle or at least check for overflow!
+        xgpuCudaXengine(&context, doDump);
+
+        if(doDump) {
+          xgpuClearDeviceIntegrationBuffer(&context);
+          // If integration status if "stop"
+          if(!strcmp(integ_status, "stop")) {
+            // Set integration status to "off"
+            strcpy(integ_status, "off");
+            guppi_status_lock_safe(&st);
+            hputs(st.buf,  "INTSTAT", integ_status);
+            guppi_status_unlock_safe(&st);
+          } else {
+            // Advance last_mcount for end of next integration
+            last_mcount += int_count;
+          }
+
+          // Mark output block as full and advance
+          paper_output_databuf_set_filled(db_out, curblock_out);
+          curblock_out = (curblock_out + 1) % db_out->header.n_block;
+          // TODO Need to handle or at least check for overflow!
+        }
 
         if(doCPU) {
 
