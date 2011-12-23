@@ -907,8 +907,9 @@ const char *keyword0;   /* character string containing the name of the keyword
                    the n'th token in the value is returned.
                    (the first 8 characters must be unique) */
 {
-    //static char cval[80];
-    char cval[80];
+    // Since we return cval (via value), it must be static (but that doesn't
+    // make it thread safe).
+    static char cval[80];
     char *value;
     char cwhite[2];
     char squot[2], dquot[2], lbracket[2], rbracket[2], slash[2], comma[2];
