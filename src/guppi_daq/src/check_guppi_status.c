@@ -35,22 +35,30 @@ int main(int argc, char *argv[]) {
         {"quiet",  0, NULL, 'q'},
         {"clear",  0, NULL, 'C'},
         {"del",    0, NULL, 'D'},
+        {"query",  1, NULL, 'Q'},
         {0,0,0,0}
     };
     int opt,opti;
     char *key=NULL;
+    char value[81];
     float flttmp;
     double dbltmp;
     int inttmp;
     int quiet=0, clear=0;
-    while ((opt=getopt_long(argc,argv,"k:g:s:f:d:i:qCD",long_opts,&opti))!=-1) {
+    while ((opt=getopt_long(argc,argv,"k:g:s:f:d:i:qCDQ:",long_opts,&opti))!=-1) {
         switch (opt) {
             case 'k':
                 key = optarg;
                 break;
+            case 'Q':
+                hgets(s.buf, optarg, 80, value);
+                printf("%s\n", value);
+                quiet = 1;
+                break;
             case 'g':
                 hgetr8(s.buf, optarg, &dbltmp);
                 printf("%g\n", dbltmp);
+                quiet = 1;
                 break;
             case 's':
                 if (key) 
