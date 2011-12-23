@@ -115,7 +115,7 @@ static void *run(void * _args)
           db->block[block_idx].header[i].mcnt = mcnt;
           db->block[block_idx].header[i].chan_present[0] = -1;
           db->block[block_idx].header[i].chan_present[1] = -1;
-          mcnt += N_CHAN;
+          mcnt++;
         }
 
         // Fill in random data
