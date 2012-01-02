@@ -36,7 +36,10 @@ def display_status(stdscr,stat):
         stdscr.addstr(curline,col,"Current pipeline status:", keycol);
         curline += 2
         flip=0
-        for k,v in stat.hdr.items():
+        keys = stat.hdr.keys()
+        keys.sort()
+        for k in keys:
+            v = stat.hdr[k]
             if (curline < ymax-3):
                 stdscr.addstr(curline,col,"%8s : "%k, keycol)
                 stdscr.addstr("%s" % v, valcol)
