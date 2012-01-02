@@ -41,8 +41,8 @@ endif
 ifdef VEGAS_LIB
 	LIBS += -L$(VEGAS_LIB)
 endif
-LIBS += -lcfitsio -lm -lpthread -lxgpu
-CUDA_LIBS = -L$(CUDA)/lib64 -lcufft -lcuda -lcudart -lrt -lm -lpthread
+LIBS += -lcfitsio -lxgpu
+CUDA_LIBS = -L$(CUDA)/lib64 -lcufft
 
 PROGS = check_guppi_databuf check_guppi_status clean_guppi_shmem test_udp_recv
 OBJS  = guppi_status.o guppi_databuf.o paper_databuf.o guppi_udp.o guppi_error.o \
