@@ -69,9 +69,6 @@ install: $(PROGS) $(THREAD_PROGS) vegas_hpc_lbw
 sdfits.tgz: sdfits.h read_sdfits.c \
     guppi_SDFITS_template.txt \
 	tar cvzf $@ $^
-find_dropped_blocks: find_dropped_blocks.o 
-#	$(CC) $(CFLAGS) $< -o $@ -L$(OPT64)/lib -lcfitsio -lm
-	$(CC) $(CFLAGS) $< -o $@ -lcfitsio -lm
 
 tags:
 	ctags -R .
