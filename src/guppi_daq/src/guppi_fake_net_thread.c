@@ -22,7 +22,7 @@
 #include "guppi_params.h"
 #include "guppi_error.h"
 #include "guppi_status.h"
-#include "paper_databuf.h"
+#include "guppi_databuf.h"
 #include "guppi_udp.h"
 #include "guppi_time.h"
 #include "spead_heap.h"
@@ -225,8 +225,7 @@ void *guppi_fake_net_thread(void *_args) {
 
     /* Attach to databuf shared mem */
     struct guppi_databuf *db;
-    //db = guppi_databuf_attach(args->output_buffer); 
-    db = (struct guppi_databuf *)paper_input_databuf_attach(args->output_buffer); 
+    db = guppi_databuf_attach(args->output_buffer);
     if (db==NULL) {
         guppi_error("guppi_fake_net_thread",
                 "Error attaching to databuf shared memory.");
