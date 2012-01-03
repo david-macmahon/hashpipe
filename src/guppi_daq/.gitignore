@@ -47,3 +47,18 @@ src/vegas_hpc_hbw
 src/vegas_hpc_lbw
 src/paper_xgpu
 src/*.so
+# Autotools cruft
+.deps/
+Makefile
+Makefile.in
+aclocal.m4
+autom4te.cache/
+config.h
+config.h.in
+config.log
+config.status
+configure
+depcomp
+install-sh
+missing
+stamp-h1
