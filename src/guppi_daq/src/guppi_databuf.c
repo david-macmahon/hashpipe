@@ -3,6 +3,7 @@
  * Routines for creating and accessing main data transfer
  * buffer in shared memory.
  */
+#define _GNU_SOURCE 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
