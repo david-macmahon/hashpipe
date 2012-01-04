@@ -17,10 +17,16 @@ AC_ARG_WITH([cuda],
 AC_ARG_ENABLE([vegas],
             AC_HELP_STRING([--enable-vegas],
                            [Enable compiltion of VEGAS programs (no)]),
-            [COMPILE_VEGAS="yes"],
+            [COMPILE_VEGAS="yes"
+             AC_SUBST(gnumake_endif,endif)],
             [COMPILE_VEGAS="no"])
 
 AM_CONDITIONAL(COMPILE_VEGAS, [test "$COMPILE_VEGAS" = "yes"])
+
+# Set CFLAGS to nothing if it is not set by the user.  This avoids the default
+# setting of the supposedly reserved-for-the-user variable CFLAGS in Makefile,
+# which prevents AM_CFLAGS in Makefile.am from setting an optimization level.
+AS_VAR_SET_IF(CFLAGS,[],[CFLAGS=])
 
 # Checks for programs.
 AC_PROG_CC
