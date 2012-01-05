@@ -23,9 +23,11 @@ AC_ARG_ENABLE([vegas],
 
 AM_CONDITIONAL(COMPILE_VEGAS, [test "$COMPILE_VEGAS" = "yes"])
 
-# Set CFLAGS to nothing if it is not set by the user.  This avoids the default
-# setting of the supposedly reserved-for-the-user variable CFLAGS in Makefile,
-# which prevents AM_CFLAGS in Makefile.am from setting an optimization level.
+# Set CFLAGS to nothing if it is not set by the user.  This prevents AC_PROG_CC
+# from setting the (supposedly reserved-for-the-user!) variable CFLAGS in
+# Makefile, which prevents AM_CFLAGS in Makefile.am from setting an
+# optimization level.  For more details, see
+# http://lists.gnu.org/archive/html/autoconf/2006-04/msg00007.html
 AS_VAR_SET_IF(CFLAGS,[],[CFLAGS=])
 
 # Checks for programs.
