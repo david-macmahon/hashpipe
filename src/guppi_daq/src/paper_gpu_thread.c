@@ -211,6 +211,9 @@ static void *run(void * _args, int doCPU)
 
         if(doDump) {
           xgpuClearDeviceIntegrationBuffer(&context);
+          // TODO Maybe need to subtract all or half the integration time here
+          // depending on recevier's expectations.
+          db_out->block[curblock_out].header.mcnt = last_mcount;
           // If integration status if "stop"
           if(!strcmp(integ_status, "stop")) {
             // Set integration status to "off"
