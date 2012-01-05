@@ -52,6 +52,7 @@ int main(int argc, char *argv[]) {
                 break;
             case 'Q':
                 hgets(s.buf, optarg, 80, value);
+                value[80] = '\0';
                 printf("%s\n", value);
                 quiet = 1;
                 break;
