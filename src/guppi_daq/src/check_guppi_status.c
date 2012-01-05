@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
         {"float",  1, NULL, 'f'},
         {"double", 1, NULL, 'd'},
         {"int",    1, NULL, 'i'},
-        {"quiet",  0, NULL, 'q'},
+        {"verbose",  0, NULL, 'v'},
         {"clear",  0, NULL, 'C'},
         {"del",    0, NULL, 'D'},
         {"query",  1, NULL, 'Q'},
@@ -44,8 +44,8 @@ int main(int argc, char *argv[]) {
     float flttmp;
     double dbltmp;
     int inttmp;
-    int quiet=0, clear=0;
-    while ((opt=getopt_long(argc,argv,"k:g:s:f:d:i:qCDQ:",long_opts,&opti))!=-1) {
+    int verbose=0, clear=0;
+    while ((opt=getopt_long(argc,argv,"k:g:s:f:d:i:vCDQ:",long_opts,&opti))!=-1) {
         switch (opt) {
             case 'k':
                 key = optarg;
@@ -54,12 +54,10 @@ int main(int argc, char *argv[]) {
                 hgets(s.buf, optarg, 80, value);
                 value[80] = '\0';
                 printf("%s\n", value);
-                quiet = 1;
                 break;
             case 'g':
                 hgetr8(s.buf, optarg, &dbltmp);
                 printf("%g\n", dbltmp);
-                quiet = 1;
                 break;
             case 's':
                 if (key) 
@@ -87,16 +85,16 @@ int main(int argc, char *argv[]) {
             case 'C':
                 clear=1;
                 break;
-            case 'q':
-                quiet=1;
+            case 'v':
+                verbose=1;
                 break;
             default:
                 break;
         }
     }
 
-    /* If not quiet, print out buffer */
-    if (!quiet) { 
+    /* If verbose, print out buffer */
+    if (verbose) { 
         printf("%s\n", s.buf);
     }
 
