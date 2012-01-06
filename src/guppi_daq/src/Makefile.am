@@ -1,3 +1,5 @@
+AM_CFLAGS = -g -fPIC -O3 -Wall -Werror -fno-strict-aliasing
+
 bin_PROGRAMS  =
 
 guppi_base = guppi_databuf.c \
@@ -14,7 +16,6 @@ guppi_threads = $(guppi_net)            \
 		guppi_accum_thread.c    \
 		guppi_fake_net_thread.c \
 		guppi_null_thread.c     \
-		guppi_rawdisk_thread.c  \
 		guppi_sdfits_thread.c
 
 guppi_utils = guppi_params.c      \
@@ -63,6 +64,32 @@ vegas_hpc_lbw_SOURCES = vegas_hpc_lbw.c    \
 			pfb_gpu_kernels.cu \
 			vegas_pfb_thread.c \
 			$(guppi_utils) $(vegas_threads)
+
+ifdef PAYLOAD
+	AM_CFLAGS += -DPAYLOAD_SIZE=$(PAYLOAD)
+@gnumake_endif@
+
+ifdef RAW_DISK
+	AM_CFLAGS += -DRAW_DISK
+@gnumake_endif@
+
+ifdef NULL_DISK
+	AM_CFLAGS += -DNULL_DISK
+@gnumake_endif@
+
+ifdef EXT_DISK
+	AM_CFLAGS += -DEXT_DISK
+@gnumake_endif@
+
+ifdef PYSLALIB
+	AM_CFLAGS += -I$(PYSLALIB)
+@gnumake_endif@
+
+ifdef GUPPI_DIR
+	AM_CFLAGS += -I$(GUPPI_DIR)/src
+@gnumake_endif@
+
+NVCCFLAGS = -arch=sm_20 -I$(CUDA)/include
 
 # Rule to build object file from CUDA .cu file
 .cu.o:
