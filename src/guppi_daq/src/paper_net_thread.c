@@ -35,29 +35,70 @@
 
 #define DEBUG_NET
 
+int paper_block_full(paper_input_databuf_t *paper_input_databuf_p, int block_i) {
+    int block_full = 1;
+    int i;
+    for(i=0; i < N_SUB_BLOCKS_PER_INPUT_BLOCK; i++) {
+    	if((uint64_t)(paper_input_databuf_p->block[block_i].header[i].chan_present[0] &
+            paper_input_databuf_p->block[block_i].header[i].chan_present[1]) < (uint64_t)0xFFFFFFFFFFFFFFFF) {
+		block_full = 0;
+		break;
+    	} 
+    }
+    return(block_full);
+}
+
+void clear_chan_present(paper_input_databuf_t *paper_input_databuf_p, int block_i) {
+    int i;
+    for(i=0; i < N_SUB_BLOCKS_PER_INPUT_BLOCK; i++) {
+	paper_input_databuf_p->block[block_i].header[i].chan_present[0] = 0;
+	paper_input_databuf_p->block[block_i].header[i].chan_present[1] = 0;
+    }
+}
+
+int count_missing_chan(paper_input_databuf_t *paper_input_databuf_p, int block_i) {
+
+    // Counting bits set, Brian Kernighan's way 
+    int c = 0, i, j; 			// c accumulates the total bits set in v's
+    for(i=0; i < N_SUB_BLOCKS_PER_INPUT_BLOCK; i++) {
+	for(j=0; j < 2; j++) {
+    		uint64_t v; 		// count the number of bits set in v
+		v = paper_input_databuf_p->block[block_i].header[i].chan_present[j];
+    		for (; v; c++) {
+  			v &= v - 1; 	// clear the least significant bit set
+    		}
+	}
+    }
+    return(N_SUB_BLOCKS_PER_INPUT_BLOCK * N_CHAN - c);
+}
+
 void write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, struct guppi_udp_packet *p) {
 
 #define N_TIME_PER_INPUT_PER_PACKET 128   
 
     static const int payload_size   = 128 * 64;
     static int64_t start_count      = -1;
+    static int block_active[N_INPUT_BLOCKS];
+    static unsigned long pkt_count, prev_pkt_count;
     uint8_t * payload_p;
     int8_t sample, sample_real, sample_imag;
     uint64_t mcnt, count; 
     static uint64_t count_offset; 
-    int payload_i, block_i, sub_block_i, time_i, chan_group, chan_i, input_i;
+    int payload_i, block_i, sub_block_i, chan_group, time_i, chan_i, input_i;
 
     mcnt = guppi_udp_packet_mcnt(p);
     chan_group = mcnt        & 0x000000000000000F;
     chan_i     = (mcnt >> 4) & 0x000000000000007F;
     count      = mcnt >> 11;
 
-    if(start_count == -1) {
+    if(start_count < 0) {
     	if(count % N_SUB_BLOCKS_PER_INPUT_BLOCK != 0) {
 		return;				// insist that we start on a multiple of sub_blocks/block
 	}
-	start_count = count;
+	start_count = count;			// good to go
     }
+
+    pkt_count++;
 
     // calculate block and sub_block subscripts while taking care of count rollover
     // This may not work if the rollover has occurred after a long hiatus, eg after
@@ -72,37 +113,51 @@ void write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, 
     if(count < start_count && block_i == 0 && sub_block_i == 0) {
 	start_count = count;						// reset on block,sub 0
     }
+    block_active[block_i] += 1;
 
     paper_input_databuf_wait_free(paper_input_databuf_p, block_i);	// should return very quickly
 
     paper_input_databuf_p->block[block_i].header[sub_block_i].mcnt = count;  // will happen 127x more than neccessary
     paper_input_databuf_p->block[block_i].header[sub_block_i].chan_present[chan_i/64] |= ((uint64_t)1<<(chan_i%64));
 
-    payload_p = (uint8_t *)&(p->data[0])+8;		// get past mcnt
-    for(payload_i=0; payload_i<payload_size; payload_i++) {
-	sample      = *(payload_p+payload_i);
-	sample_real = sample >> 4;
-	sample_imag = (int8_t)(sample << 4) >> 4;	// the cast removes the "memory" of the shifted out bits
+    for(time_i=0; time_i<N_TIME; time_i++) {
+    	payload_p = (uint8_t *)(p->data+8+time_i);
+    	for(input_i=0; input_i<N_INPUT; input_i++, payload_p+=N_TIME) {
 
-	time_i      = payload_i / 2 % N_TIME;
-	input_i     = 2 * (payload_i / (N_TIME_PER_INPUT_PER_PACKET * 2)) + payload_i % 2;
+		sample      = *payload_p;
+		sample_real = sample >> 4;
+		sample_imag = (int8_t)(sample << 4) >> 4;	// the cast removes the "memory" of the shifted out bits
 
-	paper_input_databuf_p->block[block_i].sub_block[sub_block_i].time[time_i].chan[chan_i].input[input_i].real = sample_real;
-	paper_input_databuf_p->block[block_i].sub_block[sub_block_i].time[time_i].chan[chan_i].input[input_i].imag = sample_imag; 
+		paper_input_databuf_p->block[block_i].sub_block[sub_block_i].time[time_i].chan[chan_i].input[input_i].real = sample_real;
+		paper_input_databuf_p->block[block_i].sub_block[sub_block_i].time[time_i].chan[chan_i].input[input_i].imag = sample_imag; 
+    	}
     }
 
     // if all channels are present, mark this block filled
-    int block_full = 1;
-    int i;
-    for(i=0; i < N_SUB_BLOCKS_PER_INPUT_BLOCK; i++) {
-    	if((paper_input_databuf_p->block[block_i].header[i].chan_present[0] &
-            paper_input_databuf_p->block[block_i].header[i].chan_present[1]) < (uint8_t)0xFFFFFFFFFFFFFFFF) {
-		block_full = 0;
-		break;
-    	}
-    }
-    if(block_full) {
+    if(paper_block_full(paper_input_databuf_p, block_i)) {
+#if 0
+	int i;
+	for(i=0;i<4;i++) printf("%d ", block_active[i]);	
+	printf("\n");
+#endif
+	int previous_block_i = (block_i - 1) % N_INPUT_BLOCKS; 
+	if(block_active[previous_block_i]) {
+		printf("missing %d channels on block %d at time %ld and packet count %lu\n", 
+		 	count_missing_chan(paper_input_databuf_p, previous_block_i), previous_block_i, time(NULL), pkt_count);
+    		paper_input_databuf_wait_free(paper_input_databuf_p, previous_block_i);	// should return very quickly
+#if 0
+		clear_chan_present(paper_input_databuf_p, previous_block_i);
+#endif
+		paper_input_databuf_set_filled(paper_input_databuf_p, previous_block_i);
+		block_active[previous_block_i] = 0;
+	}
+
+    	prev_pkt_count = pkt_count;
+#if 0
+	clear_chan_present(paper_input_databuf_p, block_i);
+#endif
 	paper_input_databuf_set_filled(paper_input_databuf_p, block_i);
+	block_active[block_i] = 0;
     }
 }
 
