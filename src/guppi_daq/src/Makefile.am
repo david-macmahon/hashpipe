@@ -27,6 +27,7 @@ paper_net = $(guppi_net) \
 
 paper_threads = $(paper_net)                  \
 		paper_fake_net_thread.c       \
+		null_output_thread.c          \
 		paper_gpu_cpu_output_thread.c \
 		paper_gpu_thread.c            \
 		paper_net_thread.c
