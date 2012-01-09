@@ -205,6 +205,95 @@ open_udp_socket(const char *host, const char *port)
     return sfd;
 }
 
+
+// Computes the triangular index of an (i,j) pair as shown here...
+// NB: Output is valid only if i >= j.
+//
+//      i=0  1  2  3  4..
+//     +---------------
+// j=0 | 00 01 03 06 10
+//   1 |    02 04 07 11
+//   2 |       05 08 12
+//   3 |          09 13
+//   4 |             14
+//   :
+static inline off_t tri_index(const int i, const int j)
+{
+  return (i * (i+1))/2 + j;
+}
+
+// Returns index into the GPU's register tile ordered output buffer for the
+// real component of the cross product of inputs in0 and in1.  Note that in0
+// and in1 are input indexes (i.e. 0 based) and often represent antenna and
+// polarization by passing (2*ant_idx+pol_idx) as the input number (NB: ant_idx
+// and pol_idx are also 0 based).  Return value is valid if in1 >= in0.  The
+// corresponding imaginary component is located xgpu_info.matLength words after
+// the real component.
+static off_t regtile_index(const int in0, const int in1)
+{
+  const int a0 = in0 >> 1;
+  const int a1 = in1 >> 1;
+  const int p0 = in0 & 1;
+  const int p1 = in1 & 1;
+  const int num_words_per_cell = 4;
+
+  // Index within a quadrant
+  const int quadrant_index = tri_index(a1/2, a0/2);
+  // Quadrant for this input pair
+  const int quadrant = 2*(a0&1) + (a1&1);
+  // Size of quadrant
+  const int quadrant_size = (xgpu_info.nstation/2 + 1) * xgpu_info.nstation/4;
+  // Index of cell (in units of cells)
+  const int cell_index = quadrant*quadrant_size + quadrant_index;
+  printf("%s: in0=%d, in1=%d, a0=%d, a1=%d, cell_index=%d\n", __FUNCTION__, in0, in1, a0, a1, cell_index);
+  // Pol offset
+  const int pol_offset = 2*p0 + p1;
+  // Word index (in units of words (i.e. floats) of real component
+  const int index = (cell_index * num_words_per_cell) + pol_offset;
+  return index;
+}
+
+// Returns index into a CASPER ordered buffer for the real component of the
+// cross product of inputs in0 and in1.  Note that in0 and in1 are input
+// indexes (i.e. 0 based) and often represent antenna and polarization by
+// passing (2*ant_idx+pol_idx) as the input number (NB: ant_idx ad pol_idx are
+// also 0 based).  Return value is valid if in1 >= in0.  The corresponding
+// imaginary component is located in the word immediately following the real
+// component.
+static off_t casper_index(const int in0, const int in1)
+{
+  const int a0 = in0 >> 1;
+  const int a1 = in1 >> 1;
+  const int p0 = in0 & 1;
+  const int p1 = in1 & 1;
+  const int delta = a1-a0;
+  const int num_words_per_cell = 8;
+  const int nant_2 = xgpu_info.nstation / 2;
+
+  // Three cases: top triangle, middle rectangle, bottom triangle
+  const int triangle_size = ((nant_2 + 1) * nant_2)/2;
+  const int middle_rect_offset = triangle_size;
+  const int last_cell_offset = 4*middle_rect_offset - nant_2 - 1;
+  int cell_index;
+
+  if(delta > nant_2) {
+    // bottom triangle
+    cell_index = last_cell_offset - tri_index(nant_2-2-a0, xgpu_info.nstation-1-a1);
+  } else if (a1 < xgpu_info.nstation/2) {
+    // top triangle
+    cell_index = tri_index(a1, a0);
+  } else {
+    // middle rectangle
+    cell_index = middle_rect_offset + (a1-nant_2)*(nant_2+1) + (nant_2-delta);
+  }
+  printf("%s: a0=%d, a1=%d, delta=%d, cell_index=%d\n", __FUNCTION__, a0, a1, delta, cell_index);
+  // Pol offset
+  const int pol_offset = 2*(2*p0 + p1);
+  // Word index (in units of words (i.e. floats) of real component
+  const int index = (cell_index * num_words_per_cell) + pol_offset;
+  return index;
+}
+
 static int init(struct guppi_thread_args *args)
 {
     /* Attach to status shared mem area */
@@ -275,6 +364,25 @@ static void *run(void * _args)
     msg.msg_control = 0;
     msg.msg_controllen = 0;
     msg.msg_flags = 0;
+
+// Keep this define in here until regtile_index and casper_index are used
+// elsewhere.
+#define TEST_INDEX_CALCS
+
+#ifdef TEST_INDEX_CALCS
+    int i, j;
+    for(i=0; i<32; i++) {
+      for(j=i; j<32; j++) {
+        regtile_index(2*i, 2*j);
+      }
+    }
+    for(i=0; i<32; i++) {
+      for(j=i; j<32; j++) {
+        casper_index(2*i, 2*j);
+      }
+    }
+    run_threads=0;
+#endif
 
     /* Main loop */
     int i_pkt, rv;
