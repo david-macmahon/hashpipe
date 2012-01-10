@@ -288,6 +288,26 @@ int guppi_databuf_total_status(struct guppi_databuf *d) {
 
 }
 
+uint64_t guppi_databuf_total_mask(struct guppi_databuf *d) {
+
+    /* Get all values at once */
+    union semun arg;
+    arg.array = (unsigned short *)malloc(sizeof(unsigned short)*d->n_block);
+    memset(arg.array, 0, sizeof(unsigned short)*d->n_block);
+    semctl(d->semid, 0, GETALL, arg);
+    int i;
+    int n = d->n_block;
+    if(n>64) n = 64;
+    uint64_t tot=0;
+    for (i=0; i<n; i++) {
+      if(arg.array[i]) {
+        tot |= (1<<i);
+      }
+    }
+    free(arg.array);
+    return(tot);
+}
+
 int guppi_databuf_wait_free(struct guppi_databuf *d, int block_id) {
     int rv;
     struct sembuf op;
@@ -299,7 +319,13 @@ int guppi_databuf_wait_free(struct guppi_databuf *d, int block_id) {
     timeout.tv_nsec = 250000000;
     rv = semtimedop(d->semid, &op, 1, &timeout);
     if (rv==-1) { 
-        if (errno==EAGAIN) return(GUPPI_TIMEOUT);
+        if (errno==EAGAIN) {
+#ifdef GUPPI_TRACE
+            printf("%s(%p, %d) timeout (%016lx)\n",
+                __FUNCTION__, d, block_id, guppi_databuf_total_mask(d));
+#endif
+            return(GUPPI_TIMEOUT);
+        }
         if (errno==EINTR) return(GUPPI_ERR_SYS);
         guppi_error("guppi_databuf_wait_free", "semop error");
         perror("semop");
@@ -346,6 +372,10 @@ int guppi_databuf_set_free(struct guppi_databuf *d, int block_id) {
     union semun arg;
     arg.val = 0;
     rv = semctl(d->semid, block_id, SETVAL, arg);
+#ifdef GUPPI_TRACE
+    printf("after %s(%p, %d) %016lx\n",
+        __FUNCTION__, d, block_id, guppi_databuf_total_mask(d));
+#endif
     if (rv==-1) { 
         guppi_error("guppi_databuf_set_free", "semctl error");
         return(GUPPI_ERR_SYS);
@@ -362,6 +392,10 @@ int guppi_databuf_set_filled(struct guppi_databuf *d, int block_id) {
     union semun arg;
     arg.val = 1;
     rv = semctl(d->semid, block_id, SETVAL, arg);
+#ifdef GUPPI_TRACE
+    printf("after %s(%p, %d) %016lx\n",
+        __FUNCTION__, d, block_id, guppi_databuf_total_mask(d));
+#endif
     if (rv==-1) { 
         guppi_error("guppi_databuf_set_filled", "semctl error");
         return(GUPPI_ERR_SYS);
