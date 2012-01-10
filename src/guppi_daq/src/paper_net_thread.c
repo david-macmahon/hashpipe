@@ -76,7 +76,7 @@ void write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, 
 
 #define N_TIME_PER_INPUT_PER_PACKET 128   
 
-    static const int payload_size   = 128 * 64;
+    //static const int payload_size   = 128 * 64;
     static int64_t start_count      = -1;
     static int block_active[N_INPUT_BLOCKS];
     static unsigned long pkt_count, prev_pkt_count;
@@ -84,7 +84,7 @@ void write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, 
     int8_t sample, sample_real, sample_imag;
     uint64_t mcnt, count; 
     static uint64_t count_offset; 
-    int payload_i, block_i, sub_block_i, chan_group, time_i, chan_i, input_i;
+    int block_i, previous_block_i, next_block_i, sub_block_i, chan_group, time_i, chan_i, input_i;
 
     mcnt = guppi_udp_packet_mcnt(p);
     chan_group = mcnt        & 0x000000000000000F;
@@ -115,11 +115,24 @@ void write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, 
     }
     block_active[block_i] += 1;
 
-    paper_input_databuf_wait_free(paper_input_databuf_p, block_i);	// should return very quickly
+    while(paper_input_databuf_wait_free(paper_input_databuf_p, block_i)) {	
+	printf("target data block %d was not free!\n", block_i);
+	//perror(NULL);
+    }
 
-    paper_input_databuf_p->block[block_i].header[sub_block_i].mcnt = count;  // will happen 127x more than neccessary
+    // check for overrun and then initialize sub_block mcnt
+    if(paper_input_databuf_p->block[block_i].header[sub_block_i].mcnt) {	// TODO: not right b/c zero is a valid mcnt!
+	if(paper_input_databuf_p->block[block_i].header[sub_block_i].mcnt != count) {
+		// TODO: we are about to overrun - do something
+	}
+    } else {
+    	paper_input_databuf_p->block[block_i].header[sub_block_i].mcnt = count; 
+    }
+
+    // update channels present
     paper_input_databuf_p->block[block_i].header[sub_block_i].chan_present[chan_i/64] |= ((uint64_t)1<<(chan_i%64));
 
+    // unpack the packet
     for(time_i=0; time_i<N_TIME; time_i++) {
     	payload_p = (uint8_t *)(p->data+8+time_i);
     	for(input_i=0; input_i<N_INPUT; input_i++, payload_p+=N_TIME) {
@@ -140,11 +153,15 @@ void write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, 
 	for(i=0;i<4;i++) printf("%d ", block_active[i]);	
 	printf("\n");
 #endif
-	int previous_block_i = (block_i - 1) % N_INPUT_BLOCKS; 
-	if(block_active[previous_block_i]) {
+	// mark all partially filled blocks (except next block)  as filled
+	for(previous_block_i = (block_i - 1) % N_INPUT_BLOCKS, next_block_i = (block_i + 1) % N_INPUT_BLOCKS;
+	    block_active[previous_block_i] && previous_block_i != next_block_i;
+	    previous_block_i = (previous_block_i - 1) % N_INPUT_BLOCKS) {
 		printf("missing %d channels on block %d at time %ld and packet count %lu\n", 
 		 	count_missing_chan(paper_input_databuf_p, previous_block_i), previous_block_i, time(NULL), pkt_count);
-    		paper_input_databuf_wait_free(paper_input_databuf_p, previous_block_i);	// should return very quickly
+    		while(paper_input_databuf_wait_free(paper_input_databuf_p, previous_block_i)) {
+			printf("target data block %d was not free!\n", previous_block_i);
+    		}
 #if 0
 		clear_chan_present(paper_input_databuf_p, previous_block_i);
 #endif
