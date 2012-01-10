@@ -72,7 +72,7 @@ int count_missing_chan(paper_input_databuf_t *paper_input_databuf_p, int block_i
     return(N_SUB_BLOCKS_PER_INPUT_BLOCK * N_CHAN - c);
 }
 
-void write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, struct guppi_udp_packet *p) {
+int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, struct guppi_udp_packet *p) {
 
 #define N_TIME_PER_INPUT_PER_PACKET 128   
 
@@ -93,7 +93,7 @@ void write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, 
 
     if(start_count < 0) {
     	if(count % N_SUB_BLOCKS_PER_INPUT_BLOCK != 0) {
-		return;				// insist that we start on a multiple of sub_blocks/block
+		return -1;				// insist that we start on a multiple of sub_blocks/block
 	}
 	start_count = count;			// good to go
     }
@@ -169,7 +169,10 @@ void write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, 
 		paper_input_databuf_set_filled(paper_input_databuf_p, this_block_i);
 		block_active[this_block_i] = 0;
 	}
+        return block_i;
     }
+
+    return -1;
 }
 
 static int init(struct guppi_thread_args *args)
@@ -283,7 +286,12 @@ static void *run(void * _args)
         }
 
         // Copy packet into any blocks where it belongs.
-        write_paper_packet_to_blocks((paper_input_databuf_t *)db, &p);
+        const int block_out = write_paper_packet_to_blocks((paper_input_databuf_t *)db, &p);
+        if(block_out != -1) {
+            guppi_status_lock_safe(&st);
+            hputi4(st.buf, "NETBKOUT", block_out);
+            guppi_status_unlock_safe(&st);
+        }
 
         /* Will exit if thread has been cancelled */
         pthread_testcancel();
