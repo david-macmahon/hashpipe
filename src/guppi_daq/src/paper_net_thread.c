@@ -79,12 +79,12 @@ void write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, 
     //static const int payload_size   = 128 * 64;
     static int64_t start_count      = -1;
     static int block_active[N_INPUT_BLOCKS];
-    static unsigned long pkt_count, prev_pkt_count;
+    static unsigned long pkt_count;
     uint8_t * payload_p;
     int8_t sample, sample_real, sample_imag;
     uint64_t mcnt, count; 
     static uint64_t count_offset; 
-    int block_i, previous_block_i, next_block_i, sub_block_i, chan_group, time_i, chan_i, input_i;
+    int block_i, this_block_i, next_block_i, sub_block_i, chan_group, time_i, chan_i, input_i;
 
     mcnt = guppi_udp_packet_mcnt(p);
     chan_group = mcnt        & 0x000000000000000F;
@@ -116,7 +116,7 @@ void write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, 
     block_active[block_i] += 1;
 
     while(paper_input_databuf_wait_free(paper_input_databuf_p, block_i)) {	
-	printf("target data block %d was not free!\n", block_i);
+	printf("target data block %d is not free!\n", block_i);
 	//perror(NULL);
     }
 
@@ -153,28 +153,22 @@ void write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, 
 	for(i=0;i<4;i++) printf("%d ", block_active[i]);	
 	printf("\n");
 #endif
-	// mark all partially filled blocks (except next block)  as filled
-	for(previous_block_i = (block_i - 1) % N_INPUT_BLOCKS, next_block_i = (block_i + 1) % N_INPUT_BLOCKS;
-	    block_active[previous_block_i] && previous_block_i != next_block_i;
-	    previous_block_i = (previous_block_i - 1) % N_INPUT_BLOCKS) {
-		printf("missing %d channels on block %d at time %ld and packet count %lu\n", 
-		 	count_missing_chan(paper_input_databuf_p, previous_block_i), previous_block_i, time(NULL), pkt_count);
-    		while(paper_input_databuf_wait_free(paper_input_databuf_p, previous_block_i)) {
-			printf("target data block %d was not free!\n", previous_block_i);
-    		}
-#if 0
-		clear_chan_present(paper_input_databuf_p, previous_block_i);
-#endif
-		paper_input_databuf_set_filled(paper_input_databuf_p, previous_block_i);
-		block_active[previous_block_i] = 0;
+	// mark this block and all partially filled blocks (except next block) as filled
+	for(this_block_i = block_i, next_block_i = (block_i + 1) % N_INPUT_BLOCKS;
+	    block_active[this_block_i] && this_block_i != next_block_i;
+	    this_block_i = this_block_i == 0 ? N_INPUT_BLOCKS - 1 : this_block_i - 1 ) {
+		if(this_block_i != block_i) {  // block_i has no missing channels and is free by definition
+			printf("missing %d channels on block %d at time %ld and packet count %lu\n", 
+		 	       count_missing_chan(paper_input_databuf_p, this_block_i), 
+			       this_block_i, time(NULL), pkt_count);
+    			while(paper_input_databuf_wait_free(paper_input_databuf_p, this_block_i)) {
+				printf("target data block %d is not free!\n", this_block_i);
+    			}
+		}
+		clear_chan_present(paper_input_databuf_p, this_block_i);
+		paper_input_databuf_set_filled(paper_input_databuf_p, this_block_i);
+		block_active[this_block_i] = 0;
 	}
-
-    	prev_pkt_count = pkt_count;
-#if 0
-	clear_chan_present(paper_input_databuf_p, block_i);
-#endif
-	paper_input_databuf_set_filled(paper_input_databuf_p, block_i);
-	block_active[block_i] = 0;
     }
 }
 
