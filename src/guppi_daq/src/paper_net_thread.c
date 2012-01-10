@@ -124,14 +124,18 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
     }
     block_active[block_i] += 1;
 
+#if 0
     // check for overrun and then initialize sub_block mcnt
     if(paper_input_databuf_p->block[block_i].header[sub_block_i].mcnt) {	// TODO: not right b/c zero is a valid mcnt!
 	if(paper_input_databuf_p->block[block_i].header[sub_block_i].mcnt != count) {
 		// TODO: we are about to overrun - do something
 	}
     } else {
+#endif
     	paper_input_databuf_p->block[block_i].header[sub_block_i].mcnt = count; 
+#if 0
     }
+#endif
 
     // update channels present
     paper_input_databuf_p->block[block_i].header[sub_block_i].chan_present[chan_i/64] |= ((uint64_t)1<<(chan_i%64));
