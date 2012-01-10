@@ -315,6 +315,23 @@ static int init(struct guppi_thread_args *args)
     return 0;
 }
 
+static void reorder_and_convert(int32_t *casper, const float *regtile)
+{
+  int i, j;
+  const int n_inputs = xgpu_info.nstation * xgpu_info.npol;
+  const int matLength = xgpu_info.matLength;
+  for(i=0; i<n_inputs; i++) {
+    for(j=i; j<n_inputs; j++) {
+      const int idx_casper = casper_index(i,j);
+      const int idx_regtile = regtile_index(i,j);
+      // Real
+      casper[idx_casper] = (int)regtile[idx_regtile];
+      // Imag
+      casper[idx_casper+1] = (int)regtile[idx_regtile+matLength];
+    }
+  }
+}
+
 static void *run(void * _args)
 {
     // Cast _args
@@ -365,9 +382,17 @@ static void *run(void * _args)
     msg.msg_controllen = 0;
     msg.msg_flags = 0;
 
-// Keep this define in here until regtile_index and casper_index are used
-// elsewhere.
-#define TEST_INDEX_CALCS
+    // Allocate buffer for casper ordered integer data
+    const int ndualinput = xgpu_info.nstation * xgpu_info.npol / 2;
+    const int casper_length = ndualinput * (ndualinput+1) / 2 * 4;
+
+    int32_t *casper = malloc(casper_length * sizeof(*casper));
+    if(!casper) {
+        guppi_error(__FUNCTION__, "error allocating CASPER-ordered buffer");
+        run_threads=0;
+        pthread_exit(NULL);
+        return 0;
+    }
 
 #ifdef TEST_INDEX_CALCS
     int i, j;
@@ -417,17 +442,16 @@ static void *run(void * _args)
         hputi4(st.buf, "OUTBLKIN", block_idx);
         guppi_status_unlock_safe(&st);
 
-        // Reorder GPU block
-        // TODO Reorder from register tile order to PAPER correlator order and
-        // convert to 32 bit integers.
-        xgpuReorderMatrix((Complex *)db->block[block_idx].data);
+        // Reorder GPU block from register tile order to PAPER correlator order
+        // (and convert to 32 bit integers.)
+        reorder_and_convert(casper, db->block[block_idx].data);
 
         // Update header's timestamp for this dump
         hdr.timestamp = TIMESTAMP(db->block[block_idx].header.mcnt << 11);
 
         // Send data as multiple packets
         uint64_t byte_offset = 0;
-        char *data = (char *)db->block[block_idx].data;
+        char *data = (char *)casper;
         for(i_pkt=0; i_pkt<packets_per_dump; i_pkt++) {
           // Update header's byte_offset for this chunk
           hdr.offset = OFFSET(byte_offset);
