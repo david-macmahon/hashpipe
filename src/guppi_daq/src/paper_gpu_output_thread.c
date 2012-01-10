@@ -386,7 +386,7 @@ static void *run(void * _args)
     const int ndualinput = xgpu_info.nstation * xgpu_info.npol / 2;
     const int casper_length = ndualinput * (ndualinput+1) / 2 * 4;
 
-    int32_t *casper = malloc(casper_length * sizeof(*casper));
+    int32_t *casper = malloc(casper_length * sizeof(*casper) * 2);
     if(!casper) {
         guppi_error(__FUNCTION__, "error allocating CASPER-ordered buffer");
         run_threads=0;
