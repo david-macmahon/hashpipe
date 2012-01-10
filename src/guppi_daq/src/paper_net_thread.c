@@ -169,7 +169,7 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
 		paper_input_databuf_set_filled(paper_input_databuf_p, this_block_i);
 		block_active[this_block_i] = 0;
 	}
-        return block_i;
+        return paper_input_databuf_p->block[block_i].header[0].mcnt;
     }
 
     return -1;
@@ -286,10 +286,10 @@ static void *run(void * _args)
         }
 
         // Copy packet into any blocks where it belongs.
-        const int block_out = write_paper_packet_to_blocks((paper_input_databuf_t *)db, &p);
-        if(block_out != -1) {
+        const int mcnt = write_paper_packet_to_blocks((paper_input_databuf_t *)db, &p);
+        if(mcnt != -1) {
             guppi_status_lock_safe(&st);
-            hputi4(st.buf, "NETBKOUT", block_out);
+            hputi4(st.buf, "NETMCNT", mcnt);
             guppi_status_unlock_safe(&st);
         }
 
