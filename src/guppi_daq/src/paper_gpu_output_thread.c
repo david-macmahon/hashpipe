@@ -245,7 +245,7 @@ static off_t regtile_index(const int in0, const int in1)
   const int quadrant_size = (xgpu_info.nstation/2 + 1) * xgpu_info.nstation/4;
   // Index of cell (in units of cells)
   const int cell_index = quadrant*quadrant_size + quadrant_index;
-  printf("%s: in0=%d, in1=%d, a0=%d, a1=%d, cell_index=%d\n", __FUNCTION__, in0, in1, a0, a1, cell_index);
+  //printf("%s: in0=%d, in1=%d, a0=%d, a1=%d, cell_index=%d\n", __FUNCTION__, in0, in1, a0, a1, cell_index);
   // Pol offset
   const int pol_offset = 2*p0 + p1;
   // Word index (in units of words (i.e. floats) of real component
@@ -286,7 +286,7 @@ static off_t casper_index(const int in0, const int in1)
     // middle rectangle
     cell_index = middle_rect_offset + (a1-nant_2)*(nant_2+1) + (nant_2-delta);
   }
-  printf("%s: a0=%d, a1=%d, delta=%d, cell_index=%d\n", __FUNCTION__, a0, a1, delta, cell_index);
+  //printf("%s: a0=%d, a1=%d, delta=%d, cell_index=%d\n", __FUNCTION__, a0, a1, delta, cell_index);
   // Pol offset
   const int pol_offset = 2*(2*p0 + p1);
   // Word index (in units of words (i.e. floats) of real component
