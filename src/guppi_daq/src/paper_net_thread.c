@@ -105,20 +105,24 @@ void write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, 
     // a cable disconnect/reconnect. TODO: Account for such a hiatus.
     if(count >= start_count) {
 	count_offset = count - start_count;
-    } else {								// we have a count rollover
-	count_offset = count_offset + count + 1; 			// assumes that count is now very small, probably zero
+    } else {						// we have a count rollover
+	count_offset = count_offset + count + 1; 	// assumes that count is now very small, probably zero
     } 
     block_i     = (count_offset) / N_SUB_BLOCKS_PER_INPUT_BLOCK % N_INPUT_BLOCKS; 
     sub_block_i = (count_offset) % N_SUB_BLOCKS_PER_INPUT_BLOCK; 
     if(count < start_count && block_i == 0 && sub_block_i == 0) {
 	start_count = count;						// reset on block,sub 0
     }
-    block_active[block_i] += 1;
 
-    while(paper_input_databuf_wait_free(paper_input_databuf_p, block_i)) {	
-	printf("target data block %d is not free!\n", block_i);
-	//perror(NULL);
+    // upon receiving the first packet for a given block, make sure it is free
+    // and then clear its previous history
+    if(!block_active[block_i]) {
+    	while(paper_input_databuf_wait_free(paper_input_databuf_p, block_i)) {	
+		printf("target data block %d is not free!\n", block_i);
+    	}
+	clear_chan_present(paper_input_databuf_p, block_i);
     }
+    block_active[block_i] += 1;
 
     // check for overrun and then initialize sub_block mcnt
     if(paper_input_databuf_p->block[block_i].header[sub_block_i].mcnt) {	// TODO: not right b/c zero is a valid mcnt!
@@ -161,11 +165,7 @@ void write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, 
 			printf("missing %d channels on block %d at time %ld and packet count %lu\n", 
 		 	       count_missing_chan(paper_input_databuf_p, this_block_i), 
 			       this_block_i, time(NULL), pkt_count);
-    			while(paper_input_databuf_wait_free(paper_input_databuf_p, this_block_i)) {
-				printf("target data block %d is not free!\n", this_block_i);
-    			}
 		}
-		clear_chan_present(paper_input_databuf_p, this_block_i);
 		paper_input_databuf_set_filled(paper_input_databuf_p, this_block_i);
 		block_active[this_block_i] = 0;
 	}
