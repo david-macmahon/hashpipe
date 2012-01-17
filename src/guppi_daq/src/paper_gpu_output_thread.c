@@ -350,7 +350,7 @@ static void *run(void * _args)
     int sockfd;
     struct iovec msg_iov[2];
     struct msghdr msg;
-    unsigned int xengine_id = 0; // TODO Get X engine ID from somewhere
+    unsigned int xengine_id = 8; // TODO Get X engine ID from somewhere
 
     pkthdr_t hdr;
     hdr.header = HEADER;
