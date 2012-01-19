@@ -150,7 +150,7 @@ typedef struct pkthdr {
 static XGPUInfo xgpu_info;
 
 // BYTES_PER_PACKET is limited by recevier code and must be multiple of 8
-#define BYTES_PER_PACKET 8192
+#define BYTES_PER_PACKET 4096
 // bytes_per_dump depends on xgpu_info.triLength
 static uint64_t bytes_per_dump = 0;
 // packets_per_dump is bytes_per_dump / BYTES_PER_PACKET
