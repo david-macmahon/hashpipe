@@ -321,6 +321,19 @@ static off_t casper_index(const int in0, const int in1)
   return index;
 }
 
+// TODO Handle Inf and NaNs?  They "should never happen", right?  :-)
+static inline int32_t convert(float f)
+{
+  if(f > INT32_MAX) {
+    return INT32_MAX;
+  } else if(f < INT32_MIN+1) {
+    // +1 to keep saturation symmetric
+    return INT32_MIN+1;
+  } else {
+    return lroundf(f);
+  }
+}
+
 static int init(struct guppi_thread_args *args)
 {
     /* Attach to status shared mem area */
@@ -354,7 +367,7 @@ static void reorder_and_convert(int32_t *casper, const float *regtile)
         const int idx_casper = 2*c*casper_chan_length(n_inputs) + casper_index(i,j);
         const int idx_regtile = c*regtile_chan_length(n_inputs) + regtile_index(i,j);
         // Real
-        casper[idx_casper] = htobe32((int32_t)regtile[idx_regtile]);
+        casper[idx_casper] = htobe32(convert(regtile[idx_regtile]));
 #if 0
         if(casper[idx_casper] != 0) {
           printf("c=%d, i=%d, j=%d, regtile[%d]=%f\n", c, i ,j, idx_regtile, regtile[idx_regtile]);
@@ -362,7 +375,7 @@ static void reorder_and_convert(int32_t *casper, const float *regtile)
         }
 #endif
         // Imag
-        casper[idx_casper+1] = htobe32((int32_t)regtile[idx_regtile+matLength]);
+        casper[idx_casper+1] = htobe32(convert(regtile[idx_regtile+matLength]));
       }
     }
   }
