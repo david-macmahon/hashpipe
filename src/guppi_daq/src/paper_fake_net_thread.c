@@ -122,6 +122,25 @@ static void *run(void * _args)
         xgpuRandomComplex((ComplexInput *)db->block[block_idx].sub_block,
             N_SUB_BLOCKS_PER_INPUT_BLOCK*sizeof(paper_input_sub_block_t)/sizeof(ComplexInput));
 
+#ifdef FAKE_TEST_INPUT
+#ifndef FAKE_TEST_CHAN
+#define FAKE_TEST_CHAN 0
+#endif
+        // For testing, zero out block and set input FAKE_TEST_INPUT, chan 0 to
+        // all -16 (-1 * 16)
+        memset(db->block[block_idx].sub_block, 0,
+            N_SUB_BLOCKS_PER_INPUT_BLOCK*sizeof(paper_input_sub_block_t));
+        for(i=0; i<N_SUB_BLOCKS_PER_INPUT_BLOCK; i++) {
+          int j;
+          for(j=0; j<N_TIME; j++) {
+            db->block[block_idx].sub_block[i].time[j].chan[FAKE_TEST_CHAN].input[FAKE_TEST_INPUT].real = -16;
+#ifdef FAKE_TEST_INPUT1
+            db->block[block_idx].sub_block[i].time[j].chan[FAKE_TEST_CHAN].input[FAKE_TEST_INPUT1].real = -16;
+#endif
+          }
+        }
+#endif
+
         // Mark block as full
         paper_input_databuf_set_filled(db, block_idx);
 
