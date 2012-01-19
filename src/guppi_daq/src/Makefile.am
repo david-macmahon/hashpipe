@@ -7,7 +7,16 @@ guppi_base = guppi_databuf.c \
 	     guppi_ipckey.c  \
 	     guppi_status.c  \
 	     hget.c          \
-	     hput.c
+	     hput.c          \
+	     fitshead.h      \
+	     guppi_ipckey.h  \
+	     guppi_status.h  \
+	     guppi_params.h  \
+	     guppi_udp.h     \
+	     guppi_defines.h \
+	     sdfits.h        \
+	     guppi_databuf.h \
+	     guppi_error.h
 
 guppi_net = $(guppi_base) \
 	    guppi_udp.c
@@ -16,7 +25,12 @@ guppi_threads = $(guppi_net)            \
 		guppi_accum_thread.c    \
 		guppi_fake_net_thread.c \
 		guppi_null_thread.c     \
-		guppi_sdfits_thread.c
+		guppi_sdfits_thread.c   \
+		spead_heap.h            \
+		guppi_threads.h         \
+		guppi_thread_args.h     \
+		guppi_thread_main.h     \
+		guppi_time.h
 
 guppi_utils = guppi_params.c      \
 	      guppi_thread_args.c \
@@ -24,7 +38,8 @@ guppi_utils = guppi_params.c      \
 	      write_sdfits.c
 
 paper_net = $(guppi_net) \
-	     paper_databuf.c
+	     paper_databuf.c \
+	     paper_databuf.h
 
 paper_threads = $(paper_net)                  \
 		paper_fake_net_thread.c       \
@@ -32,10 +47,12 @@ paper_threads = $(paper_net)                  \
 		paper_gpu_cpu_output_thread.c \
 		paper_gpu_output_thread.c     \
 		paper_gpu_thread.c            \
-		paper_net_thread.c
+		paper_net_thread.c            \
+		guppi_thread_main.h
 
 paper_utils = $(guppi_utils) \
-	      paper_thread.c
+	      paper_thread.c \
+	      paper_thread.h
 
 bin_PROGRAMS += check_guppi_databuf
 check_guppi_databuf_SOURCES = check_guppi_databuf.c $(guppi_base)
@@ -96,3 +113,5 @@ NVCCFLAGS = -arch=sm_20 -I$(CUDA)/include
 .cu.o:
 	nvcc -c $(NVCCFLAGS) $< -o $@
 endif
+
+# vi: set ts=8 noet :
