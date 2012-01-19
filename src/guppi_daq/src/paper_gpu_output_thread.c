@@ -231,6 +231,24 @@ static inline off_t tri_index(const int i, const int j)
   return (i * (i+1))/2 + j;
 }
 
+// casper_chan_length is the number of complex cross products per channel for
+// the casper correlator output format with n_inputs.
+// NB: n_inputs = n_station * n_pol
+static inline size_t casper_chan_length(const int n_inputs)
+{
+  // Four cross products for each combination of input pairs
+  return 4 * n_inputs/2 * (n_inputs/2+1) / 2;
+}
+
+// regtile_chan_length is the number of complex cross products per channel for
+// the xGPU register tile order correlator output format with n_inputs.
+// NB: n_inputs = n_station * n_pol
+static inline size_t regtile_chan_length(const int n_inputs)
+{
+  // Four cross products for each quadrant of 4 input x 4 input tile
+  return 4 * 4 * n_inputs/4 * (n_inputs/4+1) / 2;
+}
+
 // Returns index into the GPU's register tile ordered output buffer for the
 // real component of the cross product of inputs in0 and in1.  Note that in0
 // and in1 are input indexes (i.e. 0 based) and often represent antenna and
@@ -326,17 +344,26 @@ static int init(struct guppi_thread_args *args)
 
 static void reorder_and_convert(int32_t *casper, const float *regtile)
 {
-  int i, j;
+  int c, i, j;
   const int n_inputs = xgpu_info.nstation * xgpu_info.npol;
+  const int n_chan = xgpu_info.nfrequency;
   const int matLength = xgpu_info.matLength;
-  for(i=0; i<n_inputs; i++) {
-    for(j=i; j<n_inputs; j++) {
-      const int idx_casper = casper_index(i,j);
-      const int idx_regtile = regtile_index(i,j);
-      // Real
-      casper[idx_casper] = (int)regtile[idx_regtile];
-      // Imag
-      casper[idx_casper+1] = (int)regtile[idx_regtile+matLength];
+  for(c=0; c<n_chan; c++) {
+    for(i=0; i<n_inputs; i++) {
+      for(j=i; j<n_inputs; j++) {
+        const int idx_casper = 2*c*casper_chan_length(n_inputs) + casper_index(i,j);
+        const int idx_regtile = c*regtile_chan_length(n_inputs) + regtile_index(i,j);
+        // Real
+        casper[idx_casper] = htobe32((int32_t)regtile[idx_regtile]);
+#if 0
+        if(casper[idx_casper] != 0) {
+          printf("c=%d, i=%d, j=%d, regtile[%d]=%f\n", c, i ,j, idx_regtile, regtile[idx_regtile]);
+          printf("c=%d, i=%d, j=%d, casper[%d]=%d %x\n", c, i ,j, idx_casper, be32toh(casper[idx_casper]), be32toh(casper[idx_casper]));
+        }
+#endif
+        // Imag
+        casper[idx_casper+1] = htobe32((int32_t)regtile[idx_regtile+matLength]);
+      }
     }
   }
 }
@@ -398,8 +425,8 @@ static void *run(void * _args)
     msg.msg_flags = 0;
 
     // Allocate buffer for casper ordered integer data
-    const int ndualinput = xgpu_info.nstation * xgpu_info.npol / 2;
-    const int casper_length = ndualinput * (ndualinput+1) / 2 * 4;
+    const int n_inputs = xgpu_info.nstation * xgpu_info.npol;
+    const int casper_length = xgpu_info.nfrequency * casper_chan_length(n_inputs);
 
     int32_t *casper = malloc(casper_length * sizeof(*casper) * 2);
     if(!casper) {
@@ -408,6 +435,7 @@ static void *run(void * _args)
         pthread_exit(NULL);
         return 0;
     }
+    memset(casper, 0, casper_length * sizeof(*casper) * 2);
 
 #ifdef TEST_INDEX_CALCS
     int i, j;
