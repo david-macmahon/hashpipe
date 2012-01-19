@@ -7,6 +7,7 @@
 #include <string.h>
 #include <signal.h>
 #include <time.h>
+#include <errno.h>
 #include <unistd.h>
 #include <endian.h>
 #include <sys/types.h>
@@ -458,11 +459,16 @@ static void *run(void * _args)
           // Update payload's base pointer for this chunk
           msg_iov[1].iov_base = data;
           // Send packet
-          if(sendmsg(sockfd, &msg, 0) == -1) {
-            perror("sendmsg");
+          int bytes_sent = sendmsg(sockfd, &msg, 0);
+          if(bytes_sent == -1) {
+            if(errno != ECONNREFUSED) {
+              perror("sendmsg");
+            }
             // TODO Log error?
             // Break out of for loop
             break;
+          } else if(bytes_sent != sizeof(hdr)+BYTES_PER_PACKET) {
+            printf("only sent %d of %lu bytes!!!\n", bytes_sent, sizeof(hdr)+BYTES_PER_PACKET);
           }
           // Increment byte_offset and data pointer
           byte_offset += BYTES_PER_PACKET;
