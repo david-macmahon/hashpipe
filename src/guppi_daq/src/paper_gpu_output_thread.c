@@ -203,6 +203,14 @@ open_udp_socket(const char *host, const char *port)
 
     freeaddrinfo(result);
 
+#if 0
+    // Print send buffer size
+    int bufsize;
+    unsigned int bufsizesize = sizeof(bufsize);
+    getsockopt(sfd, SOL_SOCKET, SO_SNDBUF, &bufsize, &bufsizesize);
+    printf("send buffer size is %d\n", bufsize);
+#endif
+
     return sfd;
 }
 
@@ -453,11 +461,30 @@ static void *run(void * _args)
         // Send data as multiple packets
         uint64_t byte_offset = 0;
         char *data = (char *)casper;
+#if 0
+        int bytes_to_send = casper_length * 2 * sizeof(int32_t);
+        printf("bytes_to_send = %d; packets_per_dump * BYTES_PER_PACKET = %d * %d = %d\n",
+            bytes_to_send, packets_per_dump, BYTES_PER_PACKET, packets_per_dump*BYTES_PER_PACKET);
+#endif
+
+        // TODO Make this more robust to handle the case where bytes_per_dump
+        // is not an integer multiple pf BYTES_PER_PACKET.
         for(i_pkt=0; i_pkt<packets_per_dump; i_pkt++) {
           // Update header's byte_offset for this chunk
           hdr.offset = OFFSET(byte_offset);
           // Update payload's base pointer for this chunk
           msg_iov[1].iov_base = data;
+#if 0
+          if(msg.msg_iovlen != 2) {
+            printf("msg.msg_iovlen == %lu !!!\n", msg.msg_iovlen);
+          }
+          if(msg_iov[0].iov_len != sizeof(hdr)) {
+            printf("msg_iov[1].iov_len == %lu !!!\n", msg_iov[1].iov_len);
+          }
+          if(msg_iov[1].iov_len != BYTES_PER_PACKET) {
+            printf("msg_iov[1].iov_len == %lu !!!\n", msg_iov[1].iov_len);
+          }
+#endif
           // Send packet
           int bytes_sent = sendmsg(sockfd, &msg, 0);
           if(bytes_sent == -1) {
