@@ -49,7 +49,9 @@ const char * guppi_status_semname()
                 strncat(semid, "_guppi_status", length_remaining-1);
             }
         }
+#ifdef GUPPI_VERBOSE
         fprintf(stderr, "using guppi status semaphore '%s'\n", semid);
+#endif
     }
     return semid;
 }
