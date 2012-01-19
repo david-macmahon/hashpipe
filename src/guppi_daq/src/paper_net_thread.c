@@ -142,15 +142,23 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
 
     // unpack the packet
     for(time_i=0; time_i<N_TIME; time_i++) {
-    	payload_p = (uint8_t *)(p->data+8+time_i);
-    	for(input_i=0; input_i<N_INPUT; input_i++, payload_p+=N_TIME) {
-
-		sample      = *payload_p;
+	payload_p = (uint8_t *)(p->data+8+2*time_i);
+	for(input_i=0; input_i<N_INPUT; input_i+=2, payload_p+=2*N_TIME) {
+		// Unpack first input of pair
+		sample      = payload_p[0];
 		sample_real = sample >> 4;
 		sample_imag = (int8_t)(sample << 4) >> 4;	// the cast removes the "memory" of the shifted out bits
 
 		paper_input_databuf_p->block[block_i].sub_block[sub_block_i].time[time_i].chan[chan_i].input[input_i].real = sample_real;
 		paper_input_databuf_p->block[block_i].sub_block[sub_block_i].time[time_i].chan[chan_i].input[input_i].imag = sample_imag; 
+
+		// Unpack second input of pair
+		sample      = payload_p[1];
+		sample_real = sample >> 4;
+		sample_imag = (int8_t)(sample << 4) >> 4;	// the cast removes the "memory" of the shifted out bits
+
+		paper_input_databuf_p->block[block_i].sub_block[sub_block_i].time[time_i].chan[chan_i].input[input_i+1].real = sample_real;
+		paper_input_databuf_p->block[block_i].sub_block[sub_block_i].time[time_i].chan[chan_i].input[input_i+1].imag = sample_imag; 
     	}
     }
 
@@ -322,3 +330,5 @@ static __attribute__((constructor)) void ctor()
 {
   register_pipeline_thread_module(&module);
 }
+
+// vi: set ts=8 sw=4 noet :
