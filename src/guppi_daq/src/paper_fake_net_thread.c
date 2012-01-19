@@ -139,6 +139,23 @@ static void *run(void * _args)
 #endif
           }
         }
+#elif defined(DUP_ALL_INPUTS)
+        // Duplicate input 0 to all other inputs
+        for(i=0; i<N_SUB_BLOCKS_PER_INPUT_BLOCK; i++) {
+          int j;
+          for(j=0; j<N_TIME; j++) {
+            int c;
+            for(c=0; c<N_CHAN; c++) {
+              int input;
+              for(input=1; input<N_INPUT; input++) {
+                db->block[block_idx].sub_block[i].time[j].chan[c].input[input].real =
+                  db->block[block_idx].sub_block[i].time[j].chan[c].input[0].real;
+                db->block[block_idx].sub_block[i].time[j].chan[c].input[input].imag =
+                  db->block[block_idx].sub_block[i].time[j].chan[c].input[0].imag;
+              }
+            }
+          }
+        }
 #endif
 
         // Mark block as full
