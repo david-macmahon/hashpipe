@@ -368,8 +368,14 @@ static void *run(void * _args)
 
     // TODO Get catcher hostname and port from somewhere
 
+#ifndef CATCHER_PORT
+#define CATCHER_PORT 7148
+#endif
+#define stringify2(x) #x
+#define stringify(x) stringify2(x)
+
     // Open socket
-    sockfd = open_udp_socket("catcher", "7148");
+    sockfd = open_udp_socket("catcher", stringify(CATCHER_PORT));
     if(sockfd == -1) {
         guppi_error(__FUNCTION__, "error opening socket");
         run_threads=0;
