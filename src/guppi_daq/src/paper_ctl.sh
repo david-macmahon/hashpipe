@@ -1,13 +1,19 @@
 #!/bin/bash
 
+PATH="$(dirname $0):${PATH}"
+
+function get_sync_mcnt() {
+  echo $(( $(check_guppi_status -Q GPUMCNT 2>/dev/null) + 100 ))
+}
+
 function start() {
-  sync=$1
-  count=${2:-10}
+  count=${1-20}
+  sync=${2:-$(get_sync_mcnt)}
   if [ -n "${sync}" ]
   then
-    ./check_guppi_status -k INTSYNC  -s $sync
-    ./check_guppi_status -k INTCOUNT -s $count
-    ./check_guppi_status -k INTSTAT  -s start
+    check_guppi_status -k INTSYNC  -s $sync
+    check_guppi_status -k INTCOUNT -s $count
+    check_guppi_status -k INTSTAT  -s start
   else
     help
     exit 1
@@ -15,15 +21,17 @@ function start() {
 }
 
 function stop() {
-  ./check_guppi_status -k INTSTAT  -s stop
+  check_guppi_status -k INTSTAT  -s stop
 }
 
 function help() {
-  echo "Invalid syntax (TODO: make this help message more useful)"
+  echo "$(basename $0) start [count [start_mcnt]]"
+  echo "$(basename $0) stop"
 }
 
 case $1 in
   start) shift; start "$@";;
-  stop) stop;;
+  stop) shift; stop "$@";;
+  test) shift; get_sync_mcnt;;
   *) help; exit 1;;
 esac
