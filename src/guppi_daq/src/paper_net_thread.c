@@ -72,6 +72,30 @@ int count_missing_chan(paper_input_databuf_t *paper_input_databuf_p, int block_i
     return(N_SUB_BLOCKS_PER_INPUT_BLOCK * N_CHAN - c);
 }
 
+//------------------------------------------------------------------
+inline void unpack_samples(paper_input_databuf_t * paper_input_databuf_p, uint8_t * payload_p, 
+			  int block_i, int sub_block_i, int time_i, int chan_i, int input_i) {
+//------------------------------------------------------------------
+    int8_t sample, sample_real, sample_imag;
+
+    // Unpack first input of pair
+    sample      = payload_p[0];
+    sample_real = sample >> 4;
+    sample_imag = (int8_t)(sample << 4) >> 4;  // the cast removes the "memory" of the shifted out bits
+
+    paper_input_databuf_p->block[block_i].sub_block[sub_block_i].time[time_i].chan[chan_i].input[input_i].real = sample_real;
+    paper_input_databuf_p->block[block_i].sub_block[sub_block_i].time[time_i].chan[chan_i].input[input_i].imag = sample_imag; 
+
+    // Unpack second input of pair
+    sample      = payload_p[1];
+    sample_real = sample >> 4;
+    sample_imag = (int8_t)(sample << 4) >> 4;
+
+    paper_input_databuf_p->block[block_i].sub_block[sub_block_i].time[time_i].chan[chan_i].input[input_i+1].real = sample_real;
+    paper_input_databuf_p->block[block_i].sub_block[sub_block_i].time[time_i].chan[chan_i].input[input_i+1].imag = sample_imag; 
+}
+
+
 int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, struct guppi_udp_packet *p) {
 
 #define N_TIME_PER_INPUT_PER_PACKET 128   
@@ -81,7 +105,7 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
     static int block_active[N_INPUT_BLOCKS];
     static unsigned long pkt_count;
     uint8_t * payload_p;
-    int8_t sample, sample_real, sample_imag;
+    //int8_t sample, sample_real, sample_imag;
     uint64_t mcnt, count; 
     static uint64_t count_offset; 
     int block_i, this_block_i, next_block_i, sub_block_i, chan_group, time_i, chan_i, input_i;
@@ -144,27 +168,13 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
     for(time_i=0; time_i<N_TIME; time_i++) {
 	payload_p = (uint8_t *)(p->data+8+2*time_i);
 	for(input_i=0; input_i<N_INPUT; input_i+=2, payload_p+=2*N_TIME) {
-		// Unpack first input of pair
-		sample      = payload_p[0];
-		sample_real = sample >> 4;
-		sample_imag = (int8_t)(sample << 4) >> 4;	// the cast removes the "memory" of the shifted out bits
-
-		paper_input_databuf_p->block[block_i].sub_block[sub_block_i].time[time_i].chan[chan_i].input[input_i].real = sample_real;
-		paper_input_databuf_p->block[block_i].sub_block[sub_block_i].time[time_i].chan[chan_i].input[input_i].imag = sample_imag; 
-
-		// Unpack second input of pair
-		sample      = payload_p[1];
-		sample_real = sample >> 4;
-		sample_imag = (int8_t)(sample << 4) >> 4;	// the cast removes the "memory" of the shifted out bits
-
-		paper_input_databuf_p->block[block_i].sub_block[sub_block_i].time[time_i].chan[chan_i].input[input_i+1].real = sample_real;
-		paper_input_databuf_p->block[block_i].sub_block[sub_block_i].time[time_i].chan[chan_i].input[input_i+1].imag = sample_imag; 
+		unpack_samples(paper_input_databuf_p, payload_p, block_i, sub_block_i, time_i, chan_i, input_i);
     	}
     }
 
     // if all channels are present, mark this block filled
     if(paper_block_full(paper_input_databuf_p, block_i)) {
-#if 0
+#if 1
 	int i;
 	for(i=0;i<4;i++) printf("%d ", block_active[i]);	
 	printf("\n");
