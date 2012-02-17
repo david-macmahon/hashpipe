@@ -34,6 +34,9 @@
 #include "paper_thread.h"
 
 #define DEBUG_NET
+// put this in a header
+#define N_TIME_PER_INPUT_PER_PACKET 128   
+#define EXPECTED_PACKETS_PER_BLOCK  512
 
 int paper_block_full(paper_input_databuf_t *paper_input_databuf_p, int block_i) {
     int block_full = 1;
@@ -72,10 +75,57 @@ int count_missing_chan(paper_input_databuf_t *paper_input_databuf_p, int block_i
     return(N_SUB_BLOCKS_PER_INPUT_BLOCK * N_CHAN - c);
 }
 
-//------------------------------------------------------------------
+
+inline int inc_block_i(block_i) {
+    return((block_i + 1) % N_INPUT_BLOCKS);
+}
+
+inline int dec_block_i(block_i) {
+    return(block_i == 0 ? N_INPUT_BLOCKS - 1 : block_i - 1);
+}
+
+void set_blocks_filled(paper_input_databuf_t *paper_input_databuf_p, 
+		       int block_i,   
+		       int block_active[],
+		       int blocks_to_set) {
+// The non-exceptional call of this routine will be when a block is full.
+//   In this case, block_i will be two beyond the full block and blocks_to_set 
+//   will be such that the final block acted upon will be the full block. 
+//   This will almost always result in only the full block being set.
+
+    int i;
+    int blocks_set;
+    int found_active_block = 0;
+
+    for(i = block_i, blocks_set = 0; blocks_set < blocks_to_set; i = inc_block_i(i), blocks_set++) {
+	if(found_active_block || block_active[i]) {
+		// at first active block, all subsequent blocks are considered active
+		found_active_block = 1;
+		if(!block_active[i]) {
+    			while(paper_input_databuf_wait_free(paper_input_databuf_p, block_i)) {	
+				printf("target data block %d is not free!\n", block_i);
+    			}
+		}
+		if(block_active[i] == EXPECTED_PACKETS_PER_BLOCK) {
+			// good_flag = 1;
+		} else { 
+			// good_flag = 0;
+			printf("missing %d packets for block %d at mcnt %ld  and time %ld\n", 
+	                       EXPECTED_PACKETS_PER_BLOCK - block_active[i], 
+	                       i, 
+		               paper_input_databuf_p->block[i].header[0].mcnt,
+                               time(NULL));
+		}
+		paper_input_databuf_set_filled(paper_input_databuf_p, i);
+		block_active[i] = 0;
+	}
+    }
+}
+
+
 inline void unpack_samples(paper_input_databuf_t * paper_input_databuf_p, uint8_t * payload_p, 
 			  int block_i, int sub_block_i, int time_i, int chan_i, int input_i) {
-//------------------------------------------------------------------
+
     int8_t sample, sample_real, sample_imag;
 
     // Unpack first input of pair
@@ -98,17 +148,14 @@ inline void unpack_samples(paper_input_databuf_t * paper_input_databuf_p, uint8_
 
 int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, struct guppi_udp_packet *p) {
 
-#define N_TIME_PER_INPUT_PER_PACKET 128   
-
     //static const int payload_size   = 128 * 64;
     static int64_t start_count      = -1;
     static int block_active[N_INPUT_BLOCKS];
     static unsigned long pkt_count;
     uint8_t * payload_p;
-    //int8_t sample, sample_real, sample_imag;
     uint64_t mcnt, count; 
     static uint64_t count_offset; 
-    int block_i, this_block_i, next_block_i, sub_block_i, chan_group, time_i, chan_i, input_i;
+    int block_i, sub_block_i, chan_group, time_i, chan_i, input_i;
 
     mcnt = guppi_udp_packet_mcnt(p);
     chan_group = mcnt        & 0x000000000000000F;
@@ -179,18 +226,8 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
 	for(i=0;i<4;i++) printf("%d ", block_active[i]);	
 	printf("\n");
 #endif
-	// mark this block and all partially filled blocks (except next block) as filled
-	for(this_block_i = block_i, next_block_i = (block_i + 1) % N_INPUT_BLOCKS;
-	    block_active[this_block_i] && this_block_i != next_block_i;
-	    this_block_i = this_block_i == 0 ? N_INPUT_BLOCKS - 1 : this_block_i - 1 ) {
-		if(this_block_i != block_i) {  // block_i has no missing channels and is free by definition
-			printf("missing %d channels on block %d at time %ld and packet count %lu\n", 
-		 	       count_missing_chan(paper_input_databuf_p, this_block_i), 
-			       this_block_i, time(NULL), pkt_count);
-		}
-		paper_input_databuf_set_filled(paper_input_databuf_p, this_block_i);
-		block_active[this_block_i] = 0;
-	}
+	// set the full block filled, as well as any previous abandoned blocks.  Don't touch the "next" block.
+	set_blocks_filled(paper_input_databuf_p, inc_block_i(inc_block_i(block_i)), block_active, N_INPUT_BLOCKS-1);
         return paper_input_databuf_p->block[block_i].header[0].mcnt;
     }
 
