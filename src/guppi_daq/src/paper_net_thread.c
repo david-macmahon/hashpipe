@@ -220,7 +220,7 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
     }
 
     // if all channels are present, mark this block filled
-    if(paper_block_full(paper_input_databuf_p, block_i)) {
+    if(block_active[block_i] == EXPECTED_PACKETS_PER_BLOCK) {
 #if 1
 	int i;
 	for(i=0;i<4;i++) printf("%d ", block_active[i]);	
