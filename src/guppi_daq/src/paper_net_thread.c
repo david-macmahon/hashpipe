@@ -37,6 +37,11 @@
 // put this in a header
 #define N_TIME_PER_INPUT_PER_PACKET 128   
 #define EXPECTED_PACKETS_PER_BLOCK  512
+typedef struct {
+    uint64_t count;
+    int      chan_base;
+    int      chan;
+} packet_header_format_1;
 
 int paper_block_full(paper_input_databuf_t *paper_input_databuf_p, int block_i) {
     int block_full = 1;
@@ -82,6 +87,16 @@ inline int inc_block_i(block_i) {
 
 inline int dec_block_i(block_i) {
     return(block_i == 0 ? N_INPUT_BLOCKS - 1 : block_i - 1);
+}
+
+void get_header_format_1 (struct guppi_udp_packet *p, packet_header_format_1 * pkt_header) {
+
+    uint64_t raw_header;
+    raw_header = guppi_udp_packet_mcnt(p);
+    pkt_header->count      = raw_header >> 11;
+    pkt_header->chan_base  = raw_header        & 0x000000000000000F;
+    pkt_header->chan       = (raw_header >> 4) & 0x000000000000007F;
+
 }
 
 void set_blocks_filled(paper_input_databuf_t *paper_input_databuf_p, 
@@ -151,38 +166,31 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
     //static const int payload_size   = 128 * 64;
     static int64_t start_count      = -1;
     static int block_active[N_INPUT_BLOCKS];
-    static unsigned long pkt_count;
     uint8_t * payload_p;
-    uint64_t mcnt, count; 
     static uint64_t count_offset; 
-    int block_i, sub_block_i, chan_group, time_i, chan_i, input_i;
+    int block_i, sub_block_i, time_i, input_i;
 
-    mcnt = guppi_udp_packet_mcnt(p);
-    chan_group = mcnt        & 0x000000000000000F;
-    chan_i     = (mcnt >> 4) & 0x000000000000007F;
-    count      = mcnt >> 11;
+    packet_header_format_1 pkt_header;
+
+    get_header_format_1(p, &pkt_header);
 
     if(start_count < 0) {
-    	if(count % N_SUB_BLOCKS_PER_INPUT_BLOCK != 0) {
+    	if(pkt_header.count % N_SUB_BLOCKS_PER_INPUT_BLOCK != 0) {
 		return -1;				// insist that we start on a multiple of sub_blocks/block
 	}
-	start_count = count;			// good to go
+	start_count = pkt_header.count;			// good to go
     }
 
-    pkt_count++;
-
     // calculate block and sub_block subscripts while taking care of count rollover
-    // This may not work if the rollover has occurred after a long hiatus, eg after
-    // a cable disconnect/reconnect. TODO: Account for such a hiatus.
-    if(count >= start_count) {
-	count_offset = count - start_count;
-    } else {						// we have a count rollover
-	count_offset = count_offset + count + 1; 	// assumes that count is now very small, probably zero
+    if(pkt_header.count >= start_count) {
+	count_offset = pkt_header.count - start_count;
+    } else {							// we have a count rollover
+	count_offset = count_offset + pkt_header.count + 1; 	// assumes that pkt_header.count is now very small, probably zero
     } 
     block_i     = (count_offset) / N_SUB_BLOCKS_PER_INPUT_BLOCK % N_INPUT_BLOCKS; 
     sub_block_i = (count_offset) % N_SUB_BLOCKS_PER_INPUT_BLOCK; 
-    if(count < start_count && block_i == 0 && sub_block_i == 0) {
-	start_count = count;						// reset on block,sub 0
+    if(pkt_header.count < start_count && block_i == 0 && sub_block_i == 0) {
+	start_count = pkt_header.count;				// reset on block,sub 0
     }
 
     // upon receiving the first packet for a given block, make sure it is free
@@ -203,19 +211,19 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
 	}
     } else {
 #endif
-    	paper_input_databuf_p->block[block_i].header[sub_block_i].mcnt = count; 
+    	paper_input_databuf_p->block[block_i].header[sub_block_i].mcnt = pkt_header.count; 
 #if 0
     }
 #endif
 
     // update channels present
-    paper_input_databuf_p->block[block_i].header[sub_block_i].chan_present[chan_i/64] |= ((uint64_t)1<<(chan_i%64));
+    paper_input_databuf_p->block[block_i].header[sub_block_i].chan_present[pkt_header.chan/64] |= ((uint64_t)1<<(pkt_header.chan%64));
 
     // unpack the packet
     for(time_i=0; time_i<N_TIME; time_i++) {
 	payload_p = (uint8_t *)(p->data+8+2*time_i);
 	for(input_i=0; input_i<N_INPUT; input_i+=2, payload_p+=2*N_TIME) {
-		unpack_samples(paper_input_databuf_p, payload_p, block_i, sub_block_i, time_i, chan_i, input_i);
+		unpack_samples(paper_input_databuf_p, payload_p, block_i, sub_block_i, time_i, pkt_header.chan, input_i);
     	}
     }
 
