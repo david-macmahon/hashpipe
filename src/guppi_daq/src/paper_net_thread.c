@@ -219,7 +219,11 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
     // update channels present
     paper_input_databuf_p->block[block_i].header[sub_block_i].chan_present[pkt_header.chan/64] |= ((uint64_t)1<<(pkt_header.chan%64));
 
-    // unpack the packet
+    // Unpack the packet.  The inner (fastest changing) loop spans the smallest area of the databuf in order to 
+    // maximize the use of write cache, which speeds throughput.
+    // Packet payload size is 8192 = 1 channel * 32 antennas * 128 time samples per antenna * 2 bytes per time sample. 
+    // Channel varies so that we cover 128 channels.  Thus it takes 128 packets to complete 1 set of 128 time samples, 
+    // ie 1 time ordered sub_block.  The 2 bytes per time sample contain an input pair.
     for(time_i=0; time_i<N_TIME; time_i++) {
 	payload_p = (uint8_t *)(p->data+8+2*time_i);
 	for(input_i=0; input_i<N_INPUT; input_i+=2, payload_p+=2*N_TIME) {
