@@ -33,6 +33,8 @@
 #include "guppi_defines.h"
 #include "paper_thread.h"
 
+#define PACKET_FORMAT_1
+//#define PACKET_FORMAT_2
 #define DEBUG_NET
 // put this in a header
 #define N_TIME_PER_INPUT_PER_PACKET 128   
@@ -144,28 +146,44 @@ int calc_block_indexes(uint64_t pkt_mcnt, block_info_t *binfo) {
 
 void manage_active_blocks(paper_input_databuf_t * paper_input_databuf_p, 
 			  int block_active[], block_info_t * binfo, uint64_t pkt_mcnt) {
-
-    if(!block_active[binfo->block_i]) {
-	// block not acive, ie first packet for this block
+// This routine concerns itself with a single block.
+// It is called before we unpack each packet in order to do the following.
+// - clean up the ring buffer after any glitch in the flow of packets.  This consists
+//   of releasing to the downstream thread any blocks that will not be seeing any more
+//   data for its constituant mcnts.
+// - assign new mcnts to sub_blocks as appropriate
+// - increment the block's packet count
+  
+    if(block_active[binfo->block_i] == 0) {
+	// block not currently active
+	// acquire ownership of the block and assign the packet's mcnt
     	while(paper_input_databuf_wait_free(paper_input_databuf_p, binfo->block_i)) {	
 		printf("target data block %d is not free!\n", binfo->block_i);
     	}
     	paper_input_databuf_p->block[binfo->block_i].header[binfo->sub_block_i].mcnt = pkt_mcnt; 
+
     } else {
-	// block is active.  It is either correct or abandonded
-	if(paper_input_databuf_p->block[binfo->block_i].header[binfo->sub_block_i].mcnt &&
+	// block is already active.  
+	// is it abandonded?
+	if(paper_input_databuf_p->block[binfo->block_i].header[binfo->sub_block_i].mcnt != 0 &&
  	   paper_input_databuf_p->block[binfo->block_i].header[binfo->sub_block_i].mcnt != pkt_mcnt) {
 		// the block is abandonded, indicating serious trouble (cable disconnect?) - go clean up the entire ring
 		set_blocks_filled(paper_input_databuf_p, binfo->block_i, block_active, N_INPUT_BLOCKS);
+		// re-acquire ownership of the block and assign the packet's mcnt
     		while(paper_input_databuf_wait_free(paper_input_databuf_p, binfo->block_i)) {	
 			printf("target data block %d is not free!\n", binfo->block_i);
     		}
-		//block_active[block_i] = 0;	
     		paper_input_databuf_p->block[binfo->block_i].header[binfo->sub_block_i].mcnt = pkt_mcnt; 
-		// it is now correct
-	}
-    }
-    block_active[binfo->block_i] += 1;		// increment packet count for this block
+		block_active[binfo->block_i] = 0;	// re-init packet count for this block
+
+	// does the sub_block mcnt need updating?
+	} else if(paper_input_databuf_p->block[binfo->block_i].header[binfo->sub_block_i].mcnt != pkt_mcnt) {
+		paper_input_databuf_p->block[binfo->block_i].header[binfo->sub_block_i].mcnt = pkt_mcnt;
+	} 
+
+    }	// this block is now ready to receive the packet data
+
+    block_active[binfo->block_i] += 1;			// increment packet count for this block
 }
 
 inline void unpack_samples(paper_input_databuf_t * paper_input_databuf_p, uint8_t * payload_p, 
@@ -190,7 +208,7 @@ inline void unpack_samples(paper_input_databuf_t * paper_input_databuf_p, uint8_
     paper_input_databuf_p->block[block_i].sub_block[sub_block_i].time[time_i].chan[chan_i].input[input_i+1].imag = sample_imag; 
 }
 
-
+#ifdef PACKET_FORMAT_1
 int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, struct guppi_udp_packet *p) {
 
     static int block_active[N_INPUT_BLOCKS];
@@ -244,6 +262,7 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
 
     return -1;
 }
+#endif
 
 static int init(struct guppi_thread_args *args)
 {
