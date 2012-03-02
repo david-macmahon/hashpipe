@@ -84,6 +84,10 @@ void set_blocks_filled(paper_input_databuf_t *paper_input_databuf_p,
 //   In this case, block_i will be two beyond the full block and blocks_to_set 
 //   will be such that the final block acted upon will be the full block. 
 //   This will almost always result in only the full block being set.
+// The exceptional call of this routine will be when we encounter an active,
+//   but for some reason abandoned, block.  In this case, block_i will be the 
+//   abandoned block and blocks_to_set will be such that the final block acted 
+//   upon will be two prior to the abandoned block.
 
     int i;
     int blocks_set;
@@ -138,6 +142,32 @@ int calc_block_indexes(uint64_t pkt_mcnt, block_info_t *block_info) {
     return 0;
 } 
 
+void manage_active_blocks(paper_input_databuf_t * paper_input_databuf_p, 
+			  int block_active[], block_info_t * block_info, uint64_t pkt_mcnt) {
+
+    if(!block_active[block_info->block_i]) {
+	// block not acive, ie first packet for this block
+    	while(paper_input_databuf_wait_free(paper_input_databuf_p, block_info->block_i)) {	
+		printf("target data block %d is not free!\n", block_info->block_i);
+    	}
+    	paper_input_databuf_p->block[block_info->block_i].header[block_info->sub_block_i].mcnt = pkt_mcnt; 
+    } else {
+	// block is active.  It is either correct or abandonded
+	if(paper_input_databuf_p->block[block_info->block_i].header[block_info->sub_block_i].mcnt &&
+ 	   paper_input_databuf_p->block[block_info->block_i].header[block_info->sub_block_i].mcnt != pkt_mcnt) {
+		// the block is abandonded, indicating serious trouble (cable disconnect?) - go clean up the entire ring
+		set_blocks_filled(paper_input_databuf_p, block_info->block_i, block_active, N_INPUT_BLOCKS);
+    		while(paper_input_databuf_wait_free(paper_input_databuf_p, block_info->block_i)) {	
+			printf("target data block %d is not free!\n", block_info->block_i);
+    		}
+		//block_active[block_i] = 0;	
+    		paper_input_databuf_p->block[block_info->block_i].header[block_info->sub_block_i].mcnt = pkt_mcnt; 
+		// it is now correct
+	}
+    }
+    block_active[block_info->block_i] += 1;		// increment packet count for this block
+}
+
 inline void unpack_samples(paper_input_databuf_t * paper_input_databuf_p, uint8_t * payload_p, 
 			  int block_i, int sub_block_i, int time_i, int chan_i, int input_i) {
 
@@ -163,7 +193,6 @@ inline void unpack_samples(paper_input_databuf_t * paper_input_databuf_p, uint8_
 
 int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, struct guppi_udp_packet *p) {
 
-
     static int block_active[N_INPUT_BLOCKS];
     uint8_t * payload_p;
     int time_i, input_i;
@@ -179,30 +208,10 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
 
     get_header_format_1(p, &pkt_header);
     rv = calc_block_indexes(pkt_header.count, &block_info);
-    if(rv == -1) return rv;
-
-    // upon receiving the first packet for a given block, make sure it is free
-    // and then clear its previous history
-    if(!block_active[block_info.block_i]) {
-    	while(paper_input_databuf_wait_free(paper_input_databuf_p, block_info.block_i)) {	
-		printf("target data block %d is not free!\n", block_info.block_i);
-    	}
-	clear_chan_present(paper_input_databuf_p, block_info.block_i);
+    if(rv == -1) {
+	return rv;
     }
-    block_active[block_info.block_i] += 1;
-
-#if 0
-    // check for overrun and then initialize sub_block mcnt
-    if(paper_input_databuf_p->block[block_i].header[sub_block_i].mcnt) {	// TODO: not right b/c zero is a valid mcnt!
-	if(paper_input_databuf_p->block[block_i].header[sub_block_i].mcnt != count) {
-		// TODO: we are about to overrun - do something
-	}
-    } else {
-#endif
-    	paper_input_databuf_p->block[block_info.block_i].header[block_info.sub_block_i].mcnt = pkt_header.count; 
-#if 0
-    }
-#endif
+    manage_active_blocks(paper_input_databuf_p, block_active, &block_info, pkt_header.count);
 
     // update channels present
     paper_input_databuf_p->block[block_info.block_i].header[block_info.sub_block_i].chan_present[pkt_header.chan/64] |= ((uint64_t)1<<(pkt_header.chan%64));
@@ -221,13 +230,13 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
 
     // if all channels are present, mark this block filled
     if(block_active[block_info.block_i] == EXPECTED_PACKETS_PER_BLOCK) {
-#if 0
+#if 1
  	// debug stuff
 	int i;
 	for(i=0;i<4;i++) printf("%d ", block_active[i]);	
 	printf("\n");
 #endif
-	// set the full block filled, as well as any previous abandoned blocks.  Don't touch the "next" block.
+	// set the full block filled, as well as any previous abandoned blocks.  inc(inc) so we don't touch the "next" block.
 	set_blocks_filled(paper_input_databuf_p, inc_block_i(inc_block_i(block_info.block_i)), block_active, N_INPUT_BLOCKS-1);
 
         return paper_input_databuf_p->block[block_info.block_i].header[0].mcnt;
