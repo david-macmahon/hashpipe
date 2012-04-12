@@ -20,20 +20,26 @@
  */
 
 typedef struct paper_input_input {
-    int8_t real;
-    int8_t imag;
+    //int8_t real;
+    //int8_t imag;
+    int8_t sample;				
 } paper_input_input_t;
 
 typedef struct paper_input_chan {
-    paper_input_input_t input[N_INPUT];
+    paper_input_input_t input[N_INPUT];	
 } paper_input_chan_t;
 
 typedef struct paper_input_time {
-    paper_input_chan_t chan[N_CHAN];
+    paper_input_chan_t chan[N_CHAN];		
 } paper_input_time_t;
 
+typedef struct paper_input_complexity {
+    paper_input_time_t time[N_TIME];		
+} paper_input_complexity_t;
+
 typedef struct paper_input_sub_block {
-    paper_input_time_t time[N_TIME];
+    //paper_input_time_t time[N_TIME];
+    paper_input_complexity_t complexity [2];	// [0] is real, [1] is imag
 } paper_input_sub_block_t;
 
 typedef struct paper_input_header {

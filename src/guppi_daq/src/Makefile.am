@@ -52,7 +52,9 @@ paper_threads = $(paper_net)                  \
 
 paper_utils = $(guppi_utils) \
 	      paper_thread.c \
-	      paper_thread.h
+	      paper_thread.h \
+	      paper_fluff.c  \
+	      paper_fluff.h
 
 bin_PROGRAMS += check_guppi_databuf
 check_guppi_databuf_SOURCES = check_guppi_databuf.c $(guppi_base)

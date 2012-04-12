@@ -25,6 +25,7 @@
 #include "guppi_error.h"
 #include "guppi_status.h"
 #include "paper_databuf.h"
+#include "paper_fluff.h"
 #include "guppi_udp.h"
 #include "guppi_time.h"
 
@@ -263,6 +264,24 @@ void manage_active_blocks(paper_input_databuf_t * paper_input_databuf_p,
 
 inline void unpack_samples(paper_input_databuf_t * paper_input_databuf_p, uint8_t * payload_p, 
 			  int block_i, int sub_block_i, int time_i, int chan_i, int input_i) {
+
+#if 1
+    paper_input_databuf_p->block[block_i].sub_block[sub_block_i].complexity[0].time[time_i].chan[chan_i].input[input_i].sample = *payload_p;
+#endif
+
+#if 0
+    uint64_t * real_p;
+    uint64_t * imag_p;
+
+    real_p = (uint64_t *)&(paper_input_databuf_p->block[block_i].sub_block[sub_block_i].complexity[0].time[time_i].chan[chan_i].input[input_i].sample);
+    imag_p = (uint64_t *)&(paper_input_databuf_p->block[block_i].sub_block[sub_block_i].complexity[1].time[time_i].chan[chan_i].input[input_i].sample);
+
+    uint64_t val = *((uint64_t *)payload_p);
+    *real_p =  val & 0xf0f0f0f0f0f0f0f0LL;
+    *imag_p = (val & 0x0f0f0f0f0f0f0f0fLL) << 4;
+#endif
+
+#if 0
     int8_t * buf_p;
     int8_t sample;				// signed - a sample can be negative
 
@@ -278,6 +297,7 @@ inline void unpack_samples(paper_input_databuf_t * paper_input_databuf_p, uint8_
     sample     = payload_p[1];
     *(++buf_p) = sample >> 4;			// Yr
     *(++buf_p) = (int8_t)(sample << 4) >> 4;	// Yi
+#endif
 }
 
 #ifdef PACKET_FORMAT_1
@@ -379,12 +399,22 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
 	payload_p = (uint8_t *)(p->data+8+2*time_i);
 	for(chan_i=0; chan_i<N_CHAN; chan_i++) {
 		for(input_i=0; input_i<N_INPUT/8; input_i+=2, payload_p+=2*(N_TIME/16)) {
-			unpack_samples(paper_input_databuf_p, payload_p, binfo.block_i, binfo.sub_block_i, time_i, chan_i, pkt_header.ant_base+input_i);
+			unpack_samples(paper_input_databuf_p, payload_p, 
+				       binfo.block_i, binfo.sub_block_i, 
+				       time_i, chan_i, pkt_header.ant_base+input_i);
 		}
-    	}
+	}
     }
 
-    // if all channels are present, mark this block filled
+    // if sub_block is full, fluff it
+    if(block_active[binfo.block_i] % 128 == 0) {
+    	fluff_32to64((uint64_t*)&(paper_input_databuf_p->block[binfo.block_i].sub_block[binfo.sub_block_i].complexity[0]), 
+		     (uint64_t*)&(paper_input_databuf_p->block[binfo.block_i].sub_block[binfo.sub_block_i].complexity[0]),
+		     (uint64_t*)&(paper_input_databuf_p->block[binfo.block_i].sub_block[binfo.sub_block_i].complexity[1]),
+    		     (1024*1024)/8);
+    }
+
+    // if all packets are accounted for, mark this block filled
     if(block_active[binfo.block_i] == EXPECTED_PACKETS_PER_BLOCK) {
 #if 0
  	// debug stuff
@@ -525,7 +555,7 @@ static void *run(void * _args)
 #ifdef TIMING_TEST 
 	static int loop_count=1;
 	//if(loop_count == 1000000) run_threads = 0; 
-	if(loop_count == 10000000) exit(0); 
+	if(loop_count == 1000000) exit(0); 
 	loop_count++;
 #endif
 
