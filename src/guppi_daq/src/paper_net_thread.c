@@ -262,12 +262,12 @@ void manage_active_blocks(paper_input_databuf_t * paper_input_databuf_p,
     block_active[binfo->block_i] += 1;			// increment packet count for this block
 }
 
-inline void unpack_samples(paper_input_databuf_t * paper_input_databuf_p, uint8_t * payload_p, 
+inline void unpack_pair(paper_input_databuf_t * paper_input_databuf_p, uint8_t * payload_p, 
 			  int block_i, int sub_block_i, int time_i, int chan_i, int input_i) {
 
-#if 1
-    paper_input_databuf_p->block[block_i].sub_block[sub_block_i].complexity[0].time[time_i].chan[chan_i].input[input_i].sample = *payload_p;
-#endif
+    uint16_t *buf_p;
+    buf_p = (uint16_t*)&paper_input_databuf_p->block[block_i].sub_block[sub_block_i].complexity[0].time[time_i].chan[chan_i].input[input_i].sample;
+   *buf_p = *((uint16_t *)payload_p);
 
 #if 0
     uint64_t * real_p;
@@ -364,7 +364,7 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
     static block_info_t binfo;
     static int first_time = 1;
     packet_header_format_2 pkt_header;
-    uint8_t * payload_p;
+    uint8_t *payload_p, *time_p;
     int time_i, chan_i, input_i;
     int rv;
 
@@ -396,16 +396,18 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
     // Antenna starts at ant_base and proceeds serially through a total of 4 antennas for a given packet but proceeds in multiples
     // of 4 across packets for a total of 32 antennas for a given x-engine.  Ie, "all antennas".
     for(time_i=0; time_i<N_TIME/16; time_i++) {
-	payload_p = (uint8_t *)(p->data+8+2*time_i);
+	time_p = (uint8_t *)(p->data+8+2*time_i);		     // time size is 2
 	for(chan_i=0; chan_i<N_CHAN; chan_i++) {
+		payload_p = time_p+(N_TIME/16)*(N_INPUT/8)*N_CHAN;   // chan size is (N_TIME/16)*(N_INPUT/8)
 		for(input_i=0; input_i<N_INPUT/8; input_i+=2, payload_p+=2*(N_TIME/16)) {
-			unpack_samples(paper_input_databuf_p, payload_p, 
-				       binfo.block_i, binfo.sub_block_i, 
-				       time_i, chan_i, pkt_header.ant_base+input_i);
+			unpack_pair(paper_input_databuf_p, payload_p, 
+				    binfo.block_i, binfo.sub_block_i, 
+				    time_i, chan_i, pkt_header.ant_base+input_i);
 		}
 	}
     }
 
+#if 1
     // if sub_block is full, fluff it
     if(block_active[binfo.block_i] % 128 == 0) {
     	fluff_32to64((uint64_t*)&(paper_input_databuf_p->block[binfo.block_i].sub_block[binfo.sub_block_i].complexity[0]), 
@@ -413,6 +415,7 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
 		     (uint64_t*)&(paper_input_databuf_p->block[binfo.block_i].sub_block[binfo.sub_block_i].complexity[1]),
     		     (1024*1024)/8);
     }
+#endif
 
     // if all packets are accounted for, mark this block filled
     if(block_active[binfo.block_i] == EXPECTED_PACKETS_PER_BLOCK) {
