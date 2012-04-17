@@ -4,7 +4,7 @@ import time, pyfits, possem
 import numpy as n
 #import psr_utils as psr
 import astro_utils as astro
-import slalib as s
+#import slalib as s
 import os
 
 DEGTORAD = 0.017453292519943295769236907684
