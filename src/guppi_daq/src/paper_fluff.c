@@ -1,4 +1,5 @@
 #define _GNU_SOURCE 1
+#include <stdio.h>
 #include <stdint.h>
 #include <sys/types.h>
 
@@ -9,5 +10,8 @@ void fluff_32to64(uint64_t *in, uint64_t *real, uint64_t *imag, size_t n64) {
     real[i] =  val & 0xf0f0f0f0f0f0f0f0LL;
     imag[i] = (val & 0x0f0f0f0f0f0f0f0fLL) << 4;
   }
+#if 0
+  printf("fluffed %ld 64 bit quantities\n", (long)i);
+#endif
 }
 

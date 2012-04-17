@@ -5,10 +5,14 @@
 #include "guppi_databuf.h"
 
 #define N_INPUT_BLOCKS 4
-#define N_SUB_BLOCKS_PER_INPUT_BLOCK 4
-#define N_TIME 128
-#define N_CHAN 128
+#define N_PACKETS_PER_BLOCK 512
+#define N_SUB_BLOCKS_PER_INPUT_BLOCK 64
+#define N_TIME 4
+#define N_CHAN 256
 #define N_INPUT 64
+
+#define N_FLUFFED_BYTES_PER_BLOCK  ((N_PACKETS_PER_BLOCK * 8192) * 2)
+#define N_FLUFFED_QBYTES_PER_BLOCK (N_FLUFFED_BYTES_PER_BLOCK / 8) 
 
 // Number of floats in xGPU's "register tile order" output matrix.
 #define N_OUTPUT_MATRIX (2 * N_CHAN * (N_INPUT/2 + 2) * N_INPUT)
