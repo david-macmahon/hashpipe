@@ -245,36 +245,6 @@ inline void unpack_pair(paper_input_databuf_t * paper_input_databuf_p, uint8_t *
     uint16_t *buf_p;
     buf_p = (uint16_t*)&paper_input_databuf_p->block[block_i].sub_block[sub_block_i].complexity[0].time[time_i].chan[chan_i].input[input_i].sample;
    *buf_p = *((uint16_t *)payload_p);
-
-#if 0
-    uint64_t * real_p;
-    uint64_t * imag_p;
-
-    real_p = (uint64_t *)&(paper_input_databuf_p->block[block_i].sub_block[sub_block_i].complexity[0].time[time_i].chan[chan_i].input[input_i].sample);
-    imag_p = (uint64_t *)&(paper_input_databuf_p->block[block_i].sub_block[sub_block_i].complexity[1].time[time_i].chan[chan_i].input[input_i].sample);
-
-    uint64_t val = *((uint64_t *)payload_p);
-    *real_p =  val & 0xf0f0f0f0f0f0f0f0LL;
-    *imag_p = (val & 0x0f0f0f0f0f0f0f0fLL) << 4;
-#endif
-
-#if 0
-    int8_t * buf_p;
-    int8_t sample;				// signed - a sample can be negative
-
-    // calculate the starting point for this set of input buffer assignements
-    buf_p = &(paper_input_databuf_p->block[block_i].sub_block[sub_block_i].time[time_i].chan[chan_i].input[input_i].real);
-
-    // Unpack first input of pair
-    sample     = payload_p[0];				
-    *buf_p     = sample >> 4;			// Xr
-    *(++buf_p) = (int8_t)(sample << 4) >> 4;	// Xi
-
-    // Unpack second input of pair
-    sample     = payload_p[1];
-    *(++buf_p) = sample >> 4;			// Yr
-    *(++buf_p) = (int8_t)(sample << 4) >> 4;	// Yi
-#endif
 }
 
 int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, struct guppi_udp_packet *p) {
