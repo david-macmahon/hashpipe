@@ -7,12 +7,13 @@
 #define N_INPUT_BLOCKS 4
 #define N_PACKETS_PER_BLOCK 512
 #define N_SUB_BLOCKS_PER_INPUT_BLOCK 64
-#define N_TIME 4
-#define N_CHAN 256
-#define N_INPUT 64
+#define N_SUB_BLOCKS_PER_COMPLEXITY (N_SUB_BLOCKS_PER_INPUT_BLOCK/2)
+#define N_TIME 4	// per sub_block
+#define N_CHAN 256	// per sub_block
+#define N_INPUT 8	// per sub_block
 
 #define N_FLUFFED_BYTES_PER_BLOCK  ((N_PACKETS_PER_BLOCK * 8192) * 2)
-#define N_FLUFFED_QBYTES_PER_BLOCK (N_FLUFFED_BYTES_PER_BLOCK / 8) 
+#define N_FLUFFED_8BYTES_PER_BLOCK (N_FLUFFED_BYTES_PER_BLOCK / 8) 
 
 // Number of floats in xGPU's "register tile order" output matrix.
 #define N_OUTPUT_MATRIX (2 * N_CHAN * (N_INPUT/2 + 2) * N_INPUT)
@@ -30,21 +31,20 @@ typedef struct paper_input_input {
 } paper_input_input_t;
 
 typedef struct paper_input_chan {
-    paper_input_input_t input[N_INPUT];	
+    paper_input_input_t input[N_INPUT*8];	
 } paper_input_chan_t;
 
 typedef struct paper_input_time {
     paper_input_chan_t chan[N_CHAN];		
 } paper_input_time_t;
 
-typedef struct paper_input_complexity {
-    paper_input_time_t time[N_TIME];		
-} paper_input_complexity_t;
-
 typedef struct paper_input_sub_block {
-    //paper_input_time_t time[N_TIME];
-    paper_input_complexity_t complexity [2];	// [0] is real, [1] is imag
+    paper_input_time_t time[N_TIME];
 } paper_input_sub_block_t;
+
+typedef struct paper_input_complexity {
+  paper_input_sub_block_t sub_block[N_SUB_BLOCKS_PER_INPUT_BLOCK];
+} paper_input_complexity_t;
 
 typedef struct paper_input_header {
   uint64_t mcnt;
@@ -53,7 +53,7 @@ typedef struct paper_input_header {
 
 typedef struct paper_input_block {
   paper_input_header_t header[N_SUB_BLOCKS_PER_INPUT_BLOCK];
-  paper_input_sub_block_t sub_block[N_SUB_BLOCKS_PER_INPUT_BLOCK];
+  paper_input_complexity_t complexity[2];	// [0] is real, [1] is imag
 } paper_input_block_t;
 
 typedef struct paper_input_databuf {

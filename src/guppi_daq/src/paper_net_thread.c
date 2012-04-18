@@ -239,21 +239,13 @@ void manage_active_blocks(paper_input_databuf_t * paper_input_databuf_p,
     binfo->block_active[binfo->block_i] += 1;			// increment packet count for this block
 }
 
-inline void unpack_pair(paper_input_databuf_t * paper_input_databuf_p, uint8_t * payload_p, 
-			  int block_i, int sub_block_i, int time_i, int chan_i, int input_i) {
-
-    uint16_t *buf_p;
-    buf_p = (uint16_t*)&paper_input_databuf_p->block[block_i].sub_block[sub_block_i].complexity[0].time[time_i].chan[chan_i].input[input_i].sample;
-   *buf_p = *((uint16_t *)payload_p);
-}
-
 int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, struct guppi_udp_packet *p) {
 
     //static int block_active[N_INPUT_BLOCKS];
     static block_info_t binfo;
     static int first_time = 1;
     packet_header_t pkt_header;
-    uint8_t *payload_p, *time_p;
+    uint8_t *payload_p;
     int time_i, chan_i, input_i;
     int rv;
 
@@ -274,50 +266,56 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
 
     // Unpack the packet. The inner (fastest changing) loop spans the smallest area of the databuf in order to 
     // maximize the use of write cache, which speeds throughput.
-    // Packet payload size is 8192 = 128 channels * 4 antennas * 8 time samples per antenna * 2 bytes per time sample. 
-    // Antenna varies over 8 sets of antennas.  We need 16 time chunks to get a set of 128 time samples.  Thus it takes 
-    // 8*16 = 128 packets to complete 1 set of 128 time samples, ie 1 time ordered sub_block, the same as format 1.  The 
-    // 2 bytes per time sample contain an input pair, also the same as format 1.
+    // Packet payload size is 8192 = 256 channels * 8 inputs * 4 time samples per input.  Input varies over 8 sets of inputs.  
+    // Thus, mcnt increments every 8 packets.  
     //
-    // Channel starts at chan_base and proceeds through a set of 2048 channels in multiples of 16 in a given packet and this
-    // subset of 128 channels (and thus chan_base) is constant for a given x-engine.  Ie, "some channels".
+    // Channel starts at chan_base and proceeds through a set of 2048 channels in multiples of 8 in a given packet and this
+    // subset of 256 channels (and thus chan_base) is constant for a given x-engine.  Ie, "some channels".
     //
-    // Antenna starts at ant_base and proceeds serially through a total of 4 antennas for a given packet but proceeds in multiples
-    // of 4 across packets for a total of 32 antennas for a given x-engine.  Ie, "all antennas".
+    // Input starts at ant_base and proceeds serially through a total of 4 antennas (x2 pols) for a given packet but proceeds in multiples
+    // of 4 across packets for a total of 32 antennas (x2 pols = 64 inputs) for a given x-engine.  Ie, "all antennas".
+    int block_offset;
+    int sub_block_offset;
+    int pair_time_offset;
+    int pair_chan_offset; 
+    uint16_t *sub_block_p;
+    uint16_t *buf_p;
+    uint16_t *pair_p;
+    uint8_t  *time_buf_p;
+    uint8_t  *chan_buf_p;
+    uint8_t  *time_pair_p;
+    uint8_t  *chan_pair_p;
+
+    block_offset     = binfo.block_i     * sizeof(paper_input_block_t);
+    sub_block_offset = binfo.sub_block_i * sizeof(paper_input_sub_block_t);
+    sub_block_p      = (uint16_t *)paper_input_databuf_p + block_offset + sub_block_offset;
+    payload_p        = (uint8_t *)(p->data+8); 
+
     for(time_i=0; time_i<N_TIME; time_i++) {
-	time_p = (uint8_t *)(p->data+8+2*time_i);		     // 2 inputs per "time"
+	pair_time_offset = time_i * N_INPUT;
+	time_pair_p = (uint8_t *)payload_p   + pair_time_offset;
+	time_buf_p  = (uint8_t *)sub_block_p + time_i*sizeof(paper_input_time_t);
+
 	for(chan_i=0; chan_i<N_CHAN; chan_i++) {
-		payload_p = time_p+(N_TIME/16)*(N_INPUT/8)*N_CHAN;   // chan size is (N_TIME/16)*(N_INPUT/8)
-		for(input_i=0; input_i<N_INPUT/8; input_i+=2, payload_p+=2*(N_TIME/16)) {
-			unpack_pair(paper_input_databuf_p, payload_p, 
-				    binfo.block_i, binfo.sub_block_i, 
-				    time_i, chan_i, pkt_header.ant_base+input_i);
+		pair_chan_offset = chan_i * N_INPUT * N_TIME; 
+		chan_pair_p = time_pair_p + pair_chan_offset;
+		chan_buf_p  = time_buf_p  + chan_i*sizeof(paper_input_chan_t);
+
+		for(input_i=0; input_i<N_INPUT/2; input_i++) {
+			pair_p = (uint16_t *)chan_pair_p + input_i;
+			buf_p  = (uint16_t *)chan_buf_p  + input_i*sizeof(paper_input_input_t);
+			*buf_p = *pair_p;   // finally, copy the pair	
 		}
 	}
     }
 
-#if 0
-    // if sub_block is full, fluff it
-    if(binfo.block_active[binfo.block_i] % 8 == 0) {
-//static int fluff_count;
-//fluff_count++;
-//printf("fluff %d\n", fluff_count);
-    	fluff_32to64((uint64_t*)&(paper_input_databuf_p->block[binfo.block_i].sub_block[binfo.sub_block_i].complexity[0]), 
-		     (uint64_t*)&(paper_input_databuf_p->block[binfo.block_i].sub_block[binfo.sub_block_i].complexity[0]),
-		     (uint64_t*)&(paper_input_databuf_p->block[binfo.block_i].sub_block[binfo.sub_block_i].complexity[1]),
-    		     ((1024*1024)/16)/8);
-    }
-#endif
 
     // if all packets are accounted for, mark this block filled
     if(binfo.block_active[binfo.block_i] == N_PACKETS_PER_BLOCK) {
-#if 1
-    	fluff_32to64((uint64_t*)&(paper_input_databuf_p->block[binfo.block_i].sub_block[0].complexity[0]), 
-		     (uint64_t*)&(paper_input_databuf_p->block[binfo.block_i].sub_block[0].complexity[0]),
-		     (uint64_t*)&(paper_input_databuf_p->block[binfo.block_i].sub_block[2].complexity[0]),
-		     N_FLUFFED_QBYTES_PER_BLOCK/2);
-    		     //(((1024*1024)/16)/8)*16);
-#endif
+    	fluff_32to64((uint64_t*)&(paper_input_databuf_p->block[binfo.block_i].complexity[0]), 
+		     (uint64_t*)&(paper_input_databuf_p->block[binfo.block_i].complexity[0]),
+		     (uint64_t*)&(paper_input_databuf_p->block[binfo.block_i].complexity[1]),
+		     N_FLUFFED_8BYTES_PER_BLOCK/2);
 #if 1
  	// debug stuff
 	int i;
