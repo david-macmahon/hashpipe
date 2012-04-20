@@ -36,6 +36,11 @@
 
 #define TIMING_TEST
 #define DEBUG_NET
+
+#ifdef TIMING_TEST
+static int fluffed_words = 0;
+#endif
+
 // TODO put this in a header
 typedef struct {
     uint64_t count;
@@ -308,14 +313,16 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
 	}
     }
 
-
     // if all packets are accounted for, mark this block filled
     if(binfo.block_active[binfo.block_i] == N_PACKETS_PER_BLOCK) {
     	fluff_32to64((uint64_t*)&(paper_input_databuf_p->block[binfo.block_i].complexity[0]), 
 		     (uint64_t*)&(paper_input_databuf_p->block[binfo.block_i].complexity[0]),
 		     (uint64_t*)&(paper_input_databuf_p->block[binfo.block_i].complexity[1]),
 		     N_FLUFFED_8BYTES_PER_BLOCK/2);
-#if 1
+#ifdef TIMING_TEST
+	fluffed_words += N_FLUFFED_8BYTES_PER_BLOCK/2;
+#endif // TIMING_TEST
+#if 0
  	// debug stuff
 	int i;
 	for(i=0;i<4;i++) printf("%d ", binfo.block_active[i]);	
@@ -453,7 +460,10 @@ static void *run(void * _args)
 #ifdef TIMING_TEST 
 	static int loop_count=1;
 	//if(loop_count == 1000000) run_threads = 0; 
-	if(loop_count == 1000000) exit(0); 
+	if(loop_count == 1000000) {
+	    printf("fluffed %d words\n", fluffed_words);
+	    exit(0);
+	}
 	loop_count++;
 #endif
 
