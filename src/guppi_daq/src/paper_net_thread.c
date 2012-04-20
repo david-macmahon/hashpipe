@@ -250,9 +250,9 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
     static block_info_t binfo;
     static int first_time = 1;
     packet_header_t pkt_header;
-    uint8_t *payload_p;
+    const uint64_t *payload_p;
     //int time_i, chan_i, input_i;
-    int time_i, chan_i;
+    int i;
     int rv;
 
     if(first_time) {
@@ -284,44 +284,43 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
 #define CHAN_STRIDE (N_TIME * N_INPUT)
     int       block_offset;
     int       sub_block_offset;
-    uint16_t *sub_block_p;
-
-    // pointers for holding place and addressing pairs in the packet
-    uint8_t  *time_pkt_p;
-    uint8_t  *chan_pkt_p;
-
-    // pointers for holding place and addressing pairs in the input buffer
-    uint8_t  *time_buf_p;
-    uint8_t  *chan_buf_p;
+    uint64_t *real_p, *imag_p;
 
     // Calculate starting points for this packet and sub_block.
     // One packet will never span more than one sub_block.
     block_offset     = binfo.block_i     * sizeof(paper_input_block_t);
     sub_block_offset = binfo.sub_block_i * sizeof(paper_input_sub_block_t);
-    sub_block_p      = (uint16_t *)paper_input_databuf_p + block_offset + sub_block_offset;
-    payload_p        = (uint8_t *)(p->data+8); 
+    real_p           = (uint64_t *)((uint8_t *)paper_input_databuf_p + block_offset + sub_block_offset);
+    imag_p           = real_p + sizeof(paper_input_complexity_t)/sizeof(uint64_t);
+    payload_p        = (uint64_t *)(p->data+8);
 
-    for(time_i=0; time_i<N_TIME; time_i++) {
-	time_pkt_p = (uint8_t *)payload_p   + time_i * TIME_STRIDE;
-	time_buf_p = (uint8_t *)sub_block_p + time_i*sizeof(paper_input_time_t);
-
-	for(chan_i=0; chan_i<N_CHAN; chan_i++) {
-		chan_pkt_p = time_pkt_p + chan_i * CHAN_STRIDE;
-		chan_buf_p = time_buf_p + chan_i*sizeof(paper_input_chan_t);
-
-   		*(uint64_t *)chan_buf_p = *(uint64_t *)chan_pkt_p;    // copy 8 bytes of contiguous inputs 
-	}
+    for(i=0; i<(N_TIME*N_CHAN); i++) {
+        uint64_t val = payload_p[i];
+#ifdef COALESCE_FLUFF
+	real_p[8*i] =  val & 0xf0f0f0f0f0f0f0f0LL;
+	imag_p[8*i] = (val & 0x0f0f0f0f0f0f0f0fLL) << 4;
+#else
+	real_p[8*i] = val;
+#endif
     }
+
+#ifdef COALESCE_FLUFF
+#ifdef TIMING_TEST
+	fluffed_words += (N_TIME*N_CHAN);
+#endif // TIMING_TEST
+#endif // COALESCE_FLUFF
 
     // if all packets are accounted for, mark this block filled
     if(binfo.block_active[binfo.block_i] == N_PACKETS_PER_BLOCK) {
-    	fluff_32to64((uint64_t*)&(paper_input_databuf_p->block[binfo.block_i].complexity[0]), 
+#ifndef COALESCE_FLUFF
+	fluff_32to64((uint64_t*)&(paper_input_databuf_p->block[binfo.block_i].complexity[0]), 
 		     (uint64_t*)&(paper_input_databuf_p->block[binfo.block_i].complexity[0]),
 		     (uint64_t*)&(paper_input_databuf_p->block[binfo.block_i].complexity[1]),
 		     N_FLUFFED_8BYTES_PER_BLOCK/2);
 #ifdef TIMING_TEST
 	fluffed_words += N_FLUFFED_8BYTES_PER_BLOCK/2;
 #endif // TIMING_TEST
+#endif // !COALESCE_FLUFF
 #if 0
  	// debug stuff
 	int i;
