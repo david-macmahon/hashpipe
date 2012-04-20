@@ -90,7 +90,7 @@ static void *run(void * _args, int doCPU)
     // xgpuCudaXengine, but we need to pass something in for array_h and
     // matrix_x to prevent xgpuInit from allocating memory.
     XGPUContext context;
-    context.array_h = (ComplexInput *)db_in->block[curblock_in].sub_block;
+    context.array_h = (ComplexInput *)db_in->block[curblock_in].complexity;
     context.matrix_h = (Complex *)db_out->block[curblock_out].data;
 
     xgpu_error = xgpuInit(&context);
@@ -191,7 +191,7 @@ static void *run(void * _args, int doCPU)
         guppi_status_unlock_safe(&st);
 
         // Setup for current chunk
-        context.array_h = (ComplexInput *)db_in->block[curblock_in].sub_block;
+        context.array_h = (ComplexInput *)db_in->block[curblock_in].complexity;
         context.matrix_h = (Complex *)db_out->block[curblock_out].data;
         xgpuSetHostInputBuffer(&context);
         xgpuSetHostOutputBuffer(&context);

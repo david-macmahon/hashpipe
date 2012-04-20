@@ -119,7 +119,7 @@ static void *run(void * _args)
         }
 
         // Fill in random data
-        xgpuRandomComplex((ComplexInput *)db->block[block_idx].sub_block,
+        xgpuRandomComplex((ComplexInput *)db->block[block_idx].complexity,
             N_SUB_BLOCKS_PER_INPUT_BLOCK*sizeof(paper_input_sub_block_t)/sizeof(ComplexInput));
 
 #ifdef FAKE_TEST_INPUT
