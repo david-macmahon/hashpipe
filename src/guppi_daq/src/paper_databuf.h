@@ -4,16 +4,20 @@
 #include <stdint.h>
 #include "guppi_databuf.h"
 
+#define N_INPUTS   64
+#define N_FENGINES  8
+#define N_INPUTS_PER_FENGINE  (N_INPUTS/N_FENGINES)
+
 #define N_INPUT_BLOCKS 4
 #define N_PACKETS_PER_BLOCK 512
 #define N_SUB_BLOCKS_PER_INPUT_BLOCK 64
 #define N_SUB_BLOCKS_PER_COMPLEXITY (N_SUB_BLOCKS_PER_INPUT_BLOCK/2)
-#define N_TIME 4	// per sub_block
+#define N_TIME   4	// per sub_block
 #define N_CHAN 256	// per sub_block
-#define N_INPUT 8	// per sub_block
+#define N_INPUT  8	// per sub_block
 
 #define N_FLUFFED_BYTES_PER_BLOCK  ((N_PACKETS_PER_BLOCK * 8192) * 2)
-#define N_FLUFFED_8BYTES_PER_BLOCK (N_FLUFFED_BYTES_PER_BLOCK / 8) 
+#define N_FLUFFED_WORDS_PER_BLOCK (N_FLUFFED_BYTES_PER_BLOCK / 8) 
 
 // Number of floats in xGPU's "register tile order" output matrix.
 #define N_OUTPUT_MATRIX (2 * N_CHAN * (N_INPUT/2 + 2) * N_INPUT)
@@ -25,8 +29,6 @@
  */
 
 typedef struct paper_input_input {
-    //int8_t real;
-    //int8_t imag;
     int8_t sample;				
 } paper_input_input_t;
 

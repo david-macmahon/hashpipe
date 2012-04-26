@@ -34,18 +34,13 @@
 #include "guppi_defines.h"
 #include "paper_thread.h"
 
-#define TIMING_TEST
+//#define TIMING_TEST
 #define DEBUG_NET
 
-#ifdef TIMING_TEST
-static int fluffed_words = 0;
-#endif
-
-// TODO put this in a header
 typedef struct {
     uint64_t count;
-    int      ant_base;
-    int      chan_base;
+    int      fid;	// Fengine ID
+    int      cid;	// channel set ID
 } packet_header_t;
 
 typedef struct {
@@ -55,7 +50,10 @@ typedef struct {
     int sub_block_i;
     int block_active[N_INPUT_BLOCKS];
 } block_info_t;
-// end TODO put this in a header
+
+#ifdef TIMING_TEST
+static unsigned long fluffed_words = 0;
+#endif
 
 void print_block_info(block_info_t * binfo) {
     printf("mcnt_start mcnt_offset block_i sub_block_i %lu %lu %d %d\n", 
@@ -94,20 +92,20 @@ void get_header (struct guppi_udp_packet *p, packet_header_t * pkt_header) {
     uint64_t raw_header;
     raw_header = guppi_udp_packet_mcnt(p);
     pkt_header->count       = raw_header >> 16;
-    pkt_header->chan_base   = raw_header        & 0x000000000000000F;
-    pkt_header->ant_base    = (raw_header >> 8) & 0x00000000000000FF;
+    pkt_header->cid         = raw_header        & 0x000000000000000F;
+    pkt_header->fid         = (raw_header >> 8) & 0x00000000000000FF;
 
 #ifdef TIMING_TEST
     static int fake_mcnt=0;
-    static int fake_ant_base=0;
+    static int fake_fid=0;
     static int pkt_counter=0;
 
     if(pkt_counter == 8) {
 	fake_mcnt++;
-        fake_ant_base = 0;
+        fake_fid = 0;
 	pkt_counter=0;
     } else if(pkt_counter % 8 == 0) {
-	fake_ant_base += 4;
+	fake_fid += 4;
     }
     pkt_header->count = fake_mcnt;
     pkt_counter++;
@@ -176,10 +174,6 @@ int calc_block_indexes(uint64_t pkt_mcnt, block_info_t *binfo) {
     binfo->block_i     = (binfo->mcnt_offset) / N_SUB_BLOCKS_PER_INPUT_BLOCK % N_INPUT_BLOCKS; 
     binfo->sub_block_i = (binfo->mcnt_offset) % N_SUB_BLOCKS_PER_INPUT_BLOCK; 
 
-#if 0
-printf("mcnt %llu  block_i %d  sub_block_i %d  count %d\n", (long long unsigned)pkt_mcnt, binfo->block_i, binfo->sub_block_i, binfo->block_active[binfo->block_i]);
-#endif
-
     if(pkt_mcnt < binfo->mcnt_start && binfo->block_i == 0 && binfo->sub_block_i == 0) {
 	binfo->mcnt_start = pkt_mcnt;				// reset on block,sub 0
     }
@@ -246,14 +240,15 @@ void manage_active_blocks(paper_input_databuf_t * paper_input_databuf_p,
 
 int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, struct guppi_udp_packet *p) {
 
-    //static int block_active[N_INPUT_BLOCKS];
     static block_info_t binfo;
     static int first_time = 1;
     packet_header_t pkt_header;
     const uint64_t *payload_p;
-    //int time_i, chan_i, input_i;
     int i;
     int rv;
+    int       block_offset;
+    int       sub_block_offset;
+    uint64_t *real_p, *imag_p;
 
     if(first_time) {
 	binfo.mcnt_start = -1;
@@ -270,23 +265,7 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
     // update channels present
     //paper_input_databuf_p->block[binfo.block_i].header[binfo.sub_block_i].chan_present[pkt_header.chan/64] |= ((uint64_t)1<<(pkt_header.chan%64));
 
-    // Unpack the packet. The inner (fastest changing) loop spans the smallest area of the databuf in order to 
-    // maximize the use of write cache, which speeds throughput.
-    // Packet payload size is 8192 = 256 channels * 8 inputs * 4 time samples per input.  Input varies over 8 sets of inputs.  
-    // Thus, mcnt increments every 8 packets.  
-    //
-    // Channel starts at chan_base and proceeds through a set of 2048 channels in multiples of 8 in a given packet and this
-    // subset of 256 channels (and thus chan_base) is constant for a given x-engine.  Ie, "some channels".
-    //
-    // Input starts at ant_base and proceeds serially through a total of 4 antennas (x2 pols) for a given packet but proceeds in multiples
-    // of 4 across packets for a total of 32 antennas (x2 pols = 64 inputs) for a given x-engine.  Ie, "all antennas".
-#define TIME_STRIDE N_INPUT
-#define CHAN_STRIDE (N_TIME * N_INPUT)
-    int       block_offset;
-    int       sub_block_offset;
-    uint64_t *real_p, *imag_p;
-
-    // Calculate starting points for this packet and sub_block.
+    // Calculate starting points for unpacking this packet into a sub_block.
     // One packet will never span more than one sub_block.
     block_offset     = binfo.block_i     * sizeof(paper_input_block_t);
     sub_block_offset = binfo.sub_block_i * sizeof(paper_input_sub_block_t);
@@ -294,15 +273,16 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
     imag_p           = real_p + sizeof(paper_input_complexity_t)/sizeof(uint64_t);
     payload_p        = (uint64_t *)(p->data+8);
 
+    // unpack the packet, maybe fluffing as we go
     for(i=0; i<(N_TIME*N_CHAN); i++) {
         uint64_t val = payload_p[i];
 #ifdef COALESCE_FLUFF
-	real_p[8*i] =  val & 0xf0f0f0f0f0f0f0f0LL;
-	imag_p[8*i] = (val & 0x0f0f0f0f0f0f0f0fLL) << 4;
+	real_p[N_INPUTS_PER_FENGINE*i] =  val & 0xf0f0f0f0f0f0f0f0LL;
+	imag_p[N_INPUTS_PER_FENGINE*i] = (val & 0x0f0f0f0f0f0f0f0fLL) << 4;
 #else
-	real_p[8*i] = val;
+	real_p[N_INPUTS_PER_FENGINE*i] = val;
 #endif
-    }
+    }  // end upacking
 
 #ifdef COALESCE_FLUFF
 #ifdef TIMING_TEST
@@ -310,18 +290,18 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
 #endif // TIMING_TEST
 #endif // COALESCE_FLUFF
 
-    // if all packets are accounted for, mark this block filled
+    // if all packets are accounted for, fluff (maybe) and mark this block filled
     if(binfo.block_active[binfo.block_i] == N_PACKETS_PER_BLOCK) {
 #ifndef COALESCE_FLUFF
 	fluff_32to64((uint64_t*)&(paper_input_databuf_p->block[binfo.block_i].complexity[0]), 
 		     (uint64_t*)&(paper_input_databuf_p->block[binfo.block_i].complexity[0]),
 		     (uint64_t*)&(paper_input_databuf_p->block[binfo.block_i].complexity[1]),
-		     N_FLUFFED_8BYTES_PER_BLOCK/2);
+		     N_FLUFFED_WORDS_PER_BLOCK/2);
 #ifdef TIMING_TEST
-	fluffed_words += N_FLUFFED_8BYTES_PER_BLOCK/2;
+	fluffed_words += N_FLUFFED_WORDS_PER_BLOCK/2;
 #endif // TIMING_TEST
 #endif // !COALESCE_FLUFF
-#if 0
+#if 1
  	// debug stuff
 	int i;
 	for(i=0;i<4;i++) printf("%d ", binfo.block_active[i]);	
@@ -460,7 +440,7 @@ static void *run(void * _args)
 	static int loop_count=1;
 	//if(loop_count == 1000000) run_threads = 0; 
 	if(loop_count == 1000000) {
-	    printf("fluffed %d words\n", fluffed_words);
+	    printf("fluffed %lu words\n", fluffed_words);
 	    exit(0);
 	}
 	loop_count++;
