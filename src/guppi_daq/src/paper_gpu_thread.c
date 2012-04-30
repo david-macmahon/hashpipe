@@ -128,7 +128,7 @@ static void *run(void * _args, int doCPU)
         // Got a new data block, update status and determine how to handle it
         guppi_status_lock_safe(&st);
         hputi4(st.buf, "GPUBLKIN", curblock_in);
-        hputi8(st.buf, "GPUMCNT", db_in->block[curblock_in].header[0].mcnt);
+        hputi8(st.buf, "GPUMCNT", db_in->block[curblock_in].header.mcnt[0]);
         guppi_status_unlock_safe(&st);
 
         // If integration status "off"
@@ -143,7 +143,7 @@ static void *run(void * _args, int doCPU)
         // If integration status is "start"
         if(!strcmp(integ_status, "start")) {
             // If buffer mcount < start_mcount (i.e. not there yet)
-            if(db_in->block[curblock_in].header[0].mcnt < start_mcount) {
+            if(db_in->block[curblock_in].header.mcnt[0] < start_mcount) {
               // Drop input buffer
               // Mark input block as free and advance
               paper_input_databuf_set_free(db_in, curblock_in);
@@ -151,7 +151,7 @@ static void *run(void * _args, int doCPU)
               // Skip to next input buffer
               continue;
             // Else if mcount == start_mcount (time to start)
-            } else if(db_in->block[curblock_in].header[0].mcnt == start_mcount) {
+            } else if(db_in->block[curblock_in].header.mcnt[0] == start_mcount) {
               // Set integration status to "on"
               // Read integration count (INTCOUNT)
               strcpy(integ_status, "on");
@@ -200,9 +200,9 @@ static void *run(void * _args, int doCPU)
         int doDump = 0;
         // Dump if this is the last block or we are doing both CPU and GPU
         // (GPU and CPU test mode always dumps every input block)
-        if(db_in->block[curblock_in].header[0].mcnt == last_mcount || doCPU) {
+        if(db_in->block[curblock_in].header.mcnt[0] == last_mcount || doCPU) {
           doDump = 1;
-        } else if(db_in->block[curblock_in].header[0].mcnt > last_mcount) {
+        } else if(db_in->block[curblock_in].header.mcnt[0] > last_mcount) {
           // Handle missed end of integration
           // TODO!
         }

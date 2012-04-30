@@ -11,7 +11,6 @@
 #define N_INPUT_BLOCKS 4
 #define N_PACKETS_PER_BLOCK 512
 #define N_SUB_BLOCKS_PER_INPUT_BLOCK 64
-#define N_SUB_BLOCKS_PER_COMPLEXITY (N_SUB_BLOCKS_PER_INPUT_BLOCK/2)
 #define N_TIME   4	// per sub_block
 #define N_CHAN 256	// per sub_block
 #define N_INPUT  8	// per sub_block
@@ -49,12 +48,12 @@ typedef struct paper_input_complexity {
 } paper_input_complexity_t;
 
 typedef struct paper_input_header {
-  uint64_t mcnt;
-  uint64_t chan_present[(N_CHAN+63)/64];
+  int64_t good_data;				// functions as a boolean, 64 bit to maintain alignment
+  uint64_t mcnt[N_SUB_BLOCKS_PER_INPUT_BLOCK];
 } paper_input_header_t;
 
 typedef struct paper_input_block {
-  paper_input_header_t header[N_SUB_BLOCKS_PER_INPUT_BLOCK];
+  paper_input_header_t header;
   paper_input_complexity_t complexity[2];	// [0] is real, [1] is imag
 } paper_input_block_t;
 

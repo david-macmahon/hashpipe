@@ -112,9 +112,8 @@ static void *run(void * _args)
  
         // Fill in sub-block headers
         for(i=0; i<N_SUB_BLOCKS_PER_INPUT_BLOCK; i++) {
-          db->block[block_idx].header[i].mcnt = mcnt;
-          db->block[block_idx].header[i].chan_present[0] = -1;
-          db->block[block_idx].header[i].chan_present[1] = -1;
+          db->block[block_idx].header.mcnt[i] = mcnt;
+          db->block[block_idx].header.good_data = 1;
           mcnt++;
         }
 
