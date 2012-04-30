@@ -372,6 +372,7 @@ static void *run(void * _args)
     /* Give all the threads a chance to start before opening network socket */
     sleep(1);
 
+#ifndef TIMING_TEST
     /* Set up UDP socket */
     int rv = guppi_udp_init(&up);
     if (rv!=GUPPI_OK) {
@@ -380,6 +381,7 @@ static void *run(void * _args)
         pthread_exit(NULL);
     }
     pthread_cleanup_push((void *)guppi_udp_close, &up);
+#endif
 
     /* Main loop */
     unsigned waiting=-1;
@@ -455,7 +457,9 @@ static void *run(void * _args)
     }
 
     /* Have to close all push's */
+#ifndef TIMING_TEST
     pthread_cleanup_pop(0); /* Closes push(guppi_udp_close) */
+#endif
     pthread_cleanup_pop(0); /* Closes guppi_free_psrfits */
     THREAD_RUN_DETACH_DATAUF;
     THREAD_RUN_DETACH_STATUS;
