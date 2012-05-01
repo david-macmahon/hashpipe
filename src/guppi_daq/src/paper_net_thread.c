@@ -44,8 +44,9 @@ typedef struct {
 } packet_header_t;
 
 typedef struct {
-    int64_t mcnt_start;
-    int64_t mcnt_offset;
+    int initialized;
+    uint64_t mcnt_start;
+    uint64_t mcnt_offset;
     int block_i;
     int sub_block_i;
     int block_active[N_INPUT_BLOCKS];
@@ -55,9 +56,14 @@ typedef struct {
 static unsigned long fluffed_words = 0;
 #endif
 
+void print_pkt_header(packet_header_t * pkt_header) {
+
+    printf("packet header : count %llu fid %d cid %d\n", (long long unsigned)pkt_header->count, pkt_header->fid, pkt_header->cid);
+}
+
 void print_block_info(block_info_t * binfo) {
-    printf("mcnt_start mcnt_offset block_i sub_block_i %lu %lu %d %d\n", 
-           binfo->mcnt_start, binfo->mcnt_offset, binfo->block_i, binfo->sub_block_i);
+    printf("mcnt_start %llu mcnt_offset %llu block_i %d sub_block_i %d\n", 
+           (long long unsigned)binfo->mcnt_start, (long long unsigned)binfo->mcnt_offset, binfo->block_i, binfo->sub_block_i);
 }
 
 void print_ring_mcnts(paper_input_databuf_t *paper_input_databuf_p) {
@@ -149,12 +155,12 @@ void set_blocks_filled(paper_input_databuf_t *paper_input_databuf_p,
 
 int calc_block_indexes(uint64_t pkt_mcnt, block_info_t *binfo) {
 
-
-    if(binfo->mcnt_start < 0) {
+    if(!binfo->initialized) {
     	if(pkt_mcnt % N_SUB_BLOCKS_PER_INPUT_BLOCK != 0) {
 		return -1;				// insist that we start on a multiple of sub_blocks/block
 	}
 	binfo->mcnt_start = pkt_mcnt;	        // good to go
+	binfo->initialized = 1;
     }
 
     // calculate block and sub_block subscripts while taking care of count rollover
@@ -175,6 +181,7 @@ int calc_block_indexes(uint64_t pkt_mcnt, block_info_t *binfo) {
 } 
 
 void initialize_block(paper_input_databuf_t * paper_input_databuf_p, block_info_t * binfo, uint64_t pkt_mcnt) {
+//printf("in initialize_block() %d %d %llu\n", binfo->block_i, binfo->sub_block_i, (long long unsigned) pkt_mcnt);
 // this routine may initialize a partial block (binfo->sub_block_i != 0)   
     int i;
 
@@ -247,17 +254,20 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
     int       sub_block_offset;
     uint64_t *real_p, *imag_p;
 
+    // block management 
     if(first_time) {
-	binfo.mcnt_start = -1;
+	binfo.initialized = 0;
 	first_time = 0;
     }
-
     get_header(p, &pkt_header);
     rv = calc_block_indexes(pkt_header.count, &binfo);
     if(rv == -1) {
-	return rv;
+	return rv;		// idle until we are at a good stating point
     }
+    //print_block_info(&binfo);
     manage_active_blocks(paper_input_databuf_p, &binfo, pkt_header.count);
+    //print_ring_mcnts(paper_input_databuf_p);
+    // end block management 
 
     // Calculate starting points for unpacking this packet into a sub_block.
     // One packet will never span more than one sub_block.
@@ -298,8 +308,8 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
 #if 0
  	// debug stuff
 	int i;
-	for(i=0;i<4;i++) fprintf(stderr, "%d ", binfo.block_active[i]);	
-	fprintf(stderr, "\n");
+	for(i=0;i<4;i++) fprintf(stdout, "%d ", binfo.block_active[i]);	
+	fprintf(stdout, "\n");
 #endif
 	// set the full block filled, as well as any previous abandoned blocks.  inc(inc) so we don't touch the "next" block.
 	set_blocks_filled(paper_input_databuf_p, inc_block_i(inc_block_i(binfo.block_i)), binfo.block_active, N_INPUT_BLOCKS-1);
