@@ -442,10 +442,10 @@ static void *run(void * _args)
             guppi_status_unlock_safe(&st);
         }
 
-#ifdef TIMING_TEST 
+#ifdef TIMING_TEST
 	static int loop_count=1;
 	//if(loop_count == 1000000) run_threads = 0; 
-	if(loop_count == 1000000) {
+	if(loop_count == 10*1000*1000) {
 	    printf("fluffed %lu words\n", fluffed_words);
 	    exit(0);
 	}
