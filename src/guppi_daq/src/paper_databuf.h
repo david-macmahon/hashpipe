@@ -48,7 +48,8 @@ typedef struct paper_input_complexity {
 } paper_input_complexity_t;
 
 typedef struct paper_input_header {
-  int64_t good_data;				// functions as a boolean, 64 bit to maintain alignment
+  int64_t good_data;       // functions as a boolean, 64 bit to maintain word alignment
+  uint64_t cache_align[7]; // 7 more words (56 more bytes) to maintain cache alignment
   uint64_t mcnt[N_SUB_BLOCKS_PER_INPUT_BLOCK];
 } paper_input_header_t;
 
