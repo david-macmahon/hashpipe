@@ -25,7 +25,6 @@
 #include "guppi_error.h"
 #include "guppi_status.h"
 #include "paper_databuf.h"
-#include "paper_fluff.h"
 #include "guppi_udp.h"
 #include "guppi_time.h"
 
@@ -252,7 +251,7 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
     int rv;
     int       block_offset;
     int       sub_block_offset;
-    uint64_t *real_p, *imag_p;
+    uint64_t *dest_p;
 
     // block management 
     if(first_time) {
@@ -273,40 +272,24 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
     // One packet will never span more than one sub_block.
     block_offset     = binfo.block_i     * sizeof(paper_input_block_t);
     sub_block_offset = binfo.sub_block_i * sizeof(paper_input_sub_block_t);
-    real_p           = (uint64_t *)((uint8_t *)paper_input_databuf_p + block_offset + sizeof(paper_input_header_t) + sub_block_offset);
-    imag_p           = real_p + sizeof(paper_input_complexity_t)/sizeof(uint64_t);
+    dest_p           = (uint64_t *)((uint8_t *)paper_input_databuf_p + block_offset + sizeof(paper_input_header_t) + sub_block_offset);
     payload_p        = (uint64_t *)(p->data+8);
 
-    // unpack the packet, maybe fluffing as we go
+    // unpack the packet, fluffing as we go
     for(i=0; i<(N_TIME*N_CHAN); i++) {
         uint64_t val = payload_p[i];
-#ifdef COALESCE_FLUFF
 	// Using complex block size (cbs) of 32
 	// 4 = cbs*sizeof(int8_t)/sizeof(uint64_t)
-	real_p[2*N_FENGINES*i] =  val & 0xf0f0f0f0f0f0f0f0LL;
-	real_p[2*N_FENGINES*i+4] = (val & 0x0f0f0f0f0f0f0f0fLL) << 4;
-#else
-	real_p[N_INPUTS_PER_FENGINE*i] = val;
-#endif
+	dest_p[2*N_FENGINES*i] =  val & 0xf0f0f0f0f0f0f0f0LL;
+	dest_p[2*N_FENGINES*i+4] = (val & 0x0f0f0f0f0f0f0f0fLL) << 4;
     }  // end upacking
 
-#ifdef COALESCE_FLUFF
 #ifdef TIMING_TEST
 	fluffed_words += (N_TIME*N_CHAN);
 #endif // TIMING_TEST
-#endif // COALESCE_FLUFF
 
-    // if all packets are accounted for, fluff (maybe) and mark this block filled
+    // if all packets are accounted for, mark this block filled
     if(binfo.block_active[binfo.block_i] == N_PACKETS_PER_BLOCK) {
-#ifndef COALESCE_FLUFF
-	fluff_32to64((uint64_t*)&(paper_input_databuf_p->block[binfo.block_i].complexity[0]), 
-		     (uint64_t*)&(paper_input_databuf_p->block[binfo.block_i].complexity[0]),
-		     (uint64_t*)&(paper_input_databuf_p->block[binfo.block_i].complexity[1]),
-		     N_FLUFFED_WORDS_PER_BLOCK/2);
-#ifdef TIMING_TEST
-	fluffed_words += N_FLUFFED_WORDS_PER_BLOCK/2;
-#endif // TIMING_TEST
-#endif // !COALESCE_FLUFF
 #if 0
  	// debug stuff
 	int i;
