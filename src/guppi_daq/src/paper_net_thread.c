@@ -281,8 +281,10 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
     for(i=0; i<(N_TIME*N_CHAN); i++) {
         uint64_t val = payload_p[i];
 #ifdef COALESCE_FLUFF
-	real_p[N_INPUTS_PER_FENGINE*i] =  val & 0xf0f0f0f0f0f0f0f0LL;
-	imag_p[N_INPUTS_PER_FENGINE*i] = (val & 0x0f0f0f0f0f0f0f0fLL) << 4;
+	// Using complex block size (cbs) of 32
+	// 4 = cbs*sizeof(int8_t)/sizeof(uint64_t)
+	real_p[2*N_FENGINES*i] =  val & 0xf0f0f0f0f0f0f0f0LL;
+	real_p[2*N_FENGINES*i+4] = (val & 0x0f0f0f0f0f0f0f0fLL) << 4;
 #else
 	real_p[N_INPUTS_PER_FENGINE*i] = val;
 #endif
