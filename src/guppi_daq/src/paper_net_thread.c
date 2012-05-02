@@ -259,6 +259,7 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
 	first_time = 0;
     }
     get_header(p, &pkt_header);
+    print_pkt_header(&pkt_header);
     rv = calc_block_indexes(pkt_header.count, &binfo);
     if(rv == -1) {
 	return rv;		// idle until we are at a good stating point
@@ -378,6 +379,7 @@ static void *run(void * _args)
         rv = guppi_udp_wait(&up);
         if (rv!=GUPPI_OK) {
             if (rv==GUPPI_TIMEOUT) { 
+printf("waiting\n");
                 /* Set "waiting" flag */
                 if (waiting!=1) {
                     guppi_status_lock_safe(&st);
