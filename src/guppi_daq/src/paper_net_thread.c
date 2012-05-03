@@ -61,7 +61,7 @@ void print_pkt_header(packet_header_t * pkt_header) {
 }
 
 void print_block_info(block_info_t * binfo) {
-    printf("mcnt_start %llu mcnt_offset %llu block_i %d sub_block_i %d\n", 
+    printf("binfo : mcnt_start %llu mcnt_offset %llu block_i %d sub_block_i %d\n", 
            (long long unsigned)binfo->mcnt_start, (long long unsigned)binfo->mcnt_offset, binfo->block_i, binfo->sub_block_i);
 }
 
@@ -171,7 +171,6 @@ int calc_block_indexes(uint64_t pkt_mcnt, block_info_t *binfo) {
     binfo->block_i     = (binfo->mcnt_offset) / N_SUB_BLOCKS_PER_INPUT_BLOCK % N_INPUT_BLOCKS; 
     binfo->sub_block_i = (binfo->mcnt_offset) % N_SUB_BLOCKS_PER_INPUT_BLOCK; 
 
-//fprintf(stdout, "> %llu %llu %llu %d %d\n", (long long unsigned)binfo->mcnt_start, (long long unsigned)pkt_mcnt, (long long unsigned)binfo->mcnt_offset, binfo->block_i, binfo->sub_block_i);
 
     if(pkt_mcnt < binfo->mcnt_start && binfo->block_i == 0 && binfo->sub_block_i == 0) {
 	binfo->mcnt_start = pkt_mcnt;				// reset on block,sub 0
@@ -180,7 +179,6 @@ int calc_block_indexes(uint64_t pkt_mcnt, block_info_t *binfo) {
 } 
 
 void initialize_block(paper_input_databuf_t * paper_input_databuf_p, block_info_t * binfo, uint64_t pkt_mcnt) {
-//printf("in initialize_block() %d %d %llu\n", binfo->block_i, binfo->sub_block_i, (long long unsigned) pkt_mcnt);
 // this routine may initialize a partial block (binfo->sub_block_i != 0)   
     int i;
 
@@ -259,7 +257,7 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
 	first_time = 0;
     }
     get_header(p, &pkt_header);
-    print_pkt_header(&pkt_header);
+    //print_pkt_header(&pkt_header);
     rv = calc_block_indexes(pkt_header.count, &binfo);
     if(rv == -1) {
 	return rv;		// idle until we are at a good stating point
@@ -273,7 +271,11 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
     // One packet will never span more than one sub_block.
     block_offset     = binfo.block_i     * sizeof(paper_input_block_t);
     sub_block_offset = binfo.sub_block_i * sizeof(paper_input_sub_block_t);
-    dest_p           = (uint64_t *)((uint8_t *)paper_input_databuf_p + block_offset + sizeof(paper_input_header_t) + sub_block_offset);
+    dest_p           = (uint64_t *)((uint8_t *)paper_input_databuf_p +
+			sizeof(struct guppi_databuf)                 + 
+			block_offset                                 + 
+			sizeof(paper_input_header_t)                 + 
+			sub_block_offset);
     payload_p        = (uint64_t *)(p->data+8);
 
     // unpack the packet, fluffing as we go
@@ -379,7 +381,6 @@ static void *run(void * _args)
         rv = guppi_udp_wait(&up);
         if (rv!=GUPPI_OK) {
             if (rv==GUPPI_TIMEOUT) { 
-printf("waiting\n");
                 /* Set "waiting" flag */
                 if (waiting!=1) {
                     guppi_status_lock_safe(&st);
