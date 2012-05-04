@@ -93,7 +93,7 @@ static void *run(void * _args, int doCPU)
     context.array_h = (ComplexInput *)db_in->block[curblock_in].complexity;
     context.matrix_h = (Complex *)db_out->block[curblock_out].data;
 
-    xgpu_error = xgpuInit(&context);
+    xgpu_error = xgpuInit(&context, 0);
     if (XGPU_OK != xgpu_error) {
         fprintf(stderr, "ERROR: xGPU initialisation failed (error code %d)\n", xgpu_error);
         return THREAD_ERROR;
