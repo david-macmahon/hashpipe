@@ -276,7 +276,8 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
 			sizeof(guppi_databuf_cache_alignment)        +
 			block_offset                                 + 
 			sizeof(paper_input_header_t)                 + 
-			sub_block_offset);
+			sub_block_offset                             +
+			pkt_header.fid*2);
     payload_p        = (uint64_t *)(p->data+8);
 
     // unpack the packet, fluffing as we go
@@ -294,7 +295,7 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
 
     // if all packets are accounted for, mark this block filled
     if(binfo.block_active[binfo.block_i] == N_PACKETS_PER_BLOCK) {
-#if 0
+#if 1
  	// debug stuff
 	int i;
 	for(i=0;i<4;i++) fprintf(stdout, "%d ", binfo.block_active[i]);	
