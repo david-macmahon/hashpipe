@@ -295,7 +295,7 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
 
     // if all packets are accounted for, mark this block filled
     if(binfo.block_active[binfo.block_i] == N_PACKETS_PER_BLOCK) {
-#if 1
+#if 0
  	// debug stuff
 	int i;
 	for(i=0;i<4;i++) fprintf(stdout, "%d ", binfo.block_active[i]);	
