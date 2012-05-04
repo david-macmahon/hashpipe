@@ -19,7 +19,7 @@
 #define N_FLUFFED_WORDS_PER_BLOCK (N_FLUFFED_BYTES_PER_BLOCK / 8) 
 
 // Number of floats in xGPU's "register tile order" output matrix.
-#define N_OUTPUT_MATRIX (2 * N_CHAN * (N_INPUT/2 + 2) * N_INPUT)
+#define N_OUTPUT_MATRIX (2 * N_CHAN * (N_INPUTS/2 + 2) * N_INPUTS)
 
 #define PAGE_SIZE (4096)
 #define CACHE_ALIGNMENT (64)
