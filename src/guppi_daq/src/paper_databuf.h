@@ -22,6 +22,7 @@
 #define N_OUTPUT_MATRIX (2 * N_CHAN * (N_INPUT/2 + 2) * N_INPUT)
 
 #define PAGE_SIZE (4096)
+#define CACHE_ALIGNMENT (64)
 
 /*
  * INPUT BUFFER STRUCTURES
@@ -49,7 +50,7 @@ typedef struct paper_input_complexity {
 
 typedef struct paper_input_header {
   int64_t good_data;       // functions as a boolean, 64 bit to maintain word alignment
-  uint64_t cache_align[7]; // 7 more words (56 more bytes) to maintain cache alignment
+  uint8_t padding[CACHE_ALIGNMENT-sizeof(int64_t)]; // Maintain cache alignment
   uint64_t mcnt[N_SUB_BLOCKS_PER_INPUT_BLOCK];
 } paper_input_header_t;
 
@@ -58,8 +59,14 @@ typedef struct paper_input_block {
   paper_input_complexity_t complexity[2];	// [0] is real, [1] is imag
 } paper_input_block_t;
 
+// Used to pad after guppi_databuf to maintain cache alignment
+typedef uint8_t guppi_databuf_cache_alignment[
+  CACHE_ALIGNMENT - (sizeof(struct guppi_databuf)%CACHE_ALIGNMENT)
+];
+
 typedef struct paper_input_databuf {
   struct guppi_databuf header;
+  guppi_databuf_cache_alignment padding; // Maintain cache alignment
   paper_input_block_t block[N_INPUT_BLOCKS];
 } paper_input_databuf_t;
 

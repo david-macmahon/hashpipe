@@ -273,6 +273,7 @@ int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, s
     sub_block_offset = binfo.sub_block_i * sizeof(paper_input_sub_block_t);
     dest_p           = (uint64_t *)((uint8_t *)paper_input_databuf_p +
 			sizeof(struct guppi_databuf)                 + 
+			sizeof(guppi_databuf_cache_alignment)        +
 			block_offset                                 + 
 			sizeof(paper_input_header_t)                 + 
 			sub_block_offset);
