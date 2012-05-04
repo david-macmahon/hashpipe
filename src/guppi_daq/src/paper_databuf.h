@@ -5,8 +5,8 @@
 #include "guppi_databuf.h"
 
 #define N_INPUTS   64
-#define N_FENGINES  8
-#define N_INPUTS_PER_FENGINE  (N_INPUTS/N_FENGINES)
+#define N_INPUTS_PER_FENGINE 8
+#define N_FENGINES  (N_INPUTS/N_INPUTS_PER_FENGINE)
 
 #define N_INPUT_BLOCKS 4
 #define N_PACKETS_PER_BLOCK 512
