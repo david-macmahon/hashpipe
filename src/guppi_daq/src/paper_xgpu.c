@@ -101,18 +101,6 @@ int main(int argc, char *argv[])
             exit(1);
         }
 
-        // Launch thread
-        printf("starting thread '%s' with databufs %d and %d\n",
-            modules[num_threads]->name, args[num_threads].input_buffer, args[num_threads].output_buffer);
-        rv = pthread_create(&threads[num_threads], NULL,
-            modules[num_threads]->run, (void *)&args[num_threads]);
-
-        if (rv) { 
-            fprintf(stderr, "Error creating thread for '%s'.\n",
-                modules[num_threads]->name);
-            exit(1);
-        }
-
         // Setup for next thread
         num_threads++;
         input_buffer++;
@@ -123,11 +111,27 @@ int main(int argc, char *argv[])
       }
     }
 
-    // If no threads started
+    // If no threads specified
     if(num_threads == 0) {
       printf("No threads specified!\n");
       list_pipeline_thread_modules(stdout);
       return 1;
+    } else {
+      // Start threads in reverse order
+      for(i=num_threads-1; i >= 0; i--) {
+
+        // Launch thread
+        printf("starting thread '%s' with databufs %d and %d\n",
+            modules[i]->name, args[i].input_buffer, args[i].output_buffer);
+        rv = pthread_create(&threads[i], NULL,
+            modules[i]->run, (void *)&args[i]);
+
+        if (rv) {
+            fprintf(stderr, "Error creating thread for '%s'.\n",
+                modules[i]->name);
+            exit(1);
+        }
+      }
     }
 
     /* Wait for SIGINT (i.e. control-c) or SIGTERM (aka "kill <pid>") */
