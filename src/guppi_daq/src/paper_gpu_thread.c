@@ -128,7 +128,7 @@ static void *run(void * _args, int doCPU)
         // Got a new data block, update status and determine how to handle it
         guppi_status_lock_safe(&st);
         hputi4(st.buf, "GPUBLKIN", curblock_in);
-        hputi8(st.buf, "GPUMCNT", db_in->block[curblock_in].header.mcnt[0]);
+        hputu8(st.buf, "GPUMCNT", db_in->block[curblock_in].header.mcnt[0]);
         guppi_status_unlock_safe(&st);
 
         // If integration status "off"

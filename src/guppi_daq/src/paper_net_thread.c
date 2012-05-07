@@ -428,7 +428,7 @@ static void *run(void * _args)
         const int mcnt = write_paper_packet_to_blocks((paper_input_databuf_t *)db, &p);
         if(mcnt != -1) {
             guppi_status_lock_safe(&st);
-            hputi4(st.buf, "NETMCNT", mcnt);
+            hputu8(st.buf, "NETMCNT", mcnt);
             guppi_status_unlock_safe(&st);
         }
 
