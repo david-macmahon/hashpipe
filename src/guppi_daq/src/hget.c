@@ -30,7 +30,7 @@
  * Purpose:     Extract values for variables from FITS header string
  * Subroutine:  hgeti2 (hstring,keyword,ival) returns short integer
  * Subroutine:  hgeti4c (hstring,keyword,wchar,ival) returns long integer
- * Subroutine:  hgeti8 (hstring,keyword,ival) returns long long integer
+ * Subroutine:  hgeti8 (hstring,keyword,llval) returns long long integer
  * Subroutine:  hgeti4 (hstring,keyword,ival) returns long integer
  * Subroutine:  hgetr4 (hstring,keyword,rval) returns real
  * Subroutine:  hgetra (hstring,keyword,ra) returns double RA in degrees
@@ -162,7 +162,7 @@ int     *ival;          /* Keyword value returned */
 
 /* Extract integer*8 value for variable from FITS header string */
 
-long long
+int
 hgeti8 (hstring,keyword,i8val)
 
 const char *hstring;    /* character string containing FITS header information
