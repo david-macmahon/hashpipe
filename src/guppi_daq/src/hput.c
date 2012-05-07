@@ -63,6 +63,29 @@ const static int verbose=0;/* Set to 1 to print error messages and other info */
 static void fixnegzero();
 
 
+/*  HPUTU4 - Set unsigned int keyword = ival in FITS header string */
+
+int
+hputu4 (hstring,keyword,ival)
+
+char *hstring;          /* FITS-style header information in the format
+                           <keyword>= <value> {/ <comment>}
+                           each entry is padded with spaces to 80 characters */
+
+const char *keyword;    /* Name of the variable in header to be returned.
+                           If no line begins with this string, one is created.
+                           The first 8 characters of keyword must be unique. */
+unsigned int ival;               /* int number */
+{
+    char value[30];
+
+    /* Translate value from binary to ASCII */
+    sprintf (value,"%u",ival);
+
+    /* Put value into header string */
+    return (hputc (hstring,keyword,value));
+}
+
 /*  HPUTI4 - Set int keyword = ival in FITS header string */
 
 int
@@ -84,6 +107,19 @@ int ival;               /* int number */
 
     /* Put value into header string */
     return (hputc (hstring,keyword,value));
+}
+
+/* HPUTU8 - Set unsigned long long keyword in FITS header string. */
+int
+hputu8 (hstring, keyword, ival)
+
+char *hstring;          /* Header string */
+const char *keyword;    /* keyword */
+unsigned long long ival;         /* long long (8-byte) integer */
+{
+    char value[30];
+    sprintf (value, "%llu", ival);
+    return (hputc (hstring, keyword, value));
 }
 
 /* HPUTI8 - Set long long keyword in FITS header string.

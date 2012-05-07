@@ -59,6 +59,14 @@ extern "C" {
         const char* hstring,    /* FITS header string */
         const char* keyword,    /* FITS keyword */
         int* val);              /* integer value (returned) */
+    int hgetu8(                 /* Extract long long value from FITS header */
+        const char* hstring,    /* FITS header string */
+        const char* keyword,    /* FITS keyword */
+        unsigned long long* val); /* unsigned integer value (returned) */
+    int hgetu4(                 /* Extract int value from FITS header */
+        const char* hstring,    /* FITS header string */
+        const char* keyword,    /* FITS keyword */
+        unsigned int* val);     /* unsigned integer value (returned) */
     int hgetr4(                 /* Extract float value from FITS header */
         const char* hstring,    /* FITS header string */
         const char* keyword,    /* FITS keyword */
@@ -217,6 +225,14 @@ extern "C" {
         char* hstring,          /* FITS header string (modified) */
         const char* keyword,    /* FITS keyword */
         const long long ival);  /* long long value */
+    int hputu4(         /* Implant int value into FITS header */
+        char* hstring,          /* FITS header string (modified) */
+        const char* keyword,    /* FITS keyword */
+        const unsigned int ival); /* unsigned int value */
+    int hputu8(         /* Implant long long value into FITS header */
+        char* hstring,          /* FITS header string (modified) */
+        const char* keyword,    /* FITS keyword */
+        const unsigned long long ival); /* unsigned long long value */
     int hputr4(         /* Implant float value into FITS header */
         char* hstring,          /* FITS header string (modified) */
         const char* keyword,    /* FITS keyword */
@@ -302,6 +318,8 @@ extern "C" {
 /* Extract a value from a FITS header for given keyword */
 extern int hgeti4();    /* int (Multiple WCS) */
 extern int hgeti8();    /* long long */
+extern int hgetu4();    /* unsigned int (Multiple WCS) */
+extern int hgetu8();    /* unsigned long long */
 extern int hgeti4c();   /* int */
 extern int hgeti2();    /* short */
 extern int hgetr4();    /* float */
@@ -360,6 +378,8 @@ extern char *igetc();   /* Extract string from IRAF keyword string */
 /* Subroutines in hput.c */
 
 /* Implant a value into a FITS header for given keyword */
+extern int hputu8();    /* unsigned long long */
+extern int hputu4();    /* unsigned int */
 extern int hputi8();    /* long long */
 extern int hputi4();    /* int */
 extern int hputi2();    /* short */

@@ -195,6 +195,41 @@ long long *i8val;
     }
 }
 
+/* Extract unsigned integer*8 value for variable from FITS header string */
+
+int
+hgetu8 (hstring,keyword,i8val)
+
+const char *hstring;    /* character string containing FITS header information
+                   in the format <keyword>= <value> {/ <comment>} */
+const char *keyword;    /* character string containing the name of the keyword
+                   the value of which is returned.  hget searches for a
+                   line beginning with this string.  if "[n]" is present,
+                   the n'th token in the value is returned.
+                   (the first 8 characters must be unique) */
+unsigned long long *i8val;
+{
+    char *value;
+    char *endptr;
+
+    /* Get value and comment from header string */
+    value = hgetc (hstring,keyword);
+
+    /* Translate value from ASCII to binary */
+    if (value != NULL) {
+        if (value[0] == '#') value++;
+        *i8val = strtoull(value, &endptr, 0);
+        if(endptr && endptr[0]) {
+            fprintf(stderr, "%s:%s got invalid integer character '%c' (%d)\n",
+                __FUNCTION__, keyword, endptr[0], endptr[0]);
+            *i8val = (unsigned long long)atof(value);
+        }
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
 /* Extract long value for variable from FITS header string */
 
 int
@@ -247,6 +282,65 @@ int *ival;
             *ival = minint;
         else
             *ival = (int) (dval - 0.001);
+        return (1);
+        }
+    else {
+        return (0);
+        }
+}
+
+/* Extract unsigned long value for variable from FITS header string */
+
+int
+hgetu4 (hstring,keyword,ival)
+
+const char *hstring;    /* character string containing FITS header information
+                   in the format <keyword>= <value> {/ <comment>} */
+const char *keyword;    /* character string containing the name of the keyword
+                   the value of which is returned.  hget searches for a
+                   line beginning with this string.  if "[n]" is present,
+                   the n'th token in the value is returned.
+                   (the first 8 characters must be unique) */
+unsigned int *ival;
+{
+    char *value;
+    double dval;
+    int minint;
+    int lval;
+    char *dchar;
+    char val[VLENGTH+1];
+
+    /* Get value and comment from header string */
+    value = hgetc (hstring,keyword);
+
+    /* Translate value from ASCII to binary */
+    if (value != NULL) {
+        if (value[0] == '#') value++;
+        minint = 0;
+        lval = strlen (value);
+        if (lval > VLENGTH) {
+            strncpy (val, value, VLENGTH);
+            val[VLENGTH] = (char) 0;
+            }
+        else
+            strcpy (val, value);
+        if (isnum (val) == 2) {
+            if ((dchar = strchr (val, 'D')))
+                *dchar = 'e';
+            if ((dchar = strchr (val, 'd')))
+                *dchar = 'e';
+            if ((dchar = strchr (val, 'E')))
+                *dchar = 'e';
+            }
+        dval = atof (val);
+        if (dval+0.001 > UINT_MAX)
+            *ival = UINT_MAX;
+        else if (dval >= 0)
+            *ival = (unsigned int) (dval + 0.001);
+        else if (dval-0.001 < minint)
+            *ival = minint;
+        else
+            *ival = (unsigned int) (dval - 0.001);
         return (1);
         }
     else {
