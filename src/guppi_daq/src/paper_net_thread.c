@@ -239,7 +239,7 @@ void manage_active_blocks(paper_input_databuf_t * paper_input_databuf_p,
     binfo->block_active[binfo->block_i] += 1;			// in all cases increment packet count for this block
 }
 
-int write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, struct guppi_udp_packet *p) {
+uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, struct guppi_udp_packet *p) {
 
     static block_info_t binfo;
     static int first_time = 1;
@@ -425,7 +425,7 @@ static void *run(void * _args)
         }
 
         // Copy packet into any blocks where it belongs.
-        const int mcnt = write_paper_packet_to_blocks((paper_input_databuf_t *)db, &p);
+        const uint64_t mcnt = write_paper_packet_to_blocks((paper_input_databuf_t *)db, &p);
         if(mcnt != -1) {
             guppi_status_lock_safe(&st);
             hputu8(st.buf, "NETMCNT", mcnt);
