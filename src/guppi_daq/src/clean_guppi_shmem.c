@@ -27,17 +27,26 @@ int main(int argc, char *argv[]) {
         perror(NULL);
         exit(1);
     }
-    rv = shmctl(s.shmid, IPC_RMID, NULL);
-    if (rv==-1) {
-        fprintf(stderr, "Error deleting status segment.\n");
-        perror("shmctl");
-        ex=1;
-    }
-    rv = sem_unlink(semname);
-    if (rv==-1) {
-        fprintf(stderr, "Error unlinking status semaphore.\n");
-        perror("sem_unlink");
-        ex=1;
+    // TODO Use getopt
+    // "-d" as command line argument deletes status memory and semaphore.
+    // Otherwise, it is simply re-initialized.
+    if(argc > 1 && argv[0][0] == '-' && argv[0][1] == 'd') {
+      rv = shmctl(s.shmid, IPC_RMID, NULL);
+      if (rv==-1) {
+          fprintf(stderr, "Error deleting status segment.\n");
+          perror("shmctl");
+          ex=1;
+      }
+      rv = sem_unlink(semname);
+      if (rv==-1) {
+          fprintf(stderr, "Error unlinking status semaphore.\n");
+          perror("sem_unlink");
+          ex=1;
+      }
+      printf("Deleted status shared memory and semaphore.\n");
+    } else {
+      guppi_status_clear(&s);
+      printf("Cleared status shared memory.\n");
     }
 
     /* Databuf shared mem */
