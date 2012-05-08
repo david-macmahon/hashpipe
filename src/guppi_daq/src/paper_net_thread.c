@@ -205,11 +205,13 @@ void manage_active_blocks(paper_input_databuf_t * paper_input_databuf_p,
 
 	// handle the non-active block
 	// check for the "impossible" condition that we are not indexing the first sub_block
+#if 0
 	if(binfo->sub_block_i != 0) {
 		printf("starting on non-active (count %d) block[%d] but with sub_block[%d] rather than sub_block[0].\n", 
 		      binfo->block_active[binfo->block_i], binfo->block_i, binfo->sub_block_i);
 		//exit(1);
 	}
+#endif
 	// init the block 
 	while((rv = paper_input_databuf_wait_free(paper_input_databuf_p, binfo->block_i)) != GUPPI_OK) {
 		if (rv==GUPPI_TIMEOUT) {
