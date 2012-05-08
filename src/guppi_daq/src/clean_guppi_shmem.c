@@ -13,6 +13,7 @@
 #include "guppi_status.h"
 #include "guppi_databuf.h"
 #include "guppi_error.h"
+#include "guppi_thread_main.h"
 
 int main(int argc, char *argv[]) {
     int rv,ex=0;

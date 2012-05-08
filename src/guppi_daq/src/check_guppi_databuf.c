@@ -12,6 +12,7 @@
 #include "guppi_status.h"
 #include "guppi_databuf.h"
 #include "guppi_defines.h"
+#include "guppi_thread_main.h"
 
 void usage() { 
     fprintf(stderr, 

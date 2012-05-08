@@ -9,6 +9,7 @@
 #include "fitshead.h"
 #include "guppi_error.h"
 #include "guppi_status.h"
+#include "guppi_thread_main.h"
 
 int main(int argc, char *argv[]) {
 

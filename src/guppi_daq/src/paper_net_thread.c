@@ -125,6 +125,7 @@ void set_blocks_filled(paper_input_databuf_t *paper_input_databuf_p,
 //   abandoned block and blocks_to_set will be such that the final block acted 
 //   upon will be two prior to the abandoned block.
 
+	 int rv;
     int i;
     int blocks_set;
     int found_active_block = 0;
@@ -133,7 +134,10 @@ void set_blocks_filled(paper_input_databuf_t *paper_input_databuf_p,
 		// at first active block, all subsequent blocks are considered active
 		found_active_block = 1;
 		if(!block_active[i]) {
-    			while(paper_input_databuf_wait_free(paper_input_databuf_p, block_i)) {	
+			while((rv = paper_input_databuf_wait_free(paper_input_databuf_p, block_i)) != GUPPI_OK) {
+				if (rv==GUPPI_TIMEOUT) {
+					return;
+				}
 				printf("target data block %d is not free!\n", block_i);
     			}
 		}
@@ -195,6 +199,7 @@ void initialize_block(paper_input_databuf_t * paper_input_databuf_p, block_info_
 
 void manage_active_blocks(paper_input_databuf_t * paper_input_databuf_p, 
 			  block_info_t * binfo, uint64_t pkt_mcnt) {
+    int rv;
 
     if(binfo->block_active[binfo->block_i] == 0) {    // is the block non-active?
 
@@ -206,7 +211,10 @@ void manage_active_blocks(paper_input_databuf_t * paper_input_databuf_p,
 		exit(1);
 	}
 	// init the block 
-    	while(paper_input_databuf_wait_free(paper_input_databuf_p, binfo->block_i)) {	
+	while((rv = paper_input_databuf_wait_free(paper_input_databuf_p, binfo->block_i)) != GUPPI_OK) {
+		if (rv==GUPPI_TIMEOUT) {
+			return;
+		}
 		printf("target data block %d is not free!\n", binfo->block_i);
     	}
 	initialize_block(paper_input_databuf_p, binfo, pkt_mcnt);
@@ -226,7 +234,10 @@ void manage_active_blocks(paper_input_databuf_t * paper_input_databuf_p,
 		// yes, the block is abandonded, indicating serious trouble (cable disconnect?) - go clean up the entire ring
 		set_blocks_filled(paper_input_databuf_p, binfo->block_i, binfo->block_active, N_INPUT_BLOCKS);
 		// re-acquire ownership of the block and assign the packet's mcnt
-    		while(paper_input_databuf_wait_free(paper_input_databuf_p, binfo->block_i)) {	
+		while((rv = paper_input_databuf_wait_free(paper_input_databuf_p, binfo->block_i)) != GUPPI_OK) {
+			if (rv==GUPPI_TIMEOUT) {
+				return;
+			}
 			printf("target data block %d is not free!\n", binfo->block_i);
     		}
 		initialize_block(paper_input_databuf_p, binfo, pkt_mcnt);
