@@ -95,7 +95,7 @@ static void *run(void * _args, int doCPU)
 
     xgpu_error = xgpuInit(&context, 0);
     if (XGPU_OK != xgpu_error) {
-        fprintf(stderr, "ERROR: xGPU initialisation failed (error code %d)\n", xgpu_error);
+        fprintf(stderr, "ERROR: xGPU initialization failed (error code %d)\n", xgpu_error);
         return THREAD_ERROR;
     }
 
