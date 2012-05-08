@@ -12,10 +12,14 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <semaphore.h>
+#include <errno.h>
 
 #include "guppi_ipckey.h"
 #include "guppi_status.h"
 #include "guppi_error.h"
+
+// TODO Do '#include "guppi_threads.h"' instead?
+extern int run_threads;
 
 /* Returns the guppi status (POSIX) semaphore name. */
 const char * guppi_status_semname()
@@ -107,7 +111,11 @@ int guppi_status_detach(struct guppi_status *s) {
 
 /* TODO: put in some (long, ~few sec) timeout */
 int guppi_status_lock(struct guppi_status *s) {
-    return(sem_wait(s->lock));
+    int rv;
+    do {
+      rv = sem_trywait(s->lock);
+    } while (rv == -1 && errno == EAGAIN && run_threads);
+    return rv;
 }
 
 int guppi_status_unlock(struct guppi_status *s) {
