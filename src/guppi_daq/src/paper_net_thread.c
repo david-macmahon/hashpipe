@@ -51,7 +51,7 @@ typedef struct {
     int block_active[N_INPUT_BLOCKS];
 } block_info_t;
 
-#ifdef TIMING_TEST
+#if defined TIMING_TEST || defined NET_TIMING_TEST
 static unsigned long fluffed_words = 0;
 #endif
 
@@ -289,9 +289,9 @@ uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf
 	dest_p[2*N_FENGINES*i+4] = (val & 0x0f0f0f0f0f0f0f0fLL) << 4;
     }  // end upacking
 
-#ifdef TIMING_TEST
+#if defined TIMING_TEST || defined NET_TIMING_TEST
 	fluffed_words += (N_TIME*N_CHAN);
-#endif // TIMING_TEST
+#endif // TIMING_TEST || NET_TIMING_TEST
 
     // if all packets are accounted for, mark this block filled
     if(binfo.block_active[binfo.block_i] == N_PACKETS_PER_BLOCK) {
@@ -432,7 +432,7 @@ static void *run(void * _args)
             guppi_status_unlock_safe(&st);
         }
 
-#ifdef TIMING_TEST
+#if defined TIMING_TEST || defined NET_TIMING_TEST
 	static int loop_count=1;
 	//if(loop_count == 1000000) run_threads = 0; 
 	if(loop_count == 10*1000*1000) {
