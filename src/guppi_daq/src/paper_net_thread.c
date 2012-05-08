@@ -52,6 +52,8 @@ typedef struct {
 } block_info_t;
 
 static uint32_t dropped_pkt_count;
+static uint32_t input_databuf_wait_count;
+static uint32_t block_mgt_error_count;
 #ifdef TIMING_TEST
 static unsigned long fluffed_words = 0;
 #endif
@@ -111,6 +113,19 @@ void get_header (struct guppi_udp_packet *p, packet_header_t * pkt_header) {
 #endif
 }
 
+void input_databuf_wait_free(paper_input_databuf_t *paper_input_databuf_p, int block_i, const char * calling_function) {
+
+    int first_time = 1;
+
+    while(paper_input_databuf_wait_free(paper_input_databuf_p, block_i)) {	
+	if(first_time) {
+		first_time = 0;
+		printf("%s : waiting for data block %d to be free\n", calling_function, block_i);
+		input_databuf_wait_count++;
+	}
+    }
+}
+
 void set_blocks_filled(paper_input_databuf_t *paper_input_databuf_p, 
 		       int block_i,   
 		       int block_active[],
@@ -132,9 +147,7 @@ void set_blocks_filled(paper_input_databuf_t *paper_input_databuf_p,
 		// at first active block, all subsequent blocks are considered active
 		found_active_block = 1;
 		if(!block_active[i]) {
-    			while(paper_input_databuf_wait_free(paper_input_databuf_p, block_i)) {	
-				printf("target data block %d is not free!\n", block_i);
-    			}
+			input_databuf_wait_free(paper_input_databuf_p, block_i, __FUNCTION__);
 		}
 		if(block_active[i] == N_PACKETS_PER_BLOCK) {
 			paper_input_databuf_p->block[i].header.good_data = 1;
@@ -146,7 +159,6 @@ void set_blocks_filled(paper_input_databuf_t *paper_input_databuf_p,
 	                       i, 
 		               paper_input_databuf_p->block[i].header.mcnt[0],
                                time(NULL));
-			//exit(0);
 		}
 		paper_input_databuf_set_filled(paper_input_databuf_p, i);
 		block_active[i] = 0;
@@ -200,16 +212,14 @@ void manage_active_blocks(paper_input_databuf_t * paper_input_databuf_p,
     if(binfo->block_active[binfo->block_i] == 0) {    // is the block non-active?
 
 	// handle the non-active block
-	// check for the "impossible" condition that we are not indexing the first sub_block
+	// check for the (unusual? impossible?) condition that we are not indexing the first sub_block
 	if(binfo->sub_block_i != 0) {
+		block_mgt_error_count++;
 		printf("starting on non-active (count %d) block[%d] but with sub_block[%d] rather than sub_block[0].\n", 
 		      binfo->block_active[binfo->block_i], binfo->block_i, binfo->sub_block_i);
-		//exit(1);
 	}
 	// init the block 
-    	while(paper_input_databuf_wait_free(paper_input_databuf_p, binfo->block_i)) {	
-		printf("target data block %d is not free!\n", binfo->block_i);
-    	}
+	input_databuf_wait_free(paper_input_databuf_p, binfo->block_i, __FUNCTION__);
 	initialize_block(paper_input_databuf_p, binfo, pkt_mcnt);
 	// this non-active block is now ready to receive new data
 
@@ -225,11 +235,10 @@ void manage_active_blocks(paper_input_databuf_t * paper_input_databuf_p,
 			(long long unsigned)paper_input_databuf_p->block[binfo->block_i].header.mcnt[binfo->sub_block_i],
 			(long long unsigned)pkt_mcnt);
 		// yes, the block is abandonded, indicating serious trouble (cable disconnect?) - go clean up the entire ring
+		block_mgt_error_count++;
 		set_blocks_filled(paper_input_databuf_p, binfo->block_i, binfo->block_active, N_INPUT_BLOCKS);
 		// re-acquire ownership of the block and assign the packet's mcnt
-    		while(paper_input_databuf_wait_free(paper_input_databuf_p, binfo->block_i)) {	
-			printf("target data block %d is not free!\n", binfo->block_i);
-    		}
+		input_databuf_wait_free(paper_input_databuf_p, binfo->block_i, __FUNCTION__);
 		initialize_block(paper_input_databuf_p, binfo, pkt_mcnt);
 		binfo->block_active[binfo->block_i] = 0;	// re-init packet count for this block
 	} else {	 // block is not abandoned	
@@ -298,7 +307,7 @@ uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf
 
     // if all packets are accounted for, mark this block filled
     if(binfo.block_active[binfo.block_i] == N_PACKETS_PER_BLOCK) {
-#if 1
+#if 0
  	// debug stuff
 	int i;
 	for(i=0;i<4;i++) fprintf(stdout, "%d ", binfo.block_active[i]);	
@@ -433,6 +442,8 @@ static void *run(void * _args)
             guppi_status_lock_safe(&st);
             hputu8(st.buf, "NETMCNT", mcnt);
    	    hputu4(st.buf, "DROPKTS", dropped_pkt_count);
+   	    hputu4(st.buf, "IBUFWCNT", input_databuf_wait_count);
+   	    hputu4(st.buf, "BLKMGTE", block_mgt_error_count);
             guppi_status_unlock_safe(&st);
         }
 
