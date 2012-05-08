@@ -17,6 +17,8 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/types.h>
+#include <errno.h>
+#include <fcntl.h>
 
 #include <xgpu.h>
 
@@ -370,6 +372,8 @@ static void *run(void * _args)
                 "Error opening UDP socket.");
         pthread_exit(NULL);
     }
+    /* Set to non-blocking */
+    fcntl(up.sock, F_SETFD, O_NONBLOCK);
     pthread_cleanup_push((void *)guppi_udp_close, &up);
 #endif
 
@@ -380,6 +384,7 @@ static void *run(void * _args)
 
 #ifndef TIMING_TEST
         /* Wait for data */
+#if 0
         rv = guppi_udp_wait(&up);
         if (rv!=GUPPI_OK) {
             if (rv==GUPPI_TIMEOUT) { 
@@ -398,9 +403,13 @@ static void *run(void * _args)
                 pthread_exit(NULL);
             }
         }
+#endif
 	
         /* Read packet */
-        p.packet_size = recv(up.sock, p.data, GUPPI_MAX_PACKET_SIZE, 0);
+	do {
+	    p.packet_size = recv(up.sock, p.data, GUPPI_MAX_PACKET_SIZE, 0);
+	} while (p.packet_size == -1 && (errno == EAGAIN || errno == EWOULDBLOCK) && run_threads);
+	if(!run_threads) break;
         if (up.packet_size != p.packet_size) {
             if (p.packet_size != -1) {
                 #ifdef DEBUG_NET
