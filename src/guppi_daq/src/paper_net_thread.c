@@ -51,6 +51,7 @@ typedef struct {
     int block_active[N_INPUT_BLOCKS];
 } block_info_t;
 
+static struct guppi_status *st_p;
 static uint32_t dropped_pkt_count;
 static uint32_t input_databuf_wait_count;
 static uint32_t block_mgt_error_count;
@@ -115,14 +116,27 @@ void get_header (struct guppi_udp_packet *p, packet_header_t * pkt_header) {
 
 void input_databuf_wait_free(paper_input_databuf_t *paper_input_databuf_p, int block_i, const char * calling_function) {
 
-    int first_time = 1;
+    int rv, first_time = 1;
 
-    while(paper_input_databuf_wait_free(paper_input_databuf_p, block_i)) {	
-	if(first_time) {
-		first_time = 0;
-		printf("%s : waiting for data block %d to be free\n", calling_function, block_i);
-		input_databuf_wait_count++;
-	}
+    while((rv = paper_input_databuf_wait_free(paper_input_databuf_p, block_i)) != GUPPI_OK) {	
+          if (rv==GUPPI_TIMEOUT) {
+#if 1
+                guppi_status_lock_safe(st_p);
+                hputs(st_p->buf, STATUS_KEY, "blocked_out");
+                guppi_status_unlock_safe(st_p);
+#endif
+		if(first_time) {
+			first_time = 0;
+			printf("%s : waiting for data block %d to be free\n", calling_function, block_i);
+			input_databuf_wait_count++;
+		}
+                continue;
+            } else {
+                guppi_error(calling_function, "error waiting for free databuf");
+                run_threads=0;
+                pthread_exit(NULL);
+                break;
+            }
     }
 }
 
@@ -142,25 +156,62 @@ void set_blocks_filled(paper_input_databuf_t *paper_input_databuf_p,
     int i;
     int blocks_set;
     int found_active_block = 0;
+    int rv, first_time=1;
+
     for(i = block_i, blocks_set = 0; blocks_set < blocks_to_set; i = inc_block_i(i), blocks_set++) {
 	if(found_active_block || block_active[i]) {
 		// at first active block, all subsequent blocks are considered active
 		found_active_block = 1;
 		if(!block_active[i]) {
-			input_databuf_wait_free(paper_input_databuf_p, block_i, __FUNCTION__);
+			//input_databuf_wait_free(paper_input_databuf_p, block_i, __FUNCTION__);
+			input_databuf_wait_free(paper_input_databuf_p, i, __FUNCTION__);
 		}
 		if(block_active[i] == N_PACKETS_PER_BLOCK) {
 			paper_input_databuf_p->block[i].header.good_data = 1;
 		} else { 
 			paper_input_databuf_p->block[i].header.good_data = 0;		// TODO needed?
 			dropped_pkt_count += N_PACKETS_PER_BLOCK - block_active[i];
+            guppi_status_lock_safe(st_p);
+   	    hputu4(st_p->buf, "DROPKTS", dropped_pkt_count);
+            guppi_status_unlock_safe(st_p);
+
 			printf("missing %d packets for block %d at mcnt %ld  and time %ld\n", 
 	                       N_PACKETS_PER_BLOCK - block_active[i], 
 	                       i, 
 		               paper_input_databuf_p->block[i].header.mcnt[0],
                                time(NULL));
 		}
-		paper_input_databuf_set_filled(paper_input_databuf_p, i);
+		//paper_input_databuf_set_filled(paper_input_databuf_p, i);
+
+
+
+ while((rv = paper_input_databuf_set_filled(paper_input_databuf_p, i)) != GUPPI_OK) {	
+          if (rv==GUPPI_TIMEOUT) {
+#if 1
+                guppi_status_lock_safe(st_p);
+                hputs(st_p->buf, STATUS_KEY, "blocked_out");
+                guppi_status_unlock_safe(st_p);
+#endif
+		if(first_time) {
+			first_time = 0;
+			printf("waiting for data block %d to be marked filled\n", block_i);
+			//input_databuf_wait_count++;
+		}
+                continue;
+            } else {
+                guppi_error(__FUNCTION__, "error waiting for databuf filled call");
+                run_threads=0;
+                pthread_exit(NULL);
+                break;
+            }
+
+ }
+
+
+
+
+
+
 		block_active[i] = 0;
 	}
     }
@@ -307,7 +358,7 @@ uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf
 
     // if all packets are accounted for, mark this block filled
     if(binfo.block_active[binfo.block_i] == N_PACKETS_PER_BLOCK) {
-#if 0
+#if 1
  	// debug stuff
 	int i;
 	for(i=0;i<4;i++) fprintf(stdout, "%d ", binfo.block_active[i]);	
@@ -350,6 +401,7 @@ static void *run(void * _args)
     THREAD_RUN_SET_AFFINITY_PRIORITY(args);
 
     THREAD_RUN_ATTACH_STATUS(st);
+    st_p = &st;			// allow all functions in this source file to access the status buffer
 
     /* Attach to paper_input_databuf */
     THREAD_RUN_ATTACH_DATABUF(paper_input_databuf, db, args->output_buffer);
@@ -358,9 +410,9 @@ static void *run(void * _args)
     struct guppi_params gp;
     struct sdfits pf;
     char status_buf[GUPPI_STATUS_SIZE];
-    guppi_status_lock_safe(&st);
-    memcpy(status_buf, st.buf, GUPPI_STATUS_SIZE);
-    guppi_status_unlock_safe(&st);
+    guppi_status_lock_safe(st_p);
+    memcpy(status_buf, st_p->buf, GUPPI_STATUS_SIZE);
+    guppi_status_unlock_safe(st_p);
     guppi_read_obs_params(status_buf, &gp, &pf);
     pthread_cleanup_push((void *)guppi_free_sdfits, &pf);
 
@@ -397,9 +449,9 @@ static void *run(void * _args)
             if (rv==GUPPI_TIMEOUT) { 
                 /* Set "waiting" flag */
                 if (waiting!=1) {
-                    guppi_status_lock_safe(&st);
-                    hputs(st.buf, STATUS_KEY, "waiting");
-                    guppi_status_unlock_safe(&st);
+                    guppi_status_lock_safe(st_p);
+                    hputs(st_p->buf, STATUS_KEY, "waiting");
+                    guppi_status_unlock_safe(st_p);
                     waiting=1;
                 }
                 continue; 
@@ -430,21 +482,21 @@ static void *run(void * _args)
 #endif
         /* Update status if needed */
         if (waiting!=0) {
-            guppi_status_lock_safe(&st);
-            hputs(st.buf, STATUS_KEY, "receiving");
-            guppi_status_unlock_safe(&st);
+            guppi_status_lock_safe(st_p);
+            hputs(st_p->buf, STATUS_KEY, "receiving");
+            guppi_status_unlock_safe(st_p);
             waiting=0;
         }
 
         // Copy packet into any blocks where it belongs.
         const uint64_t mcnt = write_paper_packet_to_blocks((paper_input_databuf_t *)db, &p);
         if(mcnt != -1) {
-            guppi_status_lock_safe(&st);
-            hputu8(st.buf, "NETMCNT", mcnt);
-   	    hputu4(st.buf, "DROPKTS", dropped_pkt_count);
-   	    hputu4(st.buf, "IBUFWCNT", input_databuf_wait_count);
-   	    hputu4(st.buf, "BLKMGTE", block_mgt_error_count);
-            guppi_status_unlock_safe(&st);
+            guppi_status_lock_safe(st_p);
+            hputu8(st_p->buf, "NETMCNT", mcnt);
+   	    hputu4(st_p->buf, "DROPKTS", dropped_pkt_count);
+   	    hputu4(st_p->buf, "IBUFWCNT", input_databuf_wait_count);
+   	    hputu4(st_p->buf, "BLKMGTE", block_mgt_error_count);
+            guppi_status_unlock_safe(st_p);
         }
 
 #ifdef TIMING_TEST
