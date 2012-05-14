@@ -79,7 +79,7 @@ static void *run(void * _args)
 
         // Wait for two new blocks to be filled
         for(i=0; i<2; i++) {
-            while ((rv=paper_output_databuf_wait_filled(db, block_idx[i]))
+            if ((rv=paper_output_databuf_wait_filled(db, block_idx[i]))
                     != GUPPI_OK) {
                 if (rv==GUPPI_TIMEOUT) {
                     goto done;

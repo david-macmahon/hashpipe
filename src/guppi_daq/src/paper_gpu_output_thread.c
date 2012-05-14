@@ -477,8 +477,7 @@ static void *run(void * _args)
         guppi_status_unlock_safe(&st);
 
         // Wait for new block to be filled
-        while ((rv=paper_output_databuf_wait_filled(db, block_idx))
-                != GUPPI_OK) {
+        if ((rv=paper_output_databuf_wait_filled(db, block_idx)) != GUPPI_OK) {
             if (rv==GUPPI_TIMEOUT) {
                 goto done;
             } else {

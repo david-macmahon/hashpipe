@@ -137,11 +137,15 @@ void set_blocks_filled(paper_input_databuf_t *paper_input_databuf_p,
 		// at first active block, all subsequent blocks are considered active
 		found_active_block = 1;
 		if(!block_active[i]) {
-			while((rv = paper_input_databuf_wait_free(paper_input_databuf_p, block_i)) != GUPPI_OK) {
+			if((rv = paper_input_databuf_wait_free(paper_input_databuf_p, block_i)) != GUPPI_OK) {
 				if (rv==GUPPI_TIMEOUT) {
 					return;
+				} else {
+					guppi_error(__FUNCTION__, "error waiting for free databuf");
+					run_threads=0;
+					pthread_exit(NULL);
+					return;
 				}
-				printf("target data block %d is not free!\n", block_i);
     			}
 		}
 		if(block_active[i] == N_PACKETS_PER_BLOCK) {
@@ -215,11 +219,15 @@ void manage_active_blocks(paper_input_databuf_t * paper_input_databuf_p,
 		      binfo->block_active[binfo->block_i], binfo->block_i, binfo->sub_block_i);
 	}
 	// init the block 
-	while((rv = paper_input_databuf_wait_free(paper_input_databuf_p, binfo->block_i)) != GUPPI_OK) {
+	if((rv = paper_input_databuf_wait_free(paper_input_databuf_p, binfo->block_i)) != GUPPI_OK) {
 		if (rv==GUPPI_TIMEOUT) {
 			return;
+		} else {
+			guppi_error(__FUNCTION__, "error waiting for free databuf");
+			run_threads=0;
+			pthread_exit(NULL);
+			return;
 		}
-		printf("target data block %d is not free!\n", binfo->block_i);
     	}
 	initialize_block(paper_input_databuf_p, binfo, pkt_mcnt);
 	// this non-active block is now ready to receive new data
@@ -239,11 +247,15 @@ void manage_active_blocks(paper_input_databuf_t * paper_input_databuf_p,
 		block_mgt_error_count++;
 		set_blocks_filled(paper_input_databuf_p, binfo->block_i, binfo->block_active, N_INPUT_BLOCKS);
 		// re-acquire ownership of the block and assign the packet's mcnt
-		while((rv = paper_input_databuf_wait_free(paper_input_databuf_p, binfo->block_i)) != GUPPI_OK) {
+		if((rv = paper_input_databuf_wait_free(paper_input_databuf_p, binfo->block_i)) != GUPPI_OK) {
 			if (rv==GUPPI_TIMEOUT) {
 				return;
+			} else {
+				guppi_error(__FUNCTION__, "error waiting for free databuf");
+				run_threads=0;
+				pthread_exit(NULL);
+				return;
 			}
-			printf("target data block %d is not free!\n", binfo->block_i);
     		}
 		initialize_block(paper_input_databuf_p, binfo, pkt_mcnt);
 		binfo->block_active[binfo->block_i] = 0;	// re-init packet count for this block

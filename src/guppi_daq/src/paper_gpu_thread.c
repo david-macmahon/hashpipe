@@ -126,7 +126,7 @@ static void *run(void * _args, int doCPU)
         guppi_status_unlock_safe(&st);
 
         // Wait for new input block to be filled
-        while ((rv=paper_input_databuf_wait_filled(db_in, curblock_in)) != GUPPI_OK) {
+        if ((rv=paper_input_databuf_wait_filled(db_in, curblock_in)) != GUPPI_OK) {
             if (rv==GUPPI_TIMEOUT) {
                 goto done;
             } else {
@@ -202,7 +202,7 @@ static void *run(void * _args, int doCPU)
         if(db_in->block[curblock_in].header.mcnt[0] == last_mcount || doCPU) {
           doDump = 1;
           // Wait for new output block to be free
-          while ((rv=paper_output_databuf_wait_free(db_out, curblock_out)) != GUPPI_OK) {
+          if ((rv=paper_output_databuf_wait_free(db_out, curblock_out)) != GUPPI_OK) {
               if (rv==GUPPI_TIMEOUT) {
                   goto done;
               } else {
@@ -267,7 +267,7 @@ static void *run(void * _args, int doCPU)
             guppi_status_unlock_safe(&st);
 
             // Wait for new output block to be free
-            while ((rv=paper_output_databuf_wait_free(db_out, curblock_out)) != GUPPI_OK) {
+            if ((rv=paper_output_databuf_wait_free(db_out, curblock_out)) != GUPPI_OK) {
                 if (rv==GUPPI_TIMEOUT) {
                     goto done;
                 } else {

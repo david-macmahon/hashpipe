@@ -90,8 +90,7 @@ static void *run(void * _args)
         /* Wait for new block to be free, then clear it
          * if necessary and fill its header with new values.
          */
-        while ((rv=paper_input_databuf_wait_free(db, block_idx)) 
-                != GUPPI_OK) {
+        if ((rv=paper_input_databuf_wait_free(db, block_idx)) != GUPPI_OK) {
             if (rv==GUPPI_TIMEOUT) {
                 goto done;
             } else {
