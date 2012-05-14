@@ -159,11 +159,13 @@ static void *run(void * _args, int doCPU)
               hgeti4(st.buf, "INTCOUNT", &int_count);
               guppi_status_unlock_safe(&st);
               // Compute last mcount
-              last_mcount = start_mcount + int_count - N_SUB_BLOCKS_PER_INPUT_BLOCK;
+              last_mcount = start_mcount + (int_count-1) * N_SUB_BLOCKS_PER_INPUT_BLOCK;
             // Else (missed starting mcount)
             } else {
               // Handle missed start of integration
               // TODO!
+              fprintf(stderr, "--- mcnt=%06lx > start_mcnt=%06lx ---\n",
+                  db_in->block[curblock_in].header.mcnt[0], start_mcount);
             }
         }
 
@@ -199,8 +201,10 @@ static void *run(void * _args, int doCPU)
         if(db_in->block[curblock_in].header.mcnt[0] == last_mcount || doCPU) {
           doDump = 1;
         } else if(db_in->block[curblock_in].header.mcnt[0] > last_mcount) {
-          // Handle missed end of integration
-          // TODO!
+          // Missed end of integration
+          // TODO Handle in a better way thn just logging
+          fprintf(stderr, "--- mcnt=%06lx > last_mcnt=%06lx ---\n",
+              db_in->block[curblock_in].header.mcnt[0], last_mcount);
         }
 
         xgpuCudaXengine(&context, doDump);
@@ -219,7 +223,7 @@ static void *run(void * _args, int doCPU)
             guppi_status_unlock_safe(&st);
           } else {
             // Advance last_mcount for end of next integration
-            last_mcount += int_count;
+            last_mcount += int_count * N_SUB_BLOCKS_PER_INPUT_BLOCK;
           }
 
           // Mark output block as full and advance
