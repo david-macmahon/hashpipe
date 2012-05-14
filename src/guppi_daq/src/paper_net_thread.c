@@ -53,6 +53,9 @@ typedef struct {
     int block_active[N_INPUT_BLOCKS];
 } block_info_t;
 
+static uint32_t dropped_pkt_count;
+static uint32_t block_mgt_error_count;
+
 #if defined TIMING_TEST || defined NET_TIMING_TEST
 static unsigned long fluffed_words = 0;
 #endif
@@ -145,12 +148,12 @@ void set_blocks_filled(paper_input_databuf_t *paper_input_databuf_p,
 			paper_input_databuf_p->block[i].header.good_data = 1;
 		} else { 
 			paper_input_databuf_p->block[i].header.good_data = 0;		// TODO needed?
+			dropped_pkt_count += N_PACKETS_PER_BLOCK - block_active[i];
 			printf("missing %d packets for block %d at mcnt %ld  and time %ld\n", 
 	                       N_PACKETS_PER_BLOCK - block_active[i], 
 	                       i, 
 		               paper_input_databuf_p->block[i].header.mcnt[0],
                                time(NULL));
-			//exit(0);
 		}
 		paper_input_databuf_set_filled(paper_input_databuf_p, i);
 		block_active[i] = 0;
@@ -181,6 +184,7 @@ int calc_block_indexes(uint64_t pkt_mcnt, block_info_t *binfo) {
     if(pkt_mcnt < binfo->mcnt_start && binfo->block_i == 0 && binfo->sub_block_i == 0) {
 	binfo->mcnt_start = pkt_mcnt;				// reset on block,sub 0
     }
+//print_block_info(binfo);
     return 0;
 } 
 
@@ -204,14 +208,12 @@ void manage_active_blocks(paper_input_databuf_t * paper_input_databuf_p,
     if(binfo->block_active[binfo->block_i] == 0) {    // is the block non-active?
 
 	// handle the non-active block
-	// check for the "impossible" condition that we are not indexing the first sub_block
-#if 0
+	// check for the (unusual? impossible?) condition that we are not indexing the first sub_block
 	if(binfo->sub_block_i != 0) {
+		block_mgt_error_count++;
 		printf("starting on non-active (count %d) block[%d] but with sub_block[%d] rather than sub_block[0].\n", 
 		      binfo->block_active[binfo->block_i], binfo->block_i, binfo->sub_block_i);
-		//exit(1);
 	}
-#endif
 	// init the block 
 	while((rv = paper_input_databuf_wait_free(paper_input_databuf_p, binfo->block_i)) != GUPPI_OK) {
 		if (rv==GUPPI_TIMEOUT) {
@@ -234,6 +236,7 @@ void manage_active_blocks(paper_input_databuf_t * paper_input_databuf_p,
 			(long long unsigned)paper_input_databuf_p->block[binfo->block_i].header.mcnt[binfo->sub_block_i],
 			(long long unsigned)pkt_mcnt);
 		// yes, the block is abandonded, indicating serious trouble (cable disconnect?) - go clean up the entire ring
+		block_mgt_error_count++;
 		set_blocks_filled(paper_input_databuf_p, binfo->block_i, binfo->block_active, N_INPUT_BLOCKS);
 		// re-acquire ownership of the block and assign the packet's mcnt
 		while((rv = paper_input_databuf_wait_free(paper_input_databuf_p, binfo->block_i)) != GUPPI_OK) {
@@ -455,6 +458,8 @@ static void *run(void * _args)
         if(mcnt != -1) {
             guppi_status_lock_safe(&st);
             hputu8(st.buf, "NETMCNT", mcnt);
+   	    hputu4(st.buf, "DROPKTS", dropped_pkt_count);
+   	    hputu4(st.buf, "BLKMGTE", block_mgt_error_count);
             guppi_status_unlock_safe(&st);
         }
 
