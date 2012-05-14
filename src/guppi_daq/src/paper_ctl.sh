@@ -3,11 +3,11 @@
 PATH="$(dirname $0):${PATH}"
 
 function get_sync_mcnt() {
-  echo $(( $(check_guppi_status -Q GPUMCNT 2>/dev/null) + 100 ))
+  echo $(( $(check_guppi_status -Q GPUMCNT 2>/dev/null) + 1024 ))
 }
 
 function start() {
-  count=${1-20}
+  count=${1-2048}
   sync=${2:-$(get_sync_mcnt)}
   if [ -n "${sync}" ]
   then
