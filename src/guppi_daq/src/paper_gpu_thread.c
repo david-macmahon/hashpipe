@@ -74,13 +74,15 @@ static void *run(void * _args, int doCPU)
     hputs(st.buf,  "INTSTAT", "off");
     hputi8(st.buf, "INTSYNC", 0);
     hputi4(st.buf, "INTCOUNT", N_SUB_BLOCKS_PER_INPUT_BLOCK);
+    hputi8(st.buf, "GPUDUMPS", 0);
     guppi_status_unlock_safe(&st);
 
     /* Loop */
     int rv;
     char integ_status[17];
     uint64_t start_mcount, last_mcount=0;
-    int int_count;
+    uint64_t gpu_dumps=0;
+    int int_count; // Number of blocks to integrate per dump
     int xgpu_error = 0;
     int curblock_in=0;
     int curblock_out=0;
@@ -224,6 +226,12 @@ static void *run(void * _args, int doCPU)
           paper_output_databuf_set_filled(db_out, curblock_out);
           curblock_out = (curblock_out + 1) % db_out->header.n_block;
           // TODO Need to handle or at least check for overflow!
+
+          // Update GPU dump counter
+          gpu_dumps++;
+          guppi_status_lock_safe(&st);
+          hputi8(st.buf, "GPUDUMPS", gpu_dumps);
+          guppi_status_unlock_safe(&st);
         }
 
         if(doCPU) {
