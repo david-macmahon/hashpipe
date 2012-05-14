@@ -51,6 +51,9 @@ static int init(struct guppi_thread_args *args)
     return 0;
 }
 
+#define ELAPSED_NS(start,stop) \
+  (((int64_t)stop.tv_sec-start.tv_sec)*1000*1000*1000+(stop.tv_nsec-start.tv_nsec))
+
 static void *run(void * _args, int doCPU)
 {
     // Cast _args
@@ -86,6 +89,8 @@ static void *run(void * _args, int doCPU)
     int xgpu_error = 0;
     int curblock_in=0;
     int curblock_out=0;
+
+    struct timespec start, finish;
 
     // Initialize context to point at first input and output memory blocks.
     // This seems redundant since we do this just before calling
@@ -207,7 +212,16 @@ static void *run(void * _args, int doCPU)
               db_in->block[curblock_in].header.mcnt[0], last_mcount);
         }
 
+        clock_gettime(CLOCK_MONOTONIC, &start);
+
         xgpuCudaXengine(&context, doDump);
+
+        clock_gettime(CLOCK_MONOTONIC, &finish);
+
+        // Note processing time
+        guppi_status_lock_safe(&st);
+        hputi4(st.buf, "GPU_NS", ELAPSED_NS(start,finish));
+        guppi_status_unlock_safe(&st);
 
         if(doDump) {
           xgpuClearDeviceIntegrationBuffer(&context);
