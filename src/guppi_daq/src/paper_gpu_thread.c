@@ -89,6 +89,8 @@ static void *run(void * _args, int doCPU)
     int xgpu_error = 0;
     int curblock_in=0;
     int curblock_out=0;
+    size_t input_offset;
+    size_t output_offset;
 
     struct timespec start, finish;
 
@@ -97,8 +99,10 @@ static void *run(void * _args, int doCPU)
     // xgpuCudaXengine, but we need to pass something in for array_h and
     // matrix_x to prevent xgpuInit from allocating memory.
     XGPUContext context;
-    context.array_h = (ComplexInput *)db_in->block[curblock_in].complexity;
-    context.matrix_h = (Complex *)db_out->block[curblock_out].data;
+    context.array_h = (ComplexInput *)db_in->block[0].complexity;
+    context.array_len = (db_in->header.n_block * sizeof(paper_input_block_t) - sizeof(paper_input_header_t)) / sizeof(ComplexInput);
+    context.matrix_h = (Complex *)db_out->block[0].data;
+    context.matrix_len = (db_out->header.n_block * sizeof(paper_output_block_t) - sizeof(paper_output_header_t)) / sizeof(Complex);
 
     xgpu_error = xgpuInit(&context, 0);
     if (XGPU_OK != xgpu_error) {
@@ -176,28 +180,15 @@ static void *run(void * _args, int doCPU)
 
         // Integration status is "on" or "stop"
 
-        // Wait for new output block to be free
-        while ((rv=paper_output_databuf_wait_free(db_out, curblock_out)) != GUPPI_OK) {
-            if (rv==GUPPI_TIMEOUT) {
-                goto done;
-            } else {
-                guppi_error(__FUNCTION__, "error waiting for free databuf");
-                run_threads=0;
-                pthread_exit(NULL);
-                break;
-            }
-        }
-
         // Note processing status
         guppi_status_lock_safe(&st);
         hputs(st.buf, STATUS_KEY, "processing gpu");
         guppi_status_unlock_safe(&st);
 
+
         // Setup for current chunk
-        context.array_h = (ComplexInput *)db_in->block[curblock_in].complexity;
-        context.matrix_h = (Complex *)db_out->block[curblock_out].data;
-        xgpuSetHostInputBuffer(&context);
-        xgpuSetHostOutputBuffer(&context);
+        input_offset = curblock_in * sizeof(paper_input_block_t) / sizeof(ComplexInput);
+        output_offset = curblock_out * sizeof(paper_output_block_t) / sizeof(Complex);
 
         // Call CUDA X engine function
         int doDump = 0;
@@ -205,6 +196,17 @@ static void *run(void * _args, int doCPU)
         // (GPU and CPU test mode always dumps every input block)
         if(db_in->block[curblock_in].header.mcnt[0] == last_mcount || doCPU) {
           doDump = 1;
+          // Wait for new output block to be free
+          while ((rv=paper_output_databuf_wait_free(db_out, curblock_out)) != GUPPI_OK) {
+              if (rv==GUPPI_TIMEOUT) {
+                  goto done;
+              } else {
+                  guppi_error(__FUNCTION__, "error waiting for free databuf");
+                  run_threads=0;
+                  pthread_exit(NULL);
+                  break;
+              }
+          }
         } else if(db_in->block[curblock_in].header.mcnt[0] > last_mcount) {
           // Missed end of integration
           // TODO Handle in a better way thn just logging
@@ -214,7 +216,7 @@ static void *run(void * _args, int doCPU)
 
         clock_gettime(CLOCK_MONOTONIC, &start);
 
-        xgpuCudaXengine(&context, doDump);
+        xgpuCudaXengine(&context, input_offset, output_offset, doDump);
 
         clock_gettime(CLOCK_MONOTONIC, &finish);
 
