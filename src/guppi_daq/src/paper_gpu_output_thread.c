@@ -500,7 +500,7 @@ static void *run(void * _args)
         reorder_and_convert(casper, db->block[block_idx].data);
 
         // Update header's timestamp for this dump
-        hdr.timestamp = TIMESTAMP(db->block[block_idx].header.mcnt << 11);
+        hdr.timestamp = TIMESTAMP(db->block[block_idx].header.mcnt << 6);
 
         // Send data as multiple packets
         uint64_t byte_offset = 0;
