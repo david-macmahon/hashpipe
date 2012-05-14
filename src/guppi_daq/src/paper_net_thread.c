@@ -89,7 +89,7 @@ inline int dec_block_i(block_i) {
 void get_header (struct guppi_udp_packet *p, packet_header_t * pkt_header) {
 
     uint64_t raw_header;
-    raw_header = guppi_udp_packet_mcnt(p);
+    raw_header = be64toh(*(unsigned long long *)p->data);
     pkt_header->count       = raw_header >> 16;
     pkt_header->cid         = raw_header        & 0x000000000000000F;
     pkt_header->fid         = (raw_header >> 8) & 0x00000000000000FF;
