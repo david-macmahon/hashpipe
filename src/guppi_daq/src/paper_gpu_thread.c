@@ -59,6 +59,10 @@ static void *run(void * _args, int doCPU)
     // Cast _args
     struct guppi_thread_args *args = (struct guppi_thread_args *)_args;
 
+#ifdef DEBUG_SEMS
+    fprintf(stderr, "s/tid %lu/                  GPU/\n", pthread_self());
+#endif
+
     THREAD_RUN_BEGIN(args);
 
     THREAD_RUN_SET_AFFINITY_PRIORITY(args);
@@ -162,6 +166,7 @@ static void *run(void * _args, int doCPU)
             } else if(db_in->block[curblock_in].header.mcnt[0] == start_mcount) {
               // Set integration status to "on"
               // Read integration count (INTCOUNT)
+              fprintf(stderr, "--- integration on ---\n");
               strcpy(integ_status, "on");
               guppi_status_lock_safe(&st);
               hputs(st.buf,  "INTSTAT", integ_status);

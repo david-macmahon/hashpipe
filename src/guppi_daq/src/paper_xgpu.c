@@ -117,6 +117,9 @@ int main(int argc, char *argv[])
       list_pipeline_thread_modules(stdout);
       return 1;
     } else {
+#ifdef DEBUG_SEMS
+      fprintf(stderr, "sed '\n");
+#endif
       // Start threads in reverse order
       for(i=num_threads-1; i >= 0; i--) {
 

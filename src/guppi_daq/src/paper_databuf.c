@@ -14,6 +14,14 @@
 #include <time.h>
 #include <sys/resource.h> 
 
+#ifdef DEBUG_SEMS
+#include <pthread.h>
+static struct timespec start;
+static struct timespec now;
+#define ELAPSED_NS(stop) \
+  (((int64_t)stop.tv_sec-start.tv_sec)*1000*1000*1000+(stop.tv_nsec-start.tv_nsec))
+#endif // DEBUG_SEMS
+
 #include "fitshead.h"
 #include "guppi_ipckey.h"
 #include "guppi_status.h"
@@ -77,6 +85,15 @@ struct paper_input_databuf *paper_input_databuf_create(int n_block, size_t block
 {
     int rv = 0;
     int init_buffer = 1;
+
+#ifdef DEBUG_SEMS
+    // Init clock variables
+    if(databuf_id==1) {
+        clock_gettime(CLOCK_MONOTONIC, &start);
+        now.tv_sec = start.tv_sec;
+        now.tv_nsec = start.tv_nsec;
+    }
+#endif
 
     /* Calc databuf size */
     size_t paper_input_databuf_size = sizeof(paper_input_databuf_t);
@@ -209,21 +226,37 @@ int paper_input_databuf_total_status(struct paper_input_databuf *d)
 
 int paper_input_databuf_wait_free(struct paper_input_databuf *d, int block_id)
 {
+#ifdef DEBUG_SEMS
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    fprintf(stderr, "%13ld tid %lu wait free %d\n", ELAPSED_NS(now), pthread_self(), block_id);
+#endif
     return guppi_databuf_wait_free((struct guppi_databuf *)d, block_id);
 }
 
 int paper_input_databuf_wait_filled(struct paper_input_databuf *d, int block_id)
 {
+#ifdef DEBUG_SEMS
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    fprintf(stderr, "%13ld tid %lu wait fill %d\n", ELAPSED_NS(now), pthread_self(), block_id);
+#endif
     return guppi_databuf_wait_filled((struct guppi_databuf *)d, block_id);
 }
 
 int paper_input_databuf_set_free(struct paper_input_databuf *d, int block_id)
 {
+#ifdef DEBUG_SEMS
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    fprintf(stderr, "%13ld tid %lu set  free %d\n", ELAPSED_NS(now), pthread_self(), block_id);
+#endif
     return guppi_databuf_set_free((struct guppi_databuf *)d, block_id);
 }
 
 int paper_input_databuf_set_filled(struct paper_input_databuf *d, int block_id)
 {
+#ifdef DEBUG_SEMS
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    fprintf(stderr, "%13ld tid %lu set  fill %d\n", ELAPSED_NS(now), pthread_self(), block_id);
+#endif
     return guppi_databuf_set_filled((struct guppi_databuf *)d, block_id);
 }
 

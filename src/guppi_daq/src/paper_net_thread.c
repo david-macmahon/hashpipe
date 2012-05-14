@@ -348,6 +348,10 @@ static void *run(void * _args)
     // Cast _args
     struct guppi_thread_args *args = (struct guppi_thread_args *)_args;
 
+#ifdef DEBUG_SEMS
+    fprintf(stderr, "s/tid %lu/NET/' <<.\n", pthread_self());
+#endif
+
     THREAD_RUN_BEGIN(args);
 
     THREAD_RUN_SET_AFFINITY_PRIORITY(args);
