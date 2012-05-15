@@ -1,6 +1,7 @@
 #include "guppi_thread_args.h"
 
 void guppi_thread_args_init(struct guppi_thread_args *a) {
+    a->instance_id=0;
     a->cpu_mask=0;
     a->priority=0;
     a->finished=0;

@@ -1,4 +1,4 @@
-from guppi_utils import guppi_status, guppi_databuf
+from guppi_utils import guppi_status
 import curses, curses.wrapper
 import time
 

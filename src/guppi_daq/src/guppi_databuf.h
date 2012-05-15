@@ -92,17 +92,17 @@ key_t guppi_databuf_key();
  * if other errors occured trying to allocate it).
  */
 #ifndef NEW_GBT
-struct guppi_databuf *guppi_databuf_create(int n_block, size_t block_size,
+struct guppi_databuf *guppi_databuf_create(int instance_id, int n_block, size_t block_size,
         int databuf_id);
 #else
-struct guppi_databuf *guppi_databuf_create(int n_block, size_t block_size,
+struct guppi_databuf *guppi_databuf_create(int instance_id, int n_block, size_t block_size,
         int databuf_id, int buf_type);
 #endif
 
 /* Return a pointer to a existing shmem segment with given id.
  * Returns error if segment does not exist 
  */
-struct guppi_databuf *guppi_databuf_attach(int databuf_id);
+struct guppi_databuf *guppi_databuf_attach(int instance_id, int databuf_id);
 
 /* Detach from shared mem segment */
 int guppi_databuf_detach(struct guppi_databuf *d);

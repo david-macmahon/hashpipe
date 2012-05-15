@@ -25,8 +25,8 @@ extern int run_threads;
 
 #ifndef NEW_GBT
 
-struct guppi_databuf *guppi_databuf_create(int n_block, size_t block_size,
-        int databuf_id) {
+struct guppi_databuf *guppi_databuf_create(int instance_id, int n_block, size_t block_size,
+        int databuf_id, int instance_id) {
 
     /* Calc databuf size */
     const size_t header_size = GUPPI_STATUS_SIZE;
@@ -35,7 +35,7 @@ struct guppi_databuf *guppi_databuf_create(int n_block, size_t block_size,
     size_t databuf_size = (block_size+header_size) * n_block + struct_size;
 
     /* Get shared memory block, error if it already exists */
-    key_t key = guppi_databuf_key();
+    key_t key = guppi_databuf_key(instance_id);
     if(key == GUPPI_KEY_ERROR) {
         guppi_error("guppi_databuf_create", "guppi_databuf_key error");
         return(NULL);
@@ -101,7 +101,7 @@ struct guppi_databuf *guppi_databuf_create(int n_block, size_t block_size,
 
 #else
 
-struct guppi_databuf *guppi_databuf_create(int n_block, size_t block_size,
+struct guppi_databuf *guppi_databuf_create(int instance_id, int n_block, size_t block_size,
         int databuf_id, int buf_type) {
 
     /* Calc databuf size */
@@ -112,7 +112,7 @@ struct guppi_databuf *guppi_databuf_create(int n_block, size_t block_size,
     size_t databuf_size = (block_size+header_size+index_size) * n_block + struct_size;
 
     /* Get shared memory block, error if it already exists */
-    key_t key = guppi_databuf_key();
+    key_t key = guppi_databuf_key(instance_id);
     if(key == GUPPI_KEY_ERROR) {
         guppi_error("guppi_databuf_create", "guppi_databuf_key error");
         return(NULL);
@@ -244,10 +244,10 @@ char *guppi_databuf_data(struct guppi_databuf *d, int block_id) {
 }
 #endif
 
-struct guppi_databuf *guppi_databuf_attach(int databuf_id) {
+struct guppi_databuf *guppi_databuf_attach(int instance_id, int databuf_id) {
 
     /* Get shmid */
-    key_t key = guppi_databuf_key();
+    key_t key = guppi_databuf_key(instance_id);
     if(key == GUPPI_KEY_ERROR) {
         guppi_error("guppi_databuf_attach", "guppi_databuf_key error");
         return(NULL);

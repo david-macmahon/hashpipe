@@ -337,7 +337,7 @@ static inline int32_t convert(float f)
 static int init(struct guppi_thread_args *args)
 {
     /* Attach to status shared mem area */
-    THREAD_INIT_ATTACH_STATUS(st, STATUS_KEY);
+    THREAD_INIT_ATTACH_STATUS(args->instance_id, st, STATUS_KEY);
 
     THREAD_INIT_DETACH_STATUS(st);
 
@@ -347,7 +347,7 @@ static int init(struct guppi_thread_args *args)
     packets_per_dump = bytes_per_dump / BYTES_PER_PACKET;
 
     // Create paper_ouput_databuf
-    THREAD_INIT_DATABUF(paper_output_databuf, 16,
+    THREAD_INIT_DATABUF(args->instance_id, paper_output_databuf, 16,
         xgpu_info.matLength*sizeof(Complex),
         args->input_buffer);
 
@@ -390,10 +390,11 @@ static void *run(void * _args)
 
     THREAD_RUN_SET_AFFINITY_PRIORITY(args);
 
-    THREAD_RUN_ATTACH_STATUS(st);
+    THREAD_RUN_ATTACH_STATUS(args->instance_id, st);
 
     // Attach to paper_ouput_databuf
-    THREAD_RUN_ATTACH_DATABUF(paper_output_databuf, db, args->input_buffer);
+    THREAD_RUN_ATTACH_DATABUF(args->instance_id,
+        paper_output_databuf, db, args->input_buffer);
 
     // Setup socket and message structures
     int sockfd;

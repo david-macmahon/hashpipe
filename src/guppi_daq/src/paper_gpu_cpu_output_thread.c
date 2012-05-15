@@ -25,7 +25,7 @@ static XGPUInfo xgpu_info;
 static int init(struct guppi_thread_args *args)
 {
     /* Attach to status shared mem area */
-    THREAD_INIT_ATTACH_STATUS(st, STATUS_KEY);
+    THREAD_INIT_ATTACH_STATUS(args->instance_id, st, STATUS_KEY);
 
     guppi_status_lock_safe(&st);
     hputr4(st.buf, "CGMAXERR", 0.0);
@@ -39,7 +39,7 @@ static int init(struct guppi_thread_args *args)
     xgpuInfo(&xgpu_info);
 
     // Create paper_ouput_databuf
-    THREAD_INIT_DATABUF(paper_output_databuf, 16,
+    THREAD_INIT_DATABUF(args->instance_id, paper_output_databuf, 16,
         xgpu_info.matLength*sizeof(Complex),
         args->input_buffer);
 
@@ -58,10 +58,11 @@ static void *run(void * _args)
 
     THREAD_RUN_SET_AFFINITY_PRIORITY(args);
 
-    THREAD_RUN_ATTACH_STATUS(st);
+    THREAD_RUN_ATTACH_STATUS(args->instance_id, st);
 
     // Attach to paper_ouput_databuf
-    THREAD_RUN_ATTACH_DATABUF(paper_output_databuf, db, args->input_buffer);
+    THREAD_RUN_ATTACH_DATABUF(args->instance_id,
+        paper_output_databuf, db, args->input_buffer);
 
     /* Main loop */
     int i, rv, debug=20;

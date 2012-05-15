@@ -22,7 +22,7 @@
 extern int run_threads;
 
 /* Returns the guppi status (POSIX) semaphore name. */
-const char * guppi_status_semname()
+const char * guppi_status_semname(int instance_id)
 {
     static char semid[NAME_MAX-4] = {'\0'};
     int length_remaining = NAME_MAX-4;
@@ -50,7 +50,8 @@ const char * guppi_status_semname()
             }
             length_remaining -= strlen(semid);
             if(length_remaining > 0) {
-                strncat(semid, "_guppi_status", length_remaining-1);
+                snprintf(semid+strlen(semid), length_remaining,
+                    "_guppi_status_%d", instance_id&0x3f);
             }
         }
 #ifdef GUPPI_VERBOSE
@@ -60,10 +61,11 @@ const char * guppi_status_semname()
     return semid;
 }
 
-int guppi_status_attach(struct guppi_status *s) {
+int guppi_status_attach(int instance_id, struct guppi_status *s)
+{
 
     /* Get shared mem id (creating it if necessary) */
-    key_t key = guppi_status_key();
+    key_t key = guppi_status_key(instance_id);
     if(key == GUPPI_KEY_ERROR) {
         guppi_error("guppi_status_attach", "guppi_status_key error");
         return(0);
@@ -86,7 +88,7 @@ int guppi_status_attach(struct guppi_status *s) {
      * Final arg (1) means create in unlocked state (0=locked).
      */
     mode_t old_umask = umask(0);
-    s->lock = sem_open(guppi_status_semname(), O_CREAT, 0666, 1);
+    s->lock = sem_open(guppi_status_semname(instance_id), O_CREAT, 0666, 1);
     umask(old_umask);
     if (s->lock==SEM_FAILED) {
         guppi_error("guppi_status_attach", "sem_open");

@@ -93,10 +93,10 @@ typedef struct paper_output_databuf {
  * INPUT BUFFER FUNCTIONS
  */
 
-struct paper_input_databuf *paper_input_databuf_create(int n_block, size_t block_size,
+struct paper_input_databuf *paper_input_databuf_create(int instance_id, int n_block, size_t block_size,
         int databuf_id);
 
-struct paper_input_databuf *paper_input_databuf_attach(int databuf_id);
+struct paper_input_databuf *paper_input_databuf_attach(int instance_id, int databuf_id);
 
 int paper_input_databuf_detach(struct paper_input_databuf *d);
 
@@ -118,10 +118,10 @@ int paper_input_databuf_set_filled(struct paper_input_databuf *d, int block_id);
  * OUTPUT BUFFER FUNCTIONS
  */
 
-struct paper_output_databuf *paper_output_databuf_create(int n_block, size_t block_size,
+struct paper_output_databuf *paper_output_databuf_create(int instance_id, int n_block, size_t block_size,
         int databuf_id);
 
-struct paper_output_databuf *paper_output_databuf_attach(int databuf_id);
+struct paper_output_databuf *paper_output_databuf_attach(int instance_id, int databuf_id);
 
 int paper_output_databuf_detach(struct paper_output_databuf *d);
 

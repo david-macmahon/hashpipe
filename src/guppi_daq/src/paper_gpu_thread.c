@@ -31,19 +31,19 @@
 static int init(struct guppi_thread_args *args)
 {
     /* Attach to status shared mem area */
-    THREAD_INIT_STATUS(STATUS_KEY);
+    THREAD_INIT_STATUS(args->instance_id, STATUS_KEY);
 
     // Get sizing parameters
     XGPUInfo xgpu_info;
     xgpuInfo(&xgpu_info);
 
     /* Create paper_input_databuf */
-    THREAD_INIT_DATABUF(paper_input_databuf, 4,
+    THREAD_INIT_DATABUF(args->instance_id, paper_input_databuf, 4,
         xgpu_info.vecLength*sizeof(ComplexInput),
         args->input_buffer);
 
     /* Create paper_ouput_databuf */
-    THREAD_INIT_DATABUF(paper_output_databuf, 16,
+    THREAD_INIT_DATABUF(args->instance_id, paper_output_databuf, 16,
         xgpu_info.matLength*sizeof(Complex),
         args->output_buffer);
 
@@ -68,13 +68,15 @@ static void *run(void * _args, int doCPU)
     THREAD_RUN_SET_AFFINITY_PRIORITY(args);
 
     /* Attach to status shared mem area */
-    THREAD_RUN_ATTACH_STATUS(st);
+    THREAD_RUN_ATTACH_STATUS(args->instance_id, st);
 
     /* Attach to paper_input_databuf */
-    THREAD_RUN_ATTACH_DATABUF(paper_input_databuf, db_in, args->input_buffer);
+    THREAD_RUN_ATTACH_DATABUF(args->instance_id,
+        paper_input_databuf, db_in, args->input_buffer);
 
     /* Attach to paper_ouput_databuf */
-    THREAD_RUN_ATTACH_DATABUF(paper_output_databuf, db_out, args->output_buffer);
+    THREAD_RUN_ATTACH_DATABUF(args->instance_id,
+        paper_output_databuf, db_out, args->output_buffer);
 
     // Init integration control status variables
     guppi_status_lock_safe(&st);

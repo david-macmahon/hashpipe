@@ -343,14 +343,14 @@ uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf
 static int init(struct guppi_thread_args *args)
 {
     /* Attach to status shared mem area */
-    THREAD_INIT_STATUS(STATUS_KEY);
+    THREAD_INIT_STATUS(args->instance_id, STATUS_KEY);
 
     // Get sizing parameters
     XGPUInfo xgpu_info;
     xgpuInfo(&xgpu_info);
 
     /* Create paper_input_databuf for output buffer */
-    THREAD_INIT_DATABUF(paper_input_databuf, 4,
+    THREAD_INIT_DATABUF(args->instance_id, paper_input_databuf, 4,
         xgpu_info.vecLength*sizeof(ComplexInput),
         args->output_buffer);
 
@@ -371,10 +371,10 @@ static void *run(void * _args)
 
     THREAD_RUN_SET_AFFINITY_PRIORITY(args);
 
-    THREAD_RUN_ATTACH_STATUS(st);
+    THREAD_RUN_ATTACH_STATUS(args->instance_id, st);
 
     /* Attach to paper_input_databuf */
-    THREAD_RUN_ATTACH_DATABUF(paper_input_databuf, db, args->output_buffer);
+    THREAD_RUN_ATTACH_DATABUF(args->instance_id, paper_input_databuf, db, args->output_buffer);
 
     /* Read in general parameters */
     struct guppi_params gp;

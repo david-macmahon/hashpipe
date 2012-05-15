@@ -8,6 +8,7 @@
 #include <sys/time.h>
 #include <math.h>
 struct guppi_thread_args {
+    int instance_id;
     int input_buffer;
     int output_buffer;
     unsigned int cpu_mask; // 0 means use inherited
