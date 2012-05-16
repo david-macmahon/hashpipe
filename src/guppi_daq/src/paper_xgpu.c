@@ -29,85 +29,122 @@
 
 #define MAX_THREADS (1024)
 
+void usage(const char *argv0) {
+    fprintf(stderr,
+      "Usage: %s [options]\n"
+      "\n"
+      "Options:\n"
+      "  -h,   --help          Show this message\n"
+      "  -l,   --list          List all known thread modules\n"
+      "  -I N, --instance=N    Set instance ID of this pipeline\n"
+      "  -c N, --cpu=N         Set CPU number for subsequent threads\n"
+      "  -m N, --mask=N        Set CPU mask for subsequent threads\n"
+//    "  -b N, --size=N        Jump to input buffer B, output buffer B+1\n"
+      , argv0
+    );
+}
+
 int main(int argc, char *argv[])
 {
-    int i, rv;
+    int opt, i, rv;
     int num_threads = 0;
     pthread_t threads[MAX_THREADS];
     pipeline_thread_module_t *modules[MAX_THREADS];
     struct guppi_thread_args args[MAX_THREADS];
 
-    // Handle initial -l option as request to list all known threads
-    if(argv[1] && argv[1][0] == '-' && argv[1][1] == 'l') {
-        list_pipeline_thread_modules(stdout);
-        return 0;
-    }
+    static struct option long_opts[] = {
+      {"help",     0, NULL, 'h'},
+      {"list",     0, NULL, 'l'},
+      {"instance", 1, NULL, 'I'},
+      {"cpu",      1, NULL, 'c'},
+      {"mask",     1, NULL, 'm'},
+      {"buffer",   1, NULL, 'b'},
+      {0,0,0,0}
+    };
 
-    // Catch INT and TERM signals
-    signal(SIGINT, cc);
-    signal(SIGTERM, cc);
-
+    int instance_id  = 0;
     int input_buffer  = 0;
     int output_buffer = 1;
 
     guppi_thread_args_init(&args[num_threads]);
+    args[num_threads].instance_id   = instance_id;
     args[num_threads].input_buffer  = input_buffer;
     args[num_threads].output_buffer = output_buffer;
 
-    // Walk through command line for names of threads to instantiate
-    for(i=1; i<argc; i++) {
-      // Handle options
-      if(argv[i][0] == '-') {
-        switch(argv[i][1]) {
-          case 'b':
-            // "-b B" jumps to input buffer B, output buffer B+1
-            // TODO
-            break;
-          case 'c':
-            // "-c C" sets CPU core for next thread
-            // (only single core supported)
-            if(i < argc-1) {
-              // TODO Warn on errors
-              unsigned int cpu = strtoul(argv[++i], NULL, 0);
-              args[num_threads].cpu_mask = (1<<cpu);
-            }
-            break;
-          case 'm':
-            // "-m M" sets CPU affinity mask for next thread
-            if(i < argc-1) {
-              // TODO Warn on errors
-              args[num_threads].cpu_mask = strtoul(argv[++i], NULL, 0);
-            }
-            break;
-        }
-      } else {
-        // argv[i] is name of thread to start
-        modules[num_threads] = find_pipeline_thread_module(argv[i]);
+    // Parse command line.  Leading '-' means treat non-option arguments as if
+    // it were the argument of an option with character code 1.
+    while((opt=getopt_long(argc,argv,"-hlI:m:c:b:",long_opts,NULL))!=-1) {
+      switch (opt) {
+        case 1:
+          // optarg is name of thread
+          modules[num_threads] = find_pipeline_thread_module(optarg);
 
-        if (!modules[num_threads]) { 
-            fprintf(stderr, "Error finding '%s' module.\n", argv[i]);
-            exit(1);
-        }
+          if (!modules[num_threads]) {
+              fprintf(stderr, "Error finding '%s' module.\n", optarg);
+              exit(1);
+          }
 
-        // Init thread
-        printf("initing  thread '%s' with databufs %d and %d\n",
-            modules[num_threads]->name, args[num_threads].input_buffer, args[num_threads].output_buffer);
+          // Init thread
+          printf("initing  thread '%s' with databufs %d and %d\n",
+              modules[num_threads]->name, args[num_threads].input_buffer,
+              args[num_threads].output_buffer);
 
-        rv = modules[num_threads]->init(&args[num_threads]);
+          rv = modules[num_threads]->init(&args[num_threads]);
 
-        if (rv) { 
-            fprintf(stderr, "Error initializing thread for '%s'.\n",
-                modules[num_threads]->name);
-            exit(1);
-        }
+          if (rv) {
+              fprintf(stderr, "Error initializing thread for '%s'.\n",
+                  modules[num_threads]->name);
+              exit(1);
+          }
 
-        // Setup for next thread
-        num_threads++;
-        input_buffer++;
-        output_buffer++;
-        guppi_thread_args_init(&args[num_threads]);
-        args[num_threads].input_buffer  = input_buffer;
-        args[num_threads].output_buffer = output_buffer;
+          // Setup for next thread
+          num_threads++;
+          input_buffer++;
+          output_buffer++;
+          guppi_thread_args_init(&args[num_threads]);
+          args[num_threads].instance_id   = instance_id;
+          args[num_threads].input_buffer  = input_buffer;
+          args[num_threads].output_buffer = output_buffer;
+          break;
+
+        case 'h': // Help
+          usage(argv[0]);
+          return 0;
+          break;
+
+        case 'l': // List
+          list_pipeline_thread_modules(stdout);
+          return 0;
+          break;
+
+        case 'I': // Instance id
+          instance_id = strtol(optarg, NULL, 0);
+          if(instance_id < 0 || instance_id > 63) {
+            fprintf(stderr, "warning: instance_id %d treated as %d\n",
+                instance_id, instance_id&0x3f);
+            instance_id &= 0x3f;
+          }
+          args[num_threads].instance_id = instance_id;
+          break;
+
+        case 'm': // CPU mask
+          args[num_threads].cpu_mask = strtoul(optarg, NULL, 0);
+          break;
+
+        case 'c': // CPU number
+          i = strtol(optarg, NULL, 0);
+          args[num_threads].cpu_mask = (1<<i);
+          break;
+
+        case 'b': // Set buffer
+          // "-b B" jumps to input buffer B, output buffer B+1
+          // TODO
+          break;
+
+        case '?': // Command line parsing error
+        default:
+          return 1;
+          break;
       }
     }
 
@@ -116,33 +153,38 @@ int main(int argc, char *argv[])
       printf("No threads specified!\n");
       list_pipeline_thread_modules(stdout);
       return 1;
-    } else {
+    }
+
 #ifdef DEBUG_SEMS
-      fprintf(stderr, "sed '\n");
+    fprintf(stderr, "sed '\n");
 #endif
-      // Start threads in reverse order
-      for(i=num_threads-1; i >= 0; i--) {
 
-        // Launch thread
-        printf("starting thread '%s' with databufs %d and %d\n",
-            modules[i]->name, args[i].input_buffer, args[i].output_buffer);
-        rv = pthread_create(&threads[i], NULL,
-            modules[i]->run, (void *)&args[i]);
+    // Catch INT and TERM signals
+    signal(SIGINT, cc);
+    signal(SIGTERM, cc);
 
-        if (rv) {
-            fprintf(stderr, "Error creating thread for '%s'.\n",
-                modules[i]->name);
-            exit(1);
-        }
+    // Start threads in reverse order
+    for(i=num_threads-1; i >= 0; i--) {
+
+      // Launch thread
+      printf("starting thread '%s' with databufs %d and %d\n",
+          modules[i]->name, args[i].input_buffer, args[i].output_buffer);
+      rv = pthread_create(&threads[i], NULL,
+          modules[i]->run, (void *)&args[i]);
+
+      if (rv) {
+          fprintf(stderr, "Error creating thread for '%s'.\n",
+              modules[i]->name);
+          exit(1);
       }
     }
 
     /* Wait for SIGINT (i.e. control-c) or SIGTERM (aka "kill <pid>") */
     run_threads=1;
-    while (run_threads) { 
-        sleep(1); 
+    while (run_threads) {
+        sleep(1);
     }
- 
+
     for(i=num_threads-1; i>=0; i--) {
       pthread_cancel(threads[i]);
     }
