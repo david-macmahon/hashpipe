@@ -79,11 +79,14 @@ static void *run(void * _args, int doCPU)
         paper_output_databuf, db_out, args->output_buffer);
 
     // Init integration control status variables
+    int gpu_dev = 0;
     guppi_status_lock_safe(&st);
     hputs(st.buf,  "INTSTAT", "off");
     hputi8(st.buf, "INTSYNC", 0);
     hputi4(st.buf, "INTCOUNT", N_SUB_BLOCKS_PER_INPUT_BLOCK);
     hputi8(st.buf, "GPUDUMPS", 0);
+    hgeti4(st.buf, "GPUDEV", &gpu_dev); // No change if not found
+    hputi4(st.buf, "GPUDEV", gpu_dev);
     guppi_status_unlock_safe(&st);
 
     /* Loop */
@@ -110,7 +113,7 @@ static void *run(void * _args, int doCPU)
     context.matrix_h = (Complex *)db_out->block[0].data;
     context.matrix_len = (db_out->header.n_block * sizeof(paper_output_block_t) - sizeof(paper_output_header_t)) / sizeof(Complex);
 
-    xgpu_error = xgpuInit(&context, 0);
+    xgpu_error = xgpuInit(&context, gpu_dev);
     if (XGPU_OK != xgpu_error) {
         fprintf(stderr, "ERROR: xGPU initialization failed (error code %d)\n", xgpu_error);
         return THREAD_ERROR;
