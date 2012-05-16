@@ -39,6 +39,7 @@ void usage(const char *argv0) {
       "  -I N, --instance=N    Set instance ID of this pipeline\n"
       "  -c N, --cpu=N         Set CPU number for subsequent threads\n"
       "  -m N, --mask=N        Set CPU mask for subsequent threads\n"
+      "  -o K=V, --option=K=V  Store K=V in status buffer\n"
 //    "  -b N, --size=N        Jump to input buffer B, output buffer B+1\n"
       , argv0
     );
@@ -47,6 +48,8 @@ void usage(const char *argv0) {
 int main(int argc, char *argv[])
 {
     int opt, i, rv;
+    char * cp;
+    struct guppi_status st;
     int num_threads = 0;
     pthread_t threads[MAX_THREADS];
     pipeline_thread_module_t *modules[MAX_THREADS];
@@ -58,6 +61,7 @@ int main(int argc, char *argv[])
       {"instance", 1, NULL, 'I'},
       {"cpu",      1, NULL, 'c'},
       {"mask",     1, NULL, 'm'},
+      {"option",   1, NULL, 'o'},
       {"buffer",   1, NULL, 'b'},
       {0,0,0,0}
     };
@@ -73,7 +77,7 @@ int main(int argc, char *argv[])
 
     // Parse command line.  Leading '-' means treat non-option arguments as if
     // it were the argument of an option with character code 1.
-    while((opt=getopt_long(argc,argv,"-hlI:m:c:b:",long_opts,NULL))!=-1) {
+    while((opt=getopt_long(argc,argv,"-hlI:m:c:b:o:",long_opts,NULL))!=-1) {
       switch (opt) {
         case 1:
           // optarg is name of thread
@@ -125,6 +129,37 @@ int main(int argc, char *argv[])
             instance_id &= 0x3f;
           }
           args[num_threads].instance_id = instance_id;
+          break;
+
+        case 'o': // K=V option to store in status memory
+          // Attach to status memory for current instance_id value
+          if (guppi_status_attach(instance_id, &st) !=GUPPI_OK) {
+            // Should "never" happen
+            fprintf(stderr,
+                "Error connecting to status buffer instance %d.\n",
+                instance_id);
+            perror("guppi_status_attach");                           \
+            exit(1);
+          }
+          // Look for equal sign
+          cp = strchr(optarg, '=');
+          // If found
+          if(cp) {
+            // Nul-terminate key
+            *cp = '\0';
+            // Store key and value (value starts right after '=')
+            guppi_status_lock(&st);
+            hputs(st.buf, optarg, cp+1);
+            guppi_status_unlock(&st);
+            // Restore '=' character
+            *cp = '=';
+          } else {
+            // Valueless key, just store empty string
+            guppi_status_lock(&st);
+            hputs(st.buf, optarg, "");
+            guppi_status_unlock(&st);
+          }
+          guppi_status_detach(&st);
           break;
 
         case 'm': // CPU mask
