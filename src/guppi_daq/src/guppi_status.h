@@ -19,6 +19,7 @@
 
 /* Structure describes status memory area */
 struct guppi_status {
+    int instance_id; /* Instance ID of this status buffer (DO NOT SET/CHANGE!) */
     int shmid;   /* Shared memory segment id */
     sem_t *lock; /* POSIX semaphore descriptor for locking */
     char *buf;   /* Pointer to data area */

@@ -17,6 +17,7 @@
 #include "guppi_ipckey.h"
 #include "guppi_status.h"
 #include "guppi_error.h"
+#include "fitshead.h"
 
 // TODO Do '#include "guppi_threads.h"' instead?
 extern int run_threads;
@@ -63,6 +64,8 @@ const char * guppi_status_semname(int instance_id)
 
 int guppi_status_attach(int instance_id, struct guppi_status *s)
 {
+    instance_id &= 0x3f;
+    s->instance_id = instance_id;
 
     /* Get shared mem id (creating it if necessary) */
     key_t key = guppi_status_key(instance_id);
@@ -136,7 +139,9 @@ char *guppi_find_end(char *buf) {
 }
 
 /* So far, just checks for existence of "END" in the proper spot */
-void guppi_status_chkinit(struct guppi_status *s) {
+void guppi_status_chkinit(struct guppi_status *s)
+{
+    int instance_id = -1;
 
     /* Lock */
     guppi_status_lock(s);
@@ -149,6 +154,21 @@ void guppi_status_chkinit(struct guppi_status *s) {
         memset(s->buf, ' ', GUPPI_STATUS_CARD);
         /* add END */
         strncpy(s->buf, "END", 3);
+        // Add INSTANCE record
+        hputi4(s->buf, "INSTANCE", s->instance_id);
+    } else {
+        // Check INSTANCE record
+        if(!hgeti4(s->buf, "INSTANCE", &instance_id)) {
+            // No INSTANCE record, so add one
+            hputi4(s->buf, "INSTANCE", s->instance_id);
+        } else if(instance_id != s->instance_id) {
+            // Print warning message
+            fprintf(stderr,
+                "Existing INSTANCE value %d != desired value %d\n",
+                instance_id, s->instance_id);
+            // Fix it (Really?  Why did this condition exist anyway?)
+            hputi4(s->buf, "INSTANCE", s->instance_id);
+        }
     }
 
     /* Unlock */
@@ -167,6 +187,8 @@ void guppi_status_clear(struct guppi_status *s) {
     memset(s->buf, ' ', GUPPI_STATUS_CARD);
     /* add END */
     strncpy(s->buf, "END", 3);
+
+    hputi4(s->buf, "INSTANCE", s->instance_id);
 
     /* Unlock */
     guppi_status_unlock(s);
