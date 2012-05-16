@@ -390,6 +390,11 @@ static void *run(void * _args)
     struct guppi_udp_params up;
     //guppi_read_net_params(status_buf, &up);
     paper_read_net_params(status_buf, &up);
+    // Store bind host/port info in statsu buffer
+    guppi_status_lock_safe(&st);
+    hputs(st.buf, "BINDHOST", up.bindhost);
+    hputi4(st.buf, "BINDPORT", up.bindport);
+    guppi_status_unlock_safe(&st);
 
     struct guppi_udp_packet p;
 
