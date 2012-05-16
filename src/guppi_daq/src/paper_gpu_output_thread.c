@@ -400,7 +400,12 @@ static void *run(void * _args)
     int sockfd;
     struct iovec msg_iov[2];
     struct msghdr msg;
-    unsigned int xengine_id = 8; // TODO Get X engine ID from somewhere
+    unsigned int xengine_id = 0;
+
+    guppi_status_lock_safe(&st);
+    hgetu4(st.buf, "XID", &xengine_id); // No change if not found
+    hputu4(st.buf, "XID", xengine_id);
+    guppi_status_unlock_safe(&st);
 
     pkthdr_t hdr;
     hdr.header = HEADER;
