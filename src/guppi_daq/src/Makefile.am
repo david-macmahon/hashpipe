@@ -14,6 +14,9 @@ guppi_base = guppi_databuf.c \
 	     guppi_params.h  \
 	     guppi_udp.h     \
 	     guppi_defines.h \
+	     guppi_threads.h     \
+	     guppi_thread_args.h \
+	     guppi_thread_main.h \
 	     sdfits.h        \
 	     guppi_databuf.h \
 	     guppi_error.h
@@ -27,9 +30,6 @@ guppi_threads = $(guppi_net)            \
 		guppi_null_thread.c     \
 		guppi_sdfits_thread.c   \
 		spead_heap.h            \
-		guppi_threads.h         \
-		guppi_thread_args.h     \
-		guppi_thread_main.h     \
 		guppi_time.h
 
 guppi_utils = guppi_params.c      \
