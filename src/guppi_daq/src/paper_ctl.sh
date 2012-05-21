@@ -2,36 +2,58 @@
 
 PATH="$(dirname $0):${PATH}"
 
+# Set default instance id
+instance_id=0
+
+# Set default intcount
+intcount=2048
+
+# Set intsync to empty value
+intsync=
+
 function get_sync_mcnt() {
-  echo $(( $(check_guppi_status -Q GPUMCNT 2>/dev/null) + 1024 ))
+  echo $(( $(check_guppi_status -I $instance_id -Q GPUMCNT 2>/dev/null) + 2048 ))
 }
 
 function start() {
-  count=${1-2048}
-  sync=${2:-$(get_sync_mcnt)}
-  if [ -n "${sync}" ]
+  if [ -z "${intsync}" ]
   then
-    check_guppi_status -k INTSYNC  -s $sync
-    check_guppi_status -k INTCOUNT -s $count
-    check_guppi_status -k INTSTAT  -s start
-  else
-    help
-    exit 1
+    intsync=$(get_sync_mcnt)
+    if [ -z "${intsync}" ]
+    then
+      echo "Unable to get GPUMCNT from instance ${instance_id}"
+      exit 1
+    fi
   fi
+
+  check_guppi_status -I $instance_id -k INTSYNC  -s $intsync
+  check_guppi_status -I $instance_id -k INTCOUNT -s $intcount
+  check_guppi_status -I $instance_id -k INTSTAT  -s start
 }
 
 function stop() {
-  check_guppi_status -k INTSTAT  -s stop
+  check_guppi_status -I $instance_id -k INTSTAT  -s stop
 }
 
 function help() {
-  echo "$(basename $0) start [count [start_mcnt]]"
-  echo "$(basename $0) stop"
+  echo "$(basename $0) [-n INTCOUNT] [INSTANCE_ID] CMD [[INSTANCE_ID] CMD ...]"
+  echo 'CMD can be "start" or "stop"'
 }
 
-case $1 in
-  start) shift; start "$@";;
-  stop) shift; stop "$@";;
-  test) shift; get_sync_mcnt;;
-  *) help; exit 1;;
-esac
+if [ "${1}" == "-n" ]
+then
+  shift
+  intcount=$(($1))
+  shift
+fi
+
+for arg in "${@}"
+do
+  case $arg in
+    [0-9]*) instance_id=$arg;;
+    start) start;;
+    stop) stop;;
+    test) get_sync_mcnt;;
+    *) help; exit 1;;
+  esac
+done
