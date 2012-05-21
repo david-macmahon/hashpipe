@@ -106,7 +106,11 @@ int paper_input_databuf_block_status(struct paper_input_databuf *d, int block_id
 
 int paper_input_databuf_total_status(struct paper_input_databuf *d);
 
+int paper_input_databuf_wait_free(struct paper_input_databuf *d, int block_id);
+
 int paper_input_databuf_busywait_free(struct paper_input_databuf *d, int block_id);
+
+int paper_input_databuf_wait_filled(struct paper_input_databuf *d, int block_id);
 
 int paper_input_databuf_busywait_filled(struct paper_input_databuf *d, int block_id);
 
@@ -131,7 +135,11 @@ int paper_output_databuf_block_status(struct paper_output_databuf *d, int block_
 
 int paper_output_databuf_total_status(struct paper_output_databuf *d);
 
+int paper_output_databuf_wait_free(struct paper_output_databuf *d, int block_id);
+
 int paper_output_databuf_busywait_free(struct paper_output_databuf *d, int block_id);
+
+int paper_output_databuf_wait_filled(struct paper_output_databuf *d, int block_id);
 
 int paper_output_databuf_busywait_filled(struct paper_output_databuf *d, int block_id);
 

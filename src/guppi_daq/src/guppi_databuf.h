@@ -131,12 +131,16 @@ int guppi_databuf_total_status(struct guppi_databuf *d);
 
 /* Databuf locking functions.  Each block in the buffer
  * can be marked as free or filled.  The "wait" functions
- * block until the specified state happens.  The "set" functions
+ * block (i.e. sleep) until the specified state happens.
+ * The "busywait" functions busy-wait (i.e. do NOT sleep)
+ * until the specified state happens.  The "set" functions
  * put the buffer in the specified state, returning error if
  * it is already in that state.
  */
+int guppi_databuf_wait_filled(struct guppi_databuf *d, int block_id);
 int guppi_databuf_busywait_filled(struct guppi_databuf *d, int block_id);
 int guppi_databuf_set_filled(struct guppi_databuf *d, int block_id);
+int guppi_databuf_wait_free(struct guppi_databuf *d, int block_id);
 int guppi_databuf_busywait_free(struct guppi_databuf *d, int block_id);
 int guppi_databuf_set_free(struct guppi_databuf *d, int block_id);
 

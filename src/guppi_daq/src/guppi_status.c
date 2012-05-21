@@ -115,6 +115,11 @@ int guppi_status_detach(struct guppi_status *s) {
 }
 
 /* TODO: put in some (long, ~few sec) timeout */
+int guppi_status_lock(struct guppi_status *s) {
+    return(sem_wait(s->lock));
+}
+
+/* TODO: put in some (long, ~few sec) timeout */
 int guppi_status_lock_busywait(struct guppi_status *s) {
     int rv;
     do {

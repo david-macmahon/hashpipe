@@ -224,6 +224,15 @@ int paper_input_databuf_total_status(struct paper_input_databuf *d)
     return guppi_databuf_total_status((struct guppi_databuf *)d);
 }
 
+int paper_input_databuf_wait_free(struct paper_input_databuf *d, int block_id)
+{
+#ifdef DEBUG_SEMS
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    fprintf(stderr, "%13ld tid %lu wait free %d\n", ELAPSED_NS(now), pthread_self(), block_id);
+#endif
+    return guppi_databuf_wait_free((struct guppi_databuf *)d, block_id);
+}
+
 int paper_input_databuf_busywait_free(struct paper_input_databuf *d, int block_id)
 {
 #ifdef DEBUG_SEMS
@@ -231,6 +240,15 @@ int paper_input_databuf_busywait_free(struct paper_input_databuf *d, int block_i
     fprintf(stderr, "%13ld tid %lu busy-wait free %d\n", ELAPSED_NS(now), pthread_self(), block_id);
 #endif
     return guppi_databuf_busywait_free((struct guppi_databuf *)d, block_id);
+}
+
+int paper_input_databuf_wait_filled(struct paper_input_databuf *d, int block_id)
+{
+#ifdef DEBUG_SEMS
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    fprintf(stderr, "%13ld tid %lu -wait fill %d\n", ELAPSED_NS(now), pthread_self(), block_id);
+#endif
+    return guppi_databuf_wait_filled((struct guppi_databuf *)d, block_id);
 }
 
 int paper_input_databuf_busywait_filled(struct paper_input_databuf *d, int block_id)
@@ -406,9 +424,19 @@ int paper_output_databuf_total_status(struct paper_output_databuf *d)
     return guppi_databuf_total_status((struct guppi_databuf *)d);
 }
 
+int paper_output_databuf_wait_free(struct paper_output_databuf *d, int block_id)
+{
+    return guppi_databuf_wait_free((struct guppi_databuf *)d, block_id);
+}
+
 int paper_output_databuf_busywait_free(struct paper_output_databuf *d, int block_id)
 {
     return guppi_databuf_busywait_free((struct guppi_databuf *)d, block_id);
+}
+
+int paper_output_databuf_wait_filled(struct paper_output_databuf *d, int block_id)
+{
+    return guppi_databuf_wait_filled((struct guppi_databuf *)d, block_id);
 }
 
 int paper_output_databuf_busywait_filled(struct paper_output_databuf *d, int block_id)

@@ -311,6 +311,32 @@ uint64_t guppi_databuf_total_mask(struct guppi_databuf *d) {
     return(tot);
 }
 
+int guppi_databuf_wait_free(struct guppi_databuf *d, int block_id) {
+    int rv;
+    struct sembuf op;
+    op.sem_num = block_id;
+    op.sem_op = 0;
+    op.sem_flg = 0;
+    struct timespec timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_nsec = 250000000;
+    rv = semtimedop(d->semid, &op, 1, &timeout);
+    if (rv==-1) {
+        if (errno==EAGAIN) {
+#ifdef GUPPI_TRACE
+            printf("%s(%p, %d) timeout (%016lx)\n",
+                __FUNCTION__, d, block_id, guppi_databuf_total_mask(d));
+#endif
+            return(GUPPI_TIMEOUT);
+        }
+        if (errno==EINTR) return(GUPPI_ERR_SYS);
+        guppi_error("guppi_databuf_wait_free", "semop error");
+        perror("semop");
+        return(GUPPI_ERR_SYS);
+    }
+    return(0);
+}
+
 int guppi_databuf_busywait_free(struct guppi_databuf *d, int block_id) {
     int rv;
     struct sembuf op;
@@ -333,6 +359,35 @@ int guppi_databuf_busywait_free(struct guppi_databuf *d, int block_id) {
         }
         if (errno==EINTR) return(GUPPI_ERR_SYS);
         guppi_error("guppi_databuf_busywait_free", "semop error");
+        perror("semop");
+        return(GUPPI_ERR_SYS);
+    }
+    return(0);
+}
+
+int guppi_databuf_wait_filled(struct guppi_databuf *d, int block_id) {
+    /* This needs to wait for the semval of the given block
+     * to become > 0, but NOT immediately decrement it to 0.
+     * Probably do this by giving an array of semops, since
+     * (afaik) the whole array happens atomically:
+     * step 1: wait for val=1 then decrement (semop=-1)
+     * step 2: increment by 1 (semop=1)
+     */
+    int rv;
+    struct sembuf op[2];
+    op[0].sem_num = op[1].sem_num = block_id;
+    op[0].sem_flg = op[1].sem_flg = 0;
+    op[0].sem_op = -1;
+    op[1].sem_op = 1;
+    struct timespec timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_nsec = 250000000;
+    rv = semtimedop(d->semid, op, 2, &timeout);
+    if (rv==-1) {
+        if (errno==EAGAIN) return(GUPPI_TIMEOUT);
+        // Don't complain on a signal interruption
+        if (errno==EINTR) return(GUPPI_ERR_SYS);
+        guppi_error("guppi_databuf_wait_filled", "semop error");
         perror("semop");
         return(GUPPI_ERR_SYS);
     }
