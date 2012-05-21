@@ -12,13 +12,18 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <semaphore.h>
+#include <errno.h>
 
 #include "guppi_ipckey.h"
 #include "guppi_status.h"
 #include "guppi_error.h"
+#include "fitshead.h"
+
+// TODO Do '#include "guppi_threads.h"' instead?
+extern int run_threads;
 
 /* Returns the guppi status (POSIX) semaphore name. */
-const char * guppi_status_semname()
+const char * guppi_status_semname(int instance_id)
 {
     static char semid[NAME_MAX-4] = {'\0'};
     int length_remaining = NAME_MAX-4;
@@ -46,7 +51,8 @@ const char * guppi_status_semname()
             }
             length_remaining -= strlen(semid);
             if(length_remaining > 0) {
-                strncat(semid, "_guppi_status", length_remaining-1);
+                snprintf(semid+strlen(semid), length_remaining,
+                    "_guppi_status_%d", instance_id&0x3f);
             }
         }
 #ifdef GUPPI_VERBOSE
@@ -56,10 +62,13 @@ const char * guppi_status_semname()
     return semid;
 }
 
-int guppi_status_attach(struct guppi_status *s) {
+int guppi_status_attach(int instance_id, struct guppi_status *s)
+{
+    instance_id &= 0x3f;
+    s->instance_id = instance_id;
 
     /* Get shared mem id (creating it if necessary) */
-    key_t key = guppi_status_key();
+    key_t key = guppi_status_key(instance_id);
     if(key == GUPPI_KEY_ERROR) {
         guppi_error("guppi_status_attach", "guppi_status_key error");
         return(0);
@@ -82,7 +91,7 @@ int guppi_status_attach(struct guppi_status *s) {
      * Final arg (1) means create in unlocked state (0=locked).
      */
     mode_t old_umask = umask(0);
-    s->lock = sem_open(guppi_status_semname(), O_CREAT, 0666, 1);
+    s->lock = sem_open(guppi_status_semname(instance_id), O_CREAT, 0666, 1);
     umask(old_umask);
     if (s->lock==SEM_FAILED) {
         guppi_error("guppi_status_attach", "sem_open");
@@ -107,7 +116,11 @@ int guppi_status_detach(struct guppi_status *s) {
 
 /* TODO: put in some (long, ~few sec) timeout */
 int guppi_status_lock(struct guppi_status *s) {
-    return(sem_wait(s->lock));
+    int rv;
+    do {
+      rv = sem_trywait(s->lock);
+    } while (rv == -1 && errno == EAGAIN && run_threads);
+    return rv;
 }
 
 int guppi_status_unlock(struct guppi_status *s) {
@@ -126,7 +139,9 @@ char *guppi_find_end(char *buf) {
 }
 
 /* So far, just checks for existence of "END" in the proper spot */
-void guppi_status_chkinit(struct guppi_status *s) {
+void guppi_status_chkinit(struct guppi_status *s)
+{
+    int instance_id = -1;
 
     /* Lock */
     guppi_status_lock(s);
@@ -139,6 +154,21 @@ void guppi_status_chkinit(struct guppi_status *s) {
         memset(s->buf, ' ', GUPPI_STATUS_CARD);
         /* add END */
         strncpy(s->buf, "END", 3);
+        // Add INSTANCE record
+        hputi4(s->buf, "INSTANCE", s->instance_id);
+    } else {
+        // Check INSTANCE record
+        if(!hgeti4(s->buf, "INSTANCE", &instance_id)) {
+            // No INSTANCE record, so add one
+            hputi4(s->buf, "INSTANCE", s->instance_id);
+        } else if(instance_id != s->instance_id) {
+            // Print warning message
+            fprintf(stderr,
+                "Existing INSTANCE value %d != desired value %d\n",
+                instance_id, s->instance_id);
+            // Fix it (Really?  Why did this condition exist anyway?)
+            hputi4(s->buf, "INSTANCE", s->instance_id);
+        }
     }
 
     /* Unlock */
@@ -157,6 +187,8 @@ void guppi_status_clear(struct guppi_status *s) {
     memset(s->buf, ' ', GUPPI_STATUS_CARD);
     /* add END */
     strncpy(s->buf, "END", 3);
+
+    hputi4(s->buf, "INSTANCE", s->instance_id);
 
     /* Unlock */
     guppi_status_unlock(s);

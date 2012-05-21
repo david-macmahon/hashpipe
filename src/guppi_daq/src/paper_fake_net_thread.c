@@ -37,14 +37,14 @@
 static int init(struct guppi_thread_args *args)
 {
     /* Attach to status shared mem area */
-    THREAD_INIT_STATUS(STATUS_KEY);
+    THREAD_INIT_STATUS(args->instance_id, STATUS_KEY);
 
     // Get sizing parameters
     XGPUInfo xgpu_info;
     xgpuInfo(&xgpu_info);
 
     /* Create paper_input_databuf for output buffer */
-    THREAD_INIT_DATABUF(paper_input_databuf, 4,
+    THREAD_INIT_DATABUF(args->instance_id, paper_input_databuf, 4,
         xgpu_info.vecLength*sizeof(ComplexInput),
         args->output_buffer);
 
@@ -61,10 +61,11 @@ static void *run(void * _args)
 
     THREAD_RUN_SET_AFFINITY_PRIORITY(args);
 
-    THREAD_RUN_ATTACH_STATUS(st);
+    THREAD_RUN_ATTACH_STATUS(args->instance_id, st);
 
     /* Attach to paper_input_databuf */
-    THREAD_RUN_ATTACH_DATABUF(paper_input_databuf, db, args->output_buffer);
+    THREAD_RUN_ATTACH_DATABUF(args->instance_id,
+        paper_input_databuf, db, args->output_buffer);
 
     /* Main loop */
     int i, rv;
@@ -90,13 +91,9 @@ static void *run(void * _args)
         /* Wait for new block to be free, then clear it
          * if necessary and fill its header with new values.
          */
-        while ((rv=paper_input_databuf_wait_free(db, block_idx)) 
-                != GUPPI_OK) {
+        if ((rv=paper_input_databuf_wait_free(db, block_idx)) != GUPPI_OK) {
             if (rv==GUPPI_TIMEOUT) {
-                guppi_status_lock_safe(&st);
-                hputs(st.buf, STATUS_KEY, "blocked");
-                guppi_status_unlock_safe(&st);
-                continue;
+                goto done;
             } else {
                 guppi_error(__FUNCTION__, "error waiting for free databuf");
                 run_threads=0;
@@ -167,6 +164,7 @@ static void *run(void * _args)
         pthread_testcancel();
     }
 
+done:
     // Have to close all pushes
     THREAD_RUN_DETACH_DATAUF;
     THREAD_RUN_DETACH_STATUS;

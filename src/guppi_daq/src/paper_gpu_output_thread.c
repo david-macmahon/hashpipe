@@ -337,7 +337,7 @@ static inline int32_t convert(float f)
 static int init(struct guppi_thread_args *args)
 {
     /* Attach to status shared mem area */
-    THREAD_INIT_ATTACH_STATUS(st, STATUS_KEY);
+    THREAD_INIT_ATTACH_STATUS(args->instance_id, st, STATUS_KEY);
 
     THREAD_INIT_DETACH_STATUS(st);
 
@@ -347,7 +347,7 @@ static int init(struct guppi_thread_args *args)
     packets_per_dump = bytes_per_dump / BYTES_PER_PACKET;
 
     // Create paper_ouput_databuf
-    THREAD_INIT_DATABUF(paper_output_databuf, 16,
+    THREAD_INIT_DATABUF(args->instance_id, paper_output_databuf, 16,
         xgpu_info.matLength*sizeof(Complex),
         args->input_buffer);
 
@@ -390,16 +390,22 @@ static void *run(void * _args)
 
     THREAD_RUN_SET_AFFINITY_PRIORITY(args);
 
-    THREAD_RUN_ATTACH_STATUS(st);
+    THREAD_RUN_ATTACH_STATUS(args->instance_id, st);
 
     // Attach to paper_ouput_databuf
-    THREAD_RUN_ATTACH_DATABUF(paper_output_databuf, db, args->input_buffer);
+    THREAD_RUN_ATTACH_DATABUF(args->instance_id,
+        paper_output_databuf, db, args->input_buffer);
 
     // Setup socket and message structures
     int sockfd;
     struct iovec msg_iov[2];
     struct msghdr msg;
-    unsigned int xengine_id = 8; // TODO Get X engine ID from somewhere
+    unsigned int xengine_id = 0;
+
+    guppi_status_lock_safe(&st);
+    hgetu4(st.buf, "XID", &xengine_id); // No change if not found
+    hputu4(st.buf, "XID", xengine_id);
+    guppi_status_unlock_safe(&st);
 
     pkthdr_t hdr;
     hdr.header = HEADER;
@@ -477,13 +483,9 @@ static void *run(void * _args)
         guppi_status_unlock_safe(&st);
 
         // Wait for new block to be filled
-        while ((rv=paper_output_databuf_wait_filled(db, block_idx))
-                != GUPPI_OK) {
+        if ((rv=paper_output_databuf_wait_filled(db, block_idx)) != GUPPI_OK) {
             if (rv==GUPPI_TIMEOUT) {
-                guppi_status_lock_safe(&st);
-                hputs(st.buf, STATUS_KEY, "blocked");
-                guppi_status_unlock_safe(&st);
-                continue;
+                goto done;
             } else {
                 guppi_error(__FUNCTION__, "error waiting for filled databuf");
                 run_threads=0;
@@ -503,7 +505,7 @@ static void *run(void * _args)
         reorder_and_convert(casper, db->block[block_idx].data);
 
         // Update header's timestamp for this dump
-        hdr.timestamp = TIMESTAMP(db->block[block_idx].header.mcnt << 11);
+        hdr.timestamp = TIMESTAMP(db->block[block_idx].header.mcnt << 6);
 
         // Send data as multiple packets
         uint64_t byte_offset = 0;
@@ -559,6 +561,7 @@ static void *run(void * _args)
         pthread_testcancel();
     }
 
+done:
     // Have to close all pushes
     THREAD_RUN_DETACH_DATAUF;
     THREAD_RUN_DETACH_STATUS;

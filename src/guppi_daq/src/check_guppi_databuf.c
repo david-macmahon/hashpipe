@@ -12,6 +12,7 @@
 #include "guppi_status.h"
 #include "guppi_databuf.h"
 #include "guppi_defines.h"
+#include "guppi_thread_main.h"
 
 void usage() { 
     fprintf(stderr, 
@@ -19,6 +20,7 @@ void usage() {
             "Options:\n"
             "  -h, --help\n"
             "  -q, --quiet\n"
+            "  -I n, --instance=n (0)\n"
             "  -c, --create\n"
             "  -i n, --id=n  (1)\n"
             "  -s n, --size=n (32M)\n"
@@ -32,6 +34,7 @@ int main(int argc, char *argv[]) {
     static struct option long_opts[] = {
         {"help",   0, NULL, 'h'},
         {"quiet",  0, NULL, 'q'},
+        {"instance", 1, NULL, 'I'},
         {"create", 0, NULL, 'c'},
         {"id",     1, NULL, 'i'},
         {"size",   1, NULL, 's'},
@@ -43,13 +46,17 @@ int main(int argc, char *argv[]) {
     };
     int opt,opti;
     int quiet=0;
+    int instance_id=0;
     int create=0;
     int db_id=1;
     int blocksize = 32;
     int nblock = 24;
     int type = 1;
-    while ((opt=getopt_long(argc,argv,"hqci:s:n:t:",long_opts,&opti))!=-1) {
+    while ((opt=getopt_long(argc,argv,"hqI:ci:s:n:t:",long_opts,&opti))!=-1) {
         switch (opt) {
+            case 'I':
+                instance_id=atoi(optarg);
+                break;
             case 'c':
                 create=1;
                 break;
@@ -82,9 +89,9 @@ int main(int argc, char *argv[]) {
     struct guppi_databuf *db=NULL;
     if (create) { 
 #ifndef NEW_GBT
-        db = guppi_databuf_create(nblock, blocksize*1024*1024, db_id);
+        db = guppi_databuf_create(instance_id, nblock, blocksize*1024*1024, db_id);
 #else
-        db = guppi_databuf_create(nblock, blocksize*1024*1024, db_id, type);
+        db = guppi_databuf_create(instance_id, nblock, blocksize*1024*1024, db_id, type);
 #endif
         if (db==NULL) {
             fprintf(stderr, "Error creating databuf %d (may already exist).\n",
@@ -92,7 +99,7 @@ int main(int argc, char *argv[]) {
             exit(1);
         }
     } else {
-        db = guppi_databuf_attach(db_id);
+        db = guppi_databuf_attach(instance_id, db_id);
         if (db==NULL) { 
             fprintf(stderr, 
                     "Error attaching to databuf %d (may not exist).\n",

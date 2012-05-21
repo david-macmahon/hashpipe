@@ -141,6 +141,8 @@ void set_obs_params_gb(char *buf,
 void paper_read_net_params(char *buf, struct guppi_udp_params *u) {
     get_str("DATAHOST", u->sender, 80, "192.168.2.128");
     get_int("DATAPORT", u->port, 8511);
+    get_str("BINDHOST", u->bindhost, 80, "0.0.0.0");
+    get_int("BINDPORT", u->bindport, 8511);
     get_str("PKTFMT", u->packet_format, 32, "PAPER");
     u->packet_size = 8200;
 }
@@ -148,6 +150,8 @@ void paper_read_net_params(char *buf, struct guppi_udp_params *u) {
 void guppi_read_net_params(char *buf, struct guppi_udp_params *u) {
     get_str("DATAHOST", u->sender, 80, "bee2-10");
     get_int("DATAPORT", u->port, 50000);
+    get_str("BINDHOST", u->bindhost, 80, "0.0.0.0");
+    get_int("BINDPORT", u->port, 8511);
     get_str("PKTFMT", u->packet_format, 32, "GUPPI");
     if (strncmp(u->packet_format, "PARKES", 6)==0)
         u->packet_size = 2056;

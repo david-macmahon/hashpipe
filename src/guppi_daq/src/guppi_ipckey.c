@@ -53,8 +53,11 @@ static key_t guppi_ipckey(int proj_id)
 
 /*
  * Get the base key to use for guppi databufs.
+ * The lower 6 bits of the instance_id parameter are used to allow multiple
+ * instances to run under the same user without collision.  The same
+ * instance_id can and should be used for databuf keys and status keys.
  */
-key_t guppi_databuf_key()
+key_t guppi_databuf_key(int instance_id)
 {
     static key_t key = GUPPI_KEY_ERROR;
     // Lazy init
@@ -63,7 +66,10 @@ key_t guppi_databuf_key()
         if(databuf_key) {
             key = strtoul(databuf_key, NULL, 0);
         } else {
-            key = guppi_ipckey('D');
+            // Use instance_id to generate proj_id for guppi_ipckey.
+            // Databuf proj_id is 10XXXXXX (binary) where XXXXXX are the 6 LSbs
+            // of instance_id.
+            key = guppi_ipckey((instance_id&0x3f)|0x80);
         }
     }
     return key;
@@ -71,8 +77,10 @@ key_t guppi_databuf_key()
 
 /*
  * Get the base key to use for the guppi status buffer.
+ * The the comments for guppi_databuf_key for details on the instance_id
+ * parameter.
  */
-key_t guppi_status_key()
+key_t guppi_status_key(int instance_id)
 {
     static key_t key = GUPPI_KEY_ERROR;
     // Lazy init
@@ -81,7 +89,10 @@ key_t guppi_status_key()
         if(status_key) {
             key = strtoul(status_key, NULL, 0);
         } else {
-            key = guppi_ipckey('S');
+            // Use instance_id to generate proj_id for guppi_ipckey.
+            // Status proj_id is 01XXXXXX (binary) where XXXXXX are the 6 LSbs
+            // of instance_id.
+            key = guppi_ipckey((instance_id&0x3f)|0x40);
         }
     }
     return key;

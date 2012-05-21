@@ -14,6 +14,14 @@
 #include <time.h>
 #include <sys/resource.h> 
 
+#ifdef DEBUG_SEMS
+#include <pthread.h>
+static struct timespec start;
+static struct timespec now;
+#define ELAPSED_NS(stop) \
+  (((int64_t)stop.tv_sec-start.tv_sec)*1000*1000*1000+(stop.tv_nsec-start.tv_nsec))
+#endif // DEBUG_SEMS
+
 #include "fitshead.h"
 #include "guppi_ipckey.h"
 #include "guppi_status.h"
@@ -72,11 +80,20 @@
  * It the sizes do not match, NULL is returned (i.e. it is an error if the
  * databuf exists but the sizes do not match).
  */
-struct paper_input_databuf *paper_input_databuf_create(int n_block, size_t block_size,
+struct paper_input_databuf *paper_input_databuf_create(int instance_id, int n_block, size_t block_size,
         int databuf_id)
 {
     int rv = 0;
     int init_buffer = 1;
+
+#ifdef DEBUG_SEMS
+    // Init clock variables
+    if(databuf_id==1) {
+        clock_gettime(CLOCK_MONOTONIC, &start);
+        now.tv_sec = start.tv_sec;
+        now.tv_nsec = start.tv_nsec;
+    }
+#endif
 
     /* Calc databuf size */
     size_t paper_input_databuf_size = sizeof(paper_input_databuf_t);
@@ -96,7 +113,7 @@ struct paper_input_databuf *paper_input_databuf_create(int n_block, size_t block
     }
 
     /* Get shared memory block */
-    key_t key = guppi_databuf_key();
+    key_t key = guppi_databuf_key(instance_id);
     if(key == GUPPI_KEY_ERROR) {
         guppi_error(__FUNCTION__, "guppi_databuf_key error");
         return(NULL);
@@ -168,9 +185,9 @@ struct paper_input_databuf *paper_input_databuf_create(int n_block, size_t block
     return (struct paper_input_databuf *)d;
 }
 
-struct paper_input_databuf *paper_input_databuf_attach(int databuf_id)
+struct paper_input_databuf *paper_input_databuf_attach(int instance_id, int databuf_id)
 {
-    return (struct paper_input_databuf *)guppi_databuf_attach(databuf_id);
+    return (struct paper_input_databuf *)guppi_databuf_attach(instance_id, databuf_id);
 }
 
 /* Mimicking guppi_databuf's "detach" mispelling. */
@@ -209,21 +226,37 @@ int paper_input_databuf_total_status(struct paper_input_databuf *d)
 
 int paper_input_databuf_wait_free(struct paper_input_databuf *d, int block_id)
 {
+#ifdef DEBUG_SEMS
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    fprintf(stderr, "%13ld tid %lu wait free %d\n", ELAPSED_NS(now), pthread_self(), block_id);
+#endif
     return guppi_databuf_wait_free((struct guppi_databuf *)d, block_id);
 }
 
 int paper_input_databuf_wait_filled(struct paper_input_databuf *d, int block_id)
 {
+#ifdef DEBUG_SEMS
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    fprintf(stderr, "%13ld tid %lu wait fill %d\n", ELAPSED_NS(now), pthread_self(), block_id);
+#endif
     return guppi_databuf_wait_filled((struct guppi_databuf *)d, block_id);
 }
 
 int paper_input_databuf_set_free(struct paper_input_databuf *d, int block_id)
 {
+#ifdef DEBUG_SEMS
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    fprintf(stderr, "%13ld tid %lu set  free %d\n", ELAPSED_NS(now), pthread_self(), block_id);
+#endif
     return guppi_databuf_set_free((struct guppi_databuf *)d, block_id);
 }
 
 int paper_input_databuf_set_filled(struct paper_input_databuf *d, int block_id)
 {
+#ifdef DEBUG_SEMS
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    fprintf(stderr, "%13ld tid %lu set  fill %d\n", ELAPSED_NS(now), pthread_self(), block_id);
+#endif
     return guppi_databuf_set_filled((struct guppi_databuf *)d, block_id);
 }
 
@@ -240,7 +273,7 @@ int paper_input_databuf_set_filled(struct paper_input_databuf *d, int block_id)
  * It the sizes do not match, NULL is returned (i.e. it is an error if the
  * databuf exists but the sizes do not match).
  */
-struct paper_output_databuf *paper_output_databuf_create(int n_block, size_t block_size,
+struct paper_output_databuf *paper_output_databuf_create(int instance_id, int n_block, size_t block_size,
         int databuf_id)
 {
     int init_buffer = 1;
@@ -262,7 +295,7 @@ printf("paper_output_databuf_size %lu\n", paper_output_databuf_size);
 printf("databuf_size %lu\n", databuf_size);
 
     /* Get shared memory block, error if it already exists */
-    key_t key = guppi_databuf_key();
+    key_t key = guppi_databuf_key(instance_id);
     if(key == GUPPI_KEY_ERROR) {
         guppi_error(__FUNCTION__, "guppi_databuf_key error");
         return(NULL);
@@ -334,9 +367,9 @@ printf("databuf_size %lu\n", databuf_size);
     return (struct paper_output_databuf *)d;
 }
 
-struct paper_output_databuf *paper_output_databuf_attach(int databuf_id)
+struct paper_output_databuf *paper_output_databuf_attach(int instance_id, int databuf_id)
 {
-    return (struct paper_output_databuf *)guppi_databuf_attach(databuf_id);
+    return (struct paper_output_databuf *)guppi_databuf_attach(instance_id, databuf_id);
 }
 
 /* Mimicking guppi_databuf's "detach" mispelling. */

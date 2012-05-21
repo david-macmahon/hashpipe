@@ -50,10 +50,10 @@ int guppi_udp_init(struct guppi_udp_params *p) {
     /* bind to local address */
     struct sockaddr_in local_ip;
     local_ip.sin_family =  AF_INET;
-    local_ip.sin_port = htons(p->port);
+    local_ip.sin_port = htons(p->bindport);
     //local_ip.sin_addr.s_addr = INADDR_ANY;
 #if 1
-    rv = inet_aton("192.168.2.41", &local_ip.sin_addr);
+    rv = inet_aton(p->bindhost, &local_ip.sin_addr);
     if (rv==0) {
         guppi_error("guppi_udp_init", "inet_aton");
         return(GUPPI_ERR_SYS);

@@ -19,6 +19,8 @@ struct guppi_udp_params {
     /* Info needed from outside: */
     char sender[80];  /* Sender hostname */
     int port;         /* Receive port */
+    char bindhost[80];    /* Local IP address to bind to */
+    int bindport;         /* Local port to bind to */
     size_t packet_size;     /* Expected packet size, 0 = don't care */
     char packet_format[32]; /* Packet format */
 

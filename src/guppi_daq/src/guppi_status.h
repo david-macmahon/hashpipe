@@ -19,6 +19,7 @@
 
 /* Structure describes status memory area */
 struct guppi_status {
+    int instance_id; /* Instance ID of this status buffer (DO NOT SET/CHANGE!) */
     int shmid;   /* Shared memory segment id */
     sem_t *lock; /* POSIX semaphore descriptor for locking */
     char *buf;   /* Pointer to data area */
@@ -33,13 +34,13 @@ struct guppi_status {
  * (global fallback).  Any slashes after the leading slash are converted to
  * underscores.
  */
-const char * guppi_status_semname();
+const char * guppi_status_semname(int instance_id);
 
 /* Return a pointer to the status shared mem area, 
  * creating it if it doesn't exist.  Attaches/creates 
  * lock semaphore as well.  Returns nonzero on error.
  */
-int guppi_status_attach(struct guppi_status *s);
+int guppi_status_attach(int instance_id, struct guppi_status *s);
 
 /* Detach from shared mem segment */
 int guppi_status_detach(struct guppi_status *s); 

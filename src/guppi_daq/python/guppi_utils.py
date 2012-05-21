@@ -52,13 +52,13 @@ def guppi_ipckey(proj_id):
         keyfile = os.getenv('HOME')
         if keyfile == None:
             keyfile = '/tmp'
-    return shm.shm.ftok(keyfile, ord(proj_id))
+    return shm.shm.ftok(keyfile, proj_id)
 
 class guppi_status:
 
-    def __init__(self):
-        self.stat_buf = shm.SharedMemoryHandle(guppi_status.ipckey())
-        self.sem = possem.sem_open(guppi_status.semname(), possem.O_CREAT, 00644, 1)
+    def __init__(self, instance_id=0):
+        self.stat_buf = shm.SharedMemoryHandle(guppi_status.ipckey(instance_id))
+        self.sem = possem.sem_open(guppi_status.semname(instance_id), possem.O_CREAT, 00644, 1)
         self.hdr = None
         self.gbtstat = None
         self.read()
@@ -67,16 +67,16 @@ class guppi_status:
         return self.hdr[key]
 
     @staticmethod
-    def ipckey():
+    def ipckey(instance_id):
         databuf_key = os.getenv("GUPPI_STATUS_KEY")
         if databuf_key:
             key = int(databuf_key, 0)
         else:
-            key = guppi_ipckey('S')
+            key = guppi_ipckey((instance_id&0x3f)|0x40)
         return key
 
     @staticmethod
-    def semname():
+    def semname(instance_id):
         semid = os.getenv('GUPPI_STATUS_SEMNAME')
         if semid == None:
             semid = os.getenv('GUPPI_KEYFILE')
@@ -85,7 +85,7 @@ class guppi_status:
                 if semid == None:
                     semid = os.getenv('/tmp')
             semid = '/' + semid[1:].replace('/', '_')
-            semid += '_guppi_status'
+            semid += '_guppi_status_%d' % instance_id
         return semid
 
     def keys(self):
@@ -177,8 +177,8 @@ class guppi_status:
 
 class guppi_databuf:
 
-    def __init__(self,databuf_id=1):
-        self.buf = shm.SharedMemoryHandle(guppi_databuf.ipckey()+databuf_id-1)
+    def __init__(self,instance_id=0,databuf_id=1):
+        self.buf = shm.SharedMemoryHandle(guppi_databuf.ipckey(instance_id)+databuf_id-1)
         self.data_type = self.buf.read(NumberOfBytes=64, offset=0)
         
         if NEW_GBT:
@@ -206,12 +206,12 @@ class guppi_databuf:
         self.read_all_hdr()
 
     @staticmethod
-    def ipckey():
+    def ipckey(instance_id):
         databuf_key = os.getenv("GUPPI_DATABUF_KEY")
         if databuf_key:
             key = int(databuf_key, 0)
         else:
-            key = guppi_ipckey('D')
+            key = guppi_ipckey((instance_id&0x3f)|0x80)
         return key
 
     def read_hdr(self,block):
