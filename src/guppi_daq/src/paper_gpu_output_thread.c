@@ -483,9 +483,13 @@ static void *run(void * _args)
         guppi_status_unlock_safe(&st);
 
         // Wait for new block to be filled
-        if ((rv=paper_output_databuf_busywait_filled(db, block_idx)) != GUPPI_OK) {
+        while ((rv=paper_output_databuf_wait_filled(db, block_idx))
+                != GUPPI_OK) {
             if (rv==GUPPI_TIMEOUT) {
-                goto done;
+                guppi_status_lock_safe(&st);
+                hputs(st.buf, STATUS_KEY, "blocked");
+                guppi_status_unlock_safe(&st);
+                continue;
             } else {
                 guppi_error(__FUNCTION__, "error waiting for filled databuf");
                 run_threads=0;
@@ -561,7 +565,6 @@ static void *run(void * _args)
         pthread_testcancel();
     }
 
-done:
     // Have to close all pushes
     THREAD_RUN_DETACH_DATAUF;
     THREAD_RUN_DETACH_STATUS;

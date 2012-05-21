@@ -131,9 +131,12 @@ static void *run(void * _args, int doCPU)
         guppi_status_unlock_safe(&st);
 
         // Wait for new input block to be filled
-        if ((rv=paper_input_databuf_filled(db_in, curblock_in)) != GUPPI_OK) {
+        while ((rv=paper_input_databuf_wait_filled(db_in, curblock_in)) != GUPPI_OK) {
             if (rv==GUPPI_TIMEOUT) {
-                goto done;
+                guppi_status_lock_safe(&st);
+                hputs(st.buf, STATUS_KEY, "blocked_in");
+                guppi_status_unlock_safe(&st);
+                continue;
             } else {
                 guppi_error(__FUNCTION__, "error waiting for filled databuf");
                 run_threads=0;
@@ -207,9 +210,12 @@ static void *run(void * _args, int doCPU)
         if(db_in->block[curblock_in].header.mcnt[0] == last_mcount || doCPU) {
           doDump = 1;
           // Wait for new output block to be free
-          if ((rv=paper_output_databuf_busywait_free(db_out, curblock_out)) != GUPPI_OK) {
+          while ((rv=paper_output_databuf_wait_free(db_out, curblock_out)) != GUPPI_OK) {
               if (rv==GUPPI_TIMEOUT) {
-                  goto done;
+                  guppi_status_lock_safe(&st);
+                  hputs(st.buf, STATUS_KEY, "blocked gpu out");
+                  guppi_status_unlock_safe(&st);
+                  continue;
               } else {
                   guppi_error(__FUNCTION__, "error waiting for free databuf");
                   run_threads=0;
@@ -272,9 +278,12 @@ static void *run(void * _args, int doCPU)
             guppi_status_unlock_safe(&st);
 
             // Wait for new output block to be free
-            if ((rv=paper_output_databuf_busywait_free(db_out, curblock_out)) != GUPPI_OK) {
+            while ((rv=paper_output_databuf_wait_free(db_out, curblock_out)) != GUPPI_OK) {
                 if (rv==GUPPI_TIMEOUT) {
-                    goto done;
+                    guppi_status_lock_safe(&st);
+                    hputs(st.buf, STATUS_KEY, "blocked cpu out");
+                    guppi_status_unlock_safe(&st);
+                    continue;
                 } else {
                     guppi_error(__FUNCTION__, "error waiting for free databuf");
                     run_threads=0;
@@ -308,7 +317,6 @@ static void *run(void * _args, int doCPU)
     }
     run_threads=0;
 
-done:
     xgpuFree(&context);
 
     // Have to close all pushes

@@ -91,9 +91,13 @@ static void *run(void * _args)
         /* Wait for new block to be free, then clear it
          * if necessary and fill its header with new values.
          */
-        if ((rv=paper_input_databuf_busywait_free(db, block_idx)) != GUPPI_OK) {
+        while ((rv=paper_input_databuf_wait_free(db, block_idx)) 
+                != GUPPI_OK) {
             if (rv==GUPPI_TIMEOUT) {
-                goto done;
+                guppi_status_lock_safe(&st);
+                hputs(st.buf, STATUS_KEY, "blocked");
+                guppi_status_unlock_safe(&st);
+                continue;
             } else {
                 guppi_error(__FUNCTION__, "error waiting for free databuf");
                 run_threads=0;
@@ -164,7 +168,6 @@ static void *run(void * _args)
         pthread_testcancel();
     }
 
-done:
     // Have to close all pushes
     THREAD_RUN_DETACH_DATAUF;
     THREAD_RUN_DETACH_STATUS;
