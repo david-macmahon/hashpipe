@@ -101,13 +101,13 @@ def display_status(stdscr, stat, instance_id):
                     # Give time to read message, but could make UI feel
                     # non-responsive
                     time.sleep(1)
-            if (c==ord('+') or c==ord('=')):
+            if (c==ord('+') or c==ord('=') or c==curses.KEY_RIGHT or c==curses.KEY_DOWN):
                 try:
                     stat = guppi_status(instance_id+1)
                     instance_id += 1
                 except:
                     pass
-            if (c==ord('-')):
+            if (c==ord('-') or c==curses.KEY_LEFT or c==curses.KEY_UP):
                 try:
                     stat = guppi_status(instance_id-1)
                     instance_id -= 1
