@@ -92,7 +92,7 @@ int set_priority(int priority);
         return 1;                                              \
     }                                                          \
     /* Init status */                                          \
-    guppi_status_lock_busywait_safe(&st);                               \
+    guppi_status_lock_safe(&st);                               \
     hputs(st.buf, STATUS_KEY, "init");                         \
     guppi_status_unlock_safe(&st);                             \
   } while(0)

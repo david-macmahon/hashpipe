@@ -33,7 +33,7 @@ extern void cc(int sig);
 #  define TMP_STATUS_KEY 1
 #endif
 static void set_exit_status(struct guppi_status *s) {
-    guppi_status_lock_busywait(s);
+    guppi_status_lock(s);
     hputs(s->buf, STATUS_KEY, "exiting");
     guppi_status_unlock(s);
 }

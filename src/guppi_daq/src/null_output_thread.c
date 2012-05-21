@@ -68,7 +68,7 @@ static void *run(void * _args)
     signal(SIGTERM,cc);
     while (run_threads) {
 
-        guppi_status_lock_busywait_safe(&st);
+        guppi_status_lock_safe(&st);
         hputs(st.buf, STATUS_KEY, "waiting");
         guppi_status_unlock_safe(&st);
 
@@ -85,7 +85,7 @@ static void *run(void * _args)
         }
 
         // Note processing status, current input block
-        guppi_status_lock_busywait_safe(&st);
+        guppi_status_lock_safe(&st);
         hputs(st.buf, STATUS_KEY, "processing");
         hputi4(st.buf, "NULBLKIN", block_idx);
         guppi_status_unlock_safe(&st);

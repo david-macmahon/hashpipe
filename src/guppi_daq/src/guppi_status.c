@@ -149,7 +149,7 @@ void guppi_status_chkinit(struct guppi_status *s)
     int instance_id = -1;
 
     /* Lock */
-    guppi_status_lock_busywait(s);
+    guppi_status_lock(s);
 
     /* If no END, clear it out */
     if (guppi_find_end(s->buf)==NULL) {
@@ -184,7 +184,7 @@ void guppi_status_chkinit(struct guppi_status *s)
 void guppi_status_clear(struct guppi_status *s) {
 
     /* Lock */
-    guppi_status_lock_busywait(s);
+    guppi_status_lock(s);
 
     /* Zero bufer */
     memset(s->buf, 0, GUPPI_STATUS_SIZE);

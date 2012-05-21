@@ -148,14 +148,14 @@ int main(int argc, char *argv[])
             // Nul-terminate key
             *cp = '\0';
             // Store key and value (value starts right after '=')
-            guppi_status_lock_busywait(&st);
+            guppi_status_lock(&st);
             hputs(st.buf, optarg, cp+1);
             guppi_status_unlock(&st);
             // Restore '=' character
             *cp = '=';
           } else {
             // Valueless key, just store empty string
-            guppi_status_lock_busywait(&st);
+            guppi_status_lock(&st);
             hputs(st.buf, optarg, "");
             guppi_status_unlock(&st);
           }

@@ -80,7 +80,7 @@ static void *run(void * _args, int doCPU)
 
     // Init integration control status variables
     int gpu_dev = 0;
-    guppi_status_lock_busywait_safe(&st);
+    guppi_status_lock_safe(&st);
     hputs(st.buf,  "INTSTAT", "off");
     hputi8(st.buf, "INTSYNC", 0);
     hputi4(st.buf, "INTCOUNT", N_SUB_BLOCKS_PER_INPUT_BLOCK);
@@ -124,14 +124,14 @@ static void *run(void * _args, int doCPU)
         // Note waiting status,
         // query integrating status
         // and, if armed, start count
-        guppi_status_lock_busywait_safe(&st);
+        guppi_status_lock_safe(&st);
         hputs(st.buf, STATUS_KEY, "waiting");
         hgets(st.buf,  "INTSTAT", 16, integ_status);
         hgeti8(st.buf, "INTSYNC", (long long*)&start_mcount);
         guppi_status_unlock_safe(&st);
 
         // Wait for new input block to be filled
-        if ((rv=paper_input_databuf_busywait_filled(db_in, curblock_in)) != GUPPI_OK) {
+        if ((rv=paper_input_databuf_filled(db_in, curblock_in)) != GUPPI_OK) {
             if (rv==GUPPI_TIMEOUT) {
                 goto done;
             } else {
@@ -143,7 +143,7 @@ static void *run(void * _args, int doCPU)
         }
 
         // Got a new data block, update status and determine how to handle it
-        guppi_status_lock_busywait_safe(&st);
+        guppi_status_lock_safe(&st);
         hputi4(st.buf, "GPUBLKIN", curblock_in);
         hputu8(st.buf, "GPUMCNT", db_in->block[curblock_in].header.mcnt[0]);
         guppi_status_unlock_safe(&st);
@@ -173,7 +173,7 @@ static void *run(void * _args, int doCPU)
               // Read integration count (INTCOUNT)
               fprintf(stderr, "--- integration on ---\n");
               strcpy(integ_status, "on");
-              guppi_status_lock_busywait_safe(&st);
+              guppi_status_lock_safe(&st);
               hputs(st.buf,  "INTSTAT", integ_status);
               hgeti4(st.buf, "INTCOUNT", &int_count);
               guppi_status_unlock_safe(&st);
@@ -191,7 +191,7 @@ static void *run(void * _args, int doCPU)
         // Integration status is "on" or "stop"
 
         // Note processing status
-        guppi_status_lock_busywait_safe(&st);
+        guppi_status_lock_safe(&st);
         hputs(st.buf, STATUS_KEY, "processing gpu");
         guppi_status_unlock_safe(&st);
 
@@ -231,7 +231,7 @@ static void *run(void * _args, int doCPU)
         clock_gettime(CLOCK_MONOTONIC, &finish);
 
         // Note processing time
-        guppi_status_lock_busywait_safe(&st);
+        guppi_status_lock_safe(&st);
         hputi4(st.buf, "GPU_NS", ELAPSED_NS(start,finish));
         guppi_status_unlock_safe(&st);
 
@@ -244,7 +244,7 @@ static void *run(void * _args, int doCPU)
           if(!strcmp(integ_status, "stop")) {
             // Set integration status to "off"
             strcpy(integ_status, "off");
-            guppi_status_lock_busywait_safe(&st);
+            guppi_status_lock_safe(&st);
             hputs(st.buf,  "INTSTAT", integ_status);
             guppi_status_unlock_safe(&st);
           } else {
@@ -259,7 +259,7 @@ static void *run(void * _args, int doCPU)
 
           // Update GPU dump counter
           gpu_dumps++;
-          guppi_status_lock_busywait_safe(&st);
+          guppi_status_lock_safe(&st);
           hputi8(st.buf, "GPUDUMPS", gpu_dumps);
           guppi_status_unlock_safe(&st);
         }
@@ -267,7 +267,7 @@ static void *run(void * _args, int doCPU)
         if(doCPU) {
 
             /* Note waiting status */
-            guppi_status_lock_busywait_safe(&st);
+            guppi_status_lock_safe(&st);
             hputs(st.buf, STATUS_KEY, "waiting");
             guppi_status_unlock_safe(&st);
 
@@ -284,7 +284,7 @@ static void *run(void * _args, int doCPU)
             }
 
             // Note "processing cpu" status, current input block
-            guppi_status_lock_busywait_safe(&st);
+            guppi_status_lock_safe(&st);
             hputs(st.buf, STATUS_KEY, "processing cpu");
             guppi_status_unlock_safe(&st);
 

@@ -27,7 +27,7 @@ static int init(struct guppi_thread_args *args)
     /* Attach to status shared mem area */
     THREAD_INIT_ATTACH_STATUS(args->instance_id, st, STATUS_KEY);
 
-    guppi_status_lock_busywait_safe(&st);
+    guppi_status_lock_safe(&st);
     hputr4(st.buf, "CGMAXERR", 0.0);
     hputi4(st.buf, "CGERRCNT", 0);
     hputi4(st.buf, "CGMXERCT", 0);
@@ -74,7 +74,7 @@ static void *run(void * _args)
     signal(SIGTERM,cc);
     while (run_threads) {
 
-        guppi_status_lock_busywait_safe(&st);
+        guppi_status_lock_safe(&st);
         hputs(st.buf, STATUS_KEY, "waiting");
         guppi_status_unlock_safe(&st);
 
@@ -94,7 +94,7 @@ static void *run(void * _args)
         }
 
         // Note processing status, current input block
-        guppi_status_lock_busywait_safe(&st);
+        guppi_status_lock_safe(&st);
         hputs(st.buf, STATUS_KEY, "processing");
         hputi4(st.buf, "CGBLKIN", block_idx[0]);
         guppi_status_unlock_safe(&st);
@@ -138,7 +138,7 @@ static void *run(void * _args)
         }
 
         // Update status values
-        guppi_status_lock_busywait_safe(&st);
+        guppi_status_lock_safe(&st);
         hputr4(st.buf, "CGMAXERR", max_error);
         hputi4(st.buf, "CGERRCNT", error_count);
         hputi4(st.buf, "CGMXERCT", max_error_count);
