@@ -115,7 +115,7 @@ int guppi_status_detach(struct guppi_status *s) {
 }
 
 /* TODO: put in some (long, ~few sec) timeout */
-int guppi_status_lock(struct guppi_status *s) {
+int guppi_status_lock_busywait(struct guppi_status *s) {
     int rv;
     do {
       rv = sem_trywait(s->lock);
@@ -144,7 +144,7 @@ void guppi_status_chkinit(struct guppi_status *s)
     int instance_id = -1;
 
     /* Lock */
-    guppi_status_lock(s);
+    guppi_status_lock_busywait(s);
 
     /* If no END, clear it out */
     if (guppi_find_end(s->buf)==NULL) {
@@ -179,7 +179,7 @@ void guppi_status_chkinit(struct guppi_status *s)
 void guppi_status_clear(struct guppi_status *s) {
 
     /* Lock */
-    guppi_status_lock(s);
+    guppi_status_lock_busywait(s);
 
     /* Zero bufer */
     memset(s->buf, 0, GUPPI_STATUS_SIZE);

@@ -139,7 +139,7 @@ void set_blocks_filled(paper_input_databuf_t *paper_input_databuf_p,
 		// at first active block, all subsequent blocks are considered active
 		found_active_block = 1;
 		if(!block_active[i]) {
-			if((rv = paper_input_databuf_wait_free(paper_input_databuf_p, block_i)) != GUPPI_OK) {
+			if((rv = paper_input_databuf_busywait_free(paper_input_databuf_p, block_i)) != GUPPI_OK) {
 				if (rv==GUPPI_TIMEOUT) {
 					return;
 				} else {
@@ -155,7 +155,7 @@ void set_blocks_filled(paper_input_databuf_t *paper_input_databuf_p,
 		} else { 
 			paper_input_databuf_p->block[i].header.good_data = 0;		// TODO needed?
 			dropped_pkt_count += N_PACKETS_PER_BLOCK - block_active[i];
-            guppi_status_lock_safe(st_p);
+            guppi_status_lock_busywait_safe(st_p);
    	    hputu4(st_p->buf, "DROPKTS", dropped_pkt_count);
             guppi_status_unlock_safe(st_p);
 
@@ -172,7 +172,7 @@ void set_blocks_filled(paper_input_databuf_t *paper_input_databuf_p,
  while((rv = paper_input_databuf_set_filled(paper_input_databuf_p, i)) != GUPPI_OK) {	
           if (rv==GUPPI_TIMEOUT) {
 #if 1
-                guppi_status_lock_safe(st_p);
+                guppi_status_lock_busywait_safe(st_p);
                 hputs(st_p->buf, STATUS_KEY, "blocked_out");
                 guppi_status_unlock_safe(st_p);
 #endif
@@ -255,7 +255,7 @@ void manage_active_blocks(paper_input_databuf_t * paper_input_databuf_p,
 		      binfo->block_active[binfo->block_i], binfo->block_i, binfo->sub_block_i);
 	}
 	// init the block 
-	if((rv = paper_input_databuf_wait_free(paper_input_databuf_p, binfo->block_i)) != GUPPI_OK) {
+	if((rv = paper_input_databuf_busywait_free(paper_input_databuf_p, binfo->block_i)) != GUPPI_OK) {
 		if (rv==GUPPI_TIMEOUT) {
 			return;
 		} else {
@@ -283,7 +283,7 @@ void manage_active_blocks(paper_input_databuf_t * paper_input_databuf_p,
 		block_mgt_error_count++;
 		set_blocks_filled(paper_input_databuf_p, binfo->block_i, binfo->block_active, N_INPUT_BLOCKS);
 		// re-acquire ownership of the block and assign the packet's mcnt
-		if((rv = paper_input_databuf_wait_free(paper_input_databuf_p, binfo->block_i)) != GUPPI_OK) {
+		if((rv = paper_input_databuf_busywait_free(paper_input_databuf_p, binfo->block_i)) != GUPPI_OK) {
 			if (rv==GUPPI_TIMEOUT) {
 				return;
 			} else {
@@ -417,7 +417,7 @@ static void *run(void * _args)
     struct guppi_params gp;
     struct sdfits pf;
     char status_buf[GUPPI_STATUS_SIZE];
-    guppi_status_lock_safe(st_p);
+    guppi_status_lock_busywait_safe(st_p);
     memcpy(status_buf, st_p->buf, GUPPI_STATUS_SIZE);
     guppi_status_unlock_safe(st_p);
     guppi_read_obs_params(status_buf, &gp, &pf);
@@ -428,7 +428,7 @@ static void *run(void * _args)
     //guppi_read_net_params(status_buf, &up);
     paper_read_net_params(status_buf, &up);
     // Store bind host/port info in statsu buffer
-    guppi_status_lock_safe(&st);
+    guppi_status_lock_busywait_safe(&st);
     hputs(st.buf, "BINDHOST", up.bindhost);
     hputi4(st.buf, "BINDPORT", up.bindport);
     guppi_status_unlock_safe(&st);
@@ -465,7 +465,7 @@ static void *run(void * _args)
             if (rv==GUPPI_TIMEOUT) { 
                 /* Set "waiting" flag */
                 if (waiting!=1) {
-                    guppi_status_lock_safe(st_p);
+                    guppi_status_lock_busywait_safe(st_p);
                     hputs(st_p->buf, STATUS_KEY, "waiting");
                     guppi_status_unlock_safe(st_p);
                     waiting=1;
@@ -502,7 +502,7 @@ static void *run(void * _args)
 #endif
         /* Update status if needed */
         if (waiting!=0) {
-            guppi_status_lock_safe(st_p);
+            guppi_status_lock_busywait_safe(st_p);
             hputs(st_p->buf, STATUS_KEY, "receiving");
             guppi_status_unlock_safe(st_p);
             waiting=0;
@@ -511,7 +511,7 @@ static void *run(void * _args)
         // Copy packet into any blocks where it belongs.
         const uint64_t mcnt = write_paper_packet_to_blocks((paper_input_databuf_t *)db, &p);
         if(mcnt != -1) {
-            guppi_status_lock_safe(&st);
+            guppi_status_lock_busywait_safe(&st);
             hputu8(st.buf, "NETMCNT", mcnt);
    	    hputu4(st.buf, "DROPKTS", dropped_pkt_count);
    	    hputu4(st.buf, "BLKMGTE", block_mgt_error_count);

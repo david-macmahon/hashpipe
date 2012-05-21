@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
                 break;
             case 'Q':
                 s = get_status_buffer(instance_id);
-                guppi_status_lock(s);
+                guppi_status_lock_busywait(s);
                 hgets(s->buf, optarg, 80, value);
                 guppi_status_unlock(s);
                 value[80] = '\0';
@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
                 break;
             case 'g':
                 s = get_status_buffer(instance_id);
-                guppi_status_lock(s);
+                guppi_status_lock_busywait(s);
                 hgetr8(s->buf, optarg, &dbltmp);
                 guppi_status_unlock(s);
                 printf("%g\n", dbltmp);
@@ -86,7 +86,7 @@ int main(int argc, char *argv[]) {
             case 's':
                 if (key) {
                     s = get_status_buffer(instance_id);
-                    guppi_status_lock(s);
+                    guppi_status_lock_busywait(s);
                     hputs(s->buf, key, optarg);
                     guppi_status_unlock(s);
                 }
@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
                 flttmp = atof(optarg);
                 if (key) {
                     s = get_status_buffer(instance_id);
-                    guppi_status_lock(s);
+                    guppi_status_lock_busywait(s);
                     hputr4(s->buf, key, flttmp);
                     guppi_status_unlock(s);
                 }
@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
                 dbltmp = atof(optarg);
                 if (key) {
                     s = get_status_buffer(instance_id);
-                    guppi_status_lock(s);
+                    guppi_status_lock_busywait(s);
                     hputr8(s->buf, key, dbltmp);
                     guppi_status_unlock(s);
                 }
@@ -113,7 +113,7 @@ int main(int argc, char *argv[]) {
                 inttmp = atoi(optarg);
                 if (key) {
                     s = get_status_buffer(instance_id);
-                    guppi_status_lock(s);
+                    guppi_status_lock_busywait(s);
                     hputi4(s->buf, key, inttmp);
                     guppi_status_unlock(s);
                 }
@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
             case 'D':
                 if (key) {
                     s = get_status_buffer(instance_id);
-                    guppi_status_lock(s);
+                    guppi_status_lock_busywait(s);
                     hdel(s->buf, key);
                     guppi_status_unlock(s);
                 }
@@ -143,7 +143,7 @@ int main(int argc, char *argv[]) {
 
     /* If verbose, print out buffer */
     if (verbose) { 
-        guppi_status_lock(s);
+        guppi_status_lock_busywait(s);
         printf("%s\n", s->buf);
         guppi_status_unlock(s);
     }

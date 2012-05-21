@@ -75,7 +75,7 @@ static void *run(void * _args)
     signal(SIGTERM,cc);
     while (run_threads) {
 
-        guppi_status_lock_safe(&st);
+        guppi_status_lock_busywait_safe(&st);
         hputs(st.buf, STATUS_KEY, "waiting");
         guppi_status_unlock_safe(&st);
  
@@ -91,7 +91,7 @@ static void *run(void * _args)
         /* Wait for new block to be free, then clear it
          * if necessary and fill its header with new values.
          */
-        if ((rv=paper_input_databuf_wait_free(db, block_idx)) != GUPPI_OK) {
+        if ((rv=paper_input_databuf_busywait_free(db, block_idx)) != GUPPI_OK) {
             if (rv==GUPPI_TIMEOUT) {
                 goto done;
             } else {
@@ -102,7 +102,7 @@ static void *run(void * _args)
             }
         }
 
-        guppi_status_lock_safe(&st);
+        guppi_status_lock_busywait_safe(&st);
         hputs(st.buf, STATUS_KEY, "receiving");
         hputi4(st.buf, "NETBKOUT", block_idx);
         guppi_status_unlock_safe(&st);

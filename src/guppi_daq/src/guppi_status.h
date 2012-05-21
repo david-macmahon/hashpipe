@@ -48,7 +48,7 @@ int guppi_status_detach(struct guppi_status *s);
 /* Lock/unlock the status buffer.  guppi_status_lock() will wait for
  * the buffer to become unlocked.  Return non-zero on errors.
  */
-int guppi_status_lock(struct guppi_status *s);
+int guppi_status_lock_busywait(struct guppi_status *s);
 int guppi_status_unlock(struct guppi_status *s);
 
 /* Check the buffer for appropriate formatting (existence of "END").

@@ -311,7 +311,7 @@ uint64_t guppi_databuf_total_mask(struct guppi_databuf *d) {
     return(tot);
 }
 
-int guppi_databuf_wait_free(struct guppi_databuf *d, int block_id) {
+int guppi_databuf_busywait_free(struct guppi_databuf *d, int block_id) {
     int rv;
     struct sembuf op;
     op.sem_num = block_id;
@@ -332,14 +332,14 @@ int guppi_databuf_wait_free(struct guppi_databuf *d, int block_id) {
             return(GUPPI_TIMEOUT);
         }
         if (errno==EINTR) return(GUPPI_ERR_SYS);
-        guppi_error("guppi_databuf_wait_free", "semop error");
+        guppi_error("guppi_databuf_busywait_free", "semop error");
         perror("semop");
         return(GUPPI_ERR_SYS);
     }
     return(0);
 }
 
-int guppi_databuf_wait_filled(struct guppi_databuf *d, int block_id) {
+int guppi_databuf_busywait_filled(struct guppi_databuf *d, int block_id) {
     /* This needs to wait for the semval of the given block
      * to become > 0, but NOT immediately decrement it to 0.
      * Probably do this by giving an array of semops, since
@@ -364,7 +364,7 @@ int guppi_databuf_wait_filled(struct guppi_databuf *d, int block_id) {
         if (errno==EAGAIN) return(GUPPI_TIMEOUT);
         // Don't complain on a signal interruption
         if (errno==EINTR) return(GUPPI_ERR_SYS);
-        guppi_error("guppi_databuf_wait_filled", "semop error");
+        guppi_error("guppi_databuf_busywait_filled", "semop error");
         perror("semop");
         return(GUPPI_ERR_SYS);
     }

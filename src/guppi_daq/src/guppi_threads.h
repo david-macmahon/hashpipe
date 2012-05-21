@@ -15,9 +15,9 @@ extern int run_threads;
 extern void cc(int sig);
 
 /* Safe lock/unlock functions for status shared mem. */
-#define guppi_status_lock_safe(s) \
+#define guppi_status_lock_busywait_safe(s) \
     pthread_cleanup_push((void *)guppi_status_unlock, s); \
-    guppi_status_lock(s);
+    guppi_status_lock_busywait(s);
 #define guppi_status_unlock_safe(s) \
     guppi_status_unlock(s); \
     pthread_cleanup_pop(0);
@@ -28,7 +28,7 @@ extern void cc(int sig);
 #  define TMP_STATUS_KEY 1
 #endif
 static void set_exit_status(struct guppi_status *s) {
-    guppi_status_lock(s);
+    guppi_status_lock_busywait(s);
     hputs(s->buf, STATUS_KEY, "exiting");
     guppi_status_unlock(s);
 }
