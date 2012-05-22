@@ -14,6 +14,12 @@ AC_ARG_WITH([cuda],
             [CUDADIR="$withval"],
             [CUDADIR=/usr/local/cuda])
 
+AC_ARG_WITH([xgpu],
+            AC_HELP_STRING([--with-xgpu=DIR],
+                           [Location of xGPU headers/libs (/usr/local)]),
+            [XGPUDIR="$withval"],
+            [XGPUDIR=/usr/local])
+
 AC_ARG_ENABLE([vegas],
             AC_HELP_STRING([--enable-vegas],
                            [Enable compiltion of VEGAS programs (no)]),
@@ -34,21 +40,38 @@ AS_VAR_SET_IF(CFLAGS,[],[CFLAGS=])
 AC_PROG_CC
 
 # Checks for libraries.
+
+# Save original LDFLAGS
+orig_LDFLAGS="${LDFLAGS}"
+
 AC_CHECK_LIB([cfitsio], [ffclos])
 
 AS_IF([test "$COMPILE_VEGAS" = "yes"],[
 # Try CUDADIR/lib first
 AC_MSG_NOTICE([checking for libcufft in ${CUDADIR}/lib])
-orig_LDFLAGS="${LDFLAGS}"
-LDFLAGS="${orig_LDFLAGS} -L${CUDADIR}/lib"
-AC_CHECK_LIB([cufft], [cufftDestroy],[],
+LDFLAGS="${LDFLAGS} -L${CUDADIR}/lib"
+AC_CHECK_LIB([cufft], [cufftDestroy],
+             # Found
+             AC_SUBST(CUDALIBDIR,${CUDADIR}/lib),
              # Not found there, check CUDADIR/lib64
              AC_MSG_NOTICE([checking for libcufft in ${CUDADIR}/lib64])
              AS_UNSET(ac_cv_lib_cufft_cufftDestroy)
              LDFLAGS="${orig_LDFLAGS} -L${CUDADIR}/lib64"
-             AC_CHECK_LIB([cufft], [cufftDestroy],[],
+             AC_CHECK_LIB([cufft], [cufftDestroy],
+                          # Found
+                          AC_SUBST(CUDALIBDIR,${CUDADIR}/lib64),
+                          # Not found there, error
                           AC_MSG_ERROR([VEGAS needs libcufft])))
+LDFLAGS="${orig_LDFLAGS}"
 ],[]) # end AS_IF
+
+LDFLAGS="${orig_LDFLAGS} -L${XGPUDIR}/lib"
+AC_CHECK_LIB([xgpu], [xgpuInit],
+             # Found
+             AC_SUBST(XGPUDIR,${XGPUDIR}),
+             # Not found there, check CUDADIR/lib64
+             AC_MSG_ERROR([xGPU library not found]))
+LDFLAGS="${orig_LDFLAGS}"
 
 ## FIXME: Replace `main' with a function in `-lm':
 #AC_CHECK_LIB([m], [main])

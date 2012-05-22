@@ -1,4 +1,6 @@
+AM_CPPFLAGS = -I@XGPUDIR@/include
 AM_CFLAGS = -g -fPIC -O3 -Wall -Werror -fno-strict-aliasing
+AM_LDFLAGS = -L@XGPUDIR@/lib -Wl,-rpath,"@XGPUDIR@/lib"
 
 bin_PROGRAMS  =
 
