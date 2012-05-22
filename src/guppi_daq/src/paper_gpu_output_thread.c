@@ -151,6 +151,19 @@ static XGPUInfo xgpu_info;
 
 // BYTES_PER_PACKET is limited by recevier code and must be multiple of 8
 #define BYTES_PER_PACKET 4096
+
+// PACKET_DELAY_NS is number of nanoseconds to delay between packets.  This is
+// to prevent overflowing the network interface's TX queue.  The delay is 8
+// times longer than necessary for a single packet so that up to 8 instances
+// can dump simulatneously without problems.  For larger correlators running
+// fewer instance per GPU host, this may be too long, but for now it shouldn't
+// be a problem.  Note that this accounts only for the packet's payload (i.e.
+// it considers the size of the packet header to be negligible).
+//
+// 1000 megabit per second =  1 nanosecond per bit
+//  100 megabit per second = 10 nanosecond per bit
+#define PACKET_DELAY_NS (10 * 8 * 8 * BYTES_PER_PACKET)
+
 // bytes_per_dump depends on xgpu_info.triLength
 static uint64_t bytes_per_dump = 0;
 // packets_per_dump is bytes_per_dump / BYTES_PER_PACKET
@@ -401,6 +414,10 @@ static void *run(void * _args)
     struct iovec msg_iov[2];
     struct msghdr msg;
     unsigned int xengine_id = 0;
+    struct timespec packet_delay = {
+      .tv_sec = 0,
+      .tv_nsec = PACKET_DELAY_NS
+    };
 
     guppi_status_lock_safe(&st);
     hgetu4(st.buf, "XID", &xengine_id); // No change if not found
@@ -550,6 +567,10 @@ static void *run(void * _args)
           } else if(bytes_sent != sizeof(hdr)+BYTES_PER_PACKET) {
             printf("only sent %d of %lu bytes!!!\n", bytes_sent, sizeof(hdr)+BYTES_PER_PACKET);
           }
+
+          // Delay to prevent overflowing network TX queue
+          nanosleep(&packet_delay, NULL);
+
           // Increment byte_offset and data pointer
           byte_offset += BYTES_PER_PACKET;
           data += BYTES_PER_PACKET;
