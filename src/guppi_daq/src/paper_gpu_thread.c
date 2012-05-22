@@ -98,8 +98,6 @@ static void *run(void * _args, int doCPU)
     int xgpu_error = 0;
     int curblock_in=0;
     int curblock_out=0;
-    size_t input_offset;
-    size_t output_offset;
 
     struct timespec start, finish;
 
@@ -200,8 +198,8 @@ static void *run(void * _args, int doCPU)
 
 
         // Setup for current chunk
-        input_offset = curblock_in * sizeof(paper_input_block_t) / sizeof(ComplexInput);
-        output_offset = curblock_out * sizeof(paper_output_block_t) / sizeof(Complex);
+        context.input_offset = curblock_in * sizeof(paper_input_block_t) / sizeof(ComplexInput);
+        context.output_offset = curblock_out * sizeof(paper_output_block_t) / sizeof(Complex);
 
         // Call CUDA X engine function
         int doDump = 0;
@@ -232,7 +230,7 @@ static void *run(void * _args, int doCPU)
 
         clock_gettime(CLOCK_MONOTONIC, &start);
 
-        xgpuCudaXengine(&context, input_offset, output_offset, doDump);
+        xgpuCudaXengine(&context, doDump);
 
         clock_gettime(CLOCK_MONOTONIC, &finish);
 
