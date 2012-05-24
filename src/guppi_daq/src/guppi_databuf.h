@@ -7,6 +7,7 @@
 #ifndef _GUPPI_DATABUF_H
 #define _GUPPI_DATABUF_H
 
+#include <stdint.h>
 #include <sys/ipc.h>
 #include <sys/sem.h>
 
@@ -128,6 +129,7 @@ char *guppi_databuf_index(struct guppi_databuf *d, int block_id);
  */
 int guppi_databuf_block_status(struct guppi_databuf *d, int block_id);
 int guppi_databuf_total_status(struct guppi_databuf *d);
+uint64_t guppi_databuf_total_mask(struct guppi_databuf *d);
 
 /* Databuf locking functions.  Each block in the buffer
  * can be marked as free or filled.  The "wait" functions
