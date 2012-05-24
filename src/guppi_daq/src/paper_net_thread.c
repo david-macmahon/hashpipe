@@ -142,20 +142,20 @@ void input_databuf_wait_free(paper_input_databuf_t *paper_input_databuf_p, int b
     }
 }
 
-void set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t *binfo, int block_to_set_i) { 
+void set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t *binfo, int block_i) { 
 
     int rv, first_time=1;
     static uint32_t missed_pkt_cnt;
 
-    if(binfo->block_active[block_to_set_i]) {
-    	while((rv = paper_input_databuf_set_filled(paper_input_databuf_p, block_to_set_i)) != GUPPI_OK) {	
+    if(binfo->block_active[block_i]) {
+    	while((rv = paper_input_databuf_set_filled(paper_input_databuf_p, block_i)) != GUPPI_OK) {	
           	if (rv==GUPPI_TIMEOUT) {
                 	guppi_status_lock_safe(st_p);
                 	hputs(st_p->buf, STATUS_KEY, "blocked_out");
                 	guppi_status_unlock_safe(st_p);
 			if(first_time) {
 				first_time = 0;
-				printf("waiting for data block %d to be marked filled\n", block_to_set_i);
+				printf("waiting for data block %d to be marked filled\n", block_i);
 			}
                 	continue;
             	} else {
@@ -165,11 +165,13 @@ void set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t
                 	break;
             	}
     	}
-	missed_pkt_cnt += N_PACKETS_PER_BLOCK - binfo->block_active[block_to_set_i]; 
+
+	missed_pkt_cnt += N_PACKETS_PER_BLOCK - binfo->block_active[block_i]; 
         guppi_status_lock_safe(st_p);
         hputu4(st_p->buf, "MISSEDPK", missed_pkt_cnt);
         guppi_status_unlock_safe(st_p);
-    	binfo->block_active[block_to_set_i] = 0;
+
+    	binfo->block_active[block_i] = 0;
     } 
 }
 
