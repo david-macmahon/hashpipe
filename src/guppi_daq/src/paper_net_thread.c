@@ -128,27 +128,15 @@ void get_header (struct guppi_udp_packet *p, packet_header_t * pkt_header) {
 
 void set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t *binfo, int block_i) { 
 
-    int rv, first_time=1;
     static uint32_t missed_pkt_cnt;
 
     if(binfo->block_active[block_i]) {
-    	while((rv = paper_input_databuf_set_filled(paper_input_databuf_p, block_i)) != GUPPI_OK) {	
-          	if (rv==GUPPI_TIMEOUT) {
-                	guppi_status_lock_safe(st_p);
-                	hputs(st_p->buf, STATUS_KEY, "blocked_out");
-                	guppi_status_unlock_safe(st_p);
-			if(first_time) {
-				first_time = 0;
-				printf("waiting for data block %d to be marked filled\n", block_i);
-			}
-                	continue;
-            	} else {
-                	guppi_error(__FUNCTION__, "error waiting for databuf filled call");
-                	run_threads=0;
-                	pthread_exit(NULL);
-                	break;
-            	}
-    	}
+	if(paper_input_databuf_set_filled(paper_input_databuf_p, block_i) != GUPPI_OK) {
+	    guppi_error(__FUNCTION__, "error waiting for databuf filled call");
+	    run_threads=0;
+	    pthread_exit(NULL);
+	    return;
+	}
 
 	missed_pkt_cnt += N_PACKETS_PER_BLOCK - binfo->block_active[block_i]; 
         guppi_status_lock_safe(st_p);
