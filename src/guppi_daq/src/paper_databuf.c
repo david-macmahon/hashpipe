@@ -90,12 +90,15 @@ static struct timespec now;
  * passed in.  If they match, a pointer to the existing databuf is returned.
  * It the sizes do not match, NULL is returned (i.e. it is an error if the
  * databuf exists but the sizes do not match).
+ *
+ * In either case, the memory and semaphores will be cleared, so this method
+ * should only be called at startup (e.g. from an initialization function)!
  */
 struct paper_input_databuf *paper_input_databuf_create(int instance_id, int n_block, size_t block_size,
         int databuf_id)
 {
     int rv = 0;
-    int init_buffer = 1;
+    int verify_sizing = 0;
 
 #ifdef DEBUG_SEMS
     // Init clock variables
@@ -134,8 +137,8 @@ struct paper_input_databuf *paper_input_databuf_create(int instance_id, int n_bl
     if (shmid==-1 && errno == EEXIST) {
         // Already exists, call shmget again without IPC_CREAT
         shmid = shmget(key + databuf_id - 1, paper_input_databuf_size, 0666);
-        // Do not init buffer
-        init_buffer = 0;
+        // Verify buffer sizing
+        verify_sizing = 1;
     }
     if (shmid==-1) {
         perror("shmget");
@@ -151,7 +154,7 @@ struct paper_input_databuf *paper_input_databuf_create(int instance_id, int n_bl
         return(NULL);
     }
 
-    if(!init_buffer) {
+    if(verify_sizing) {
         // Make sure existing sizes match expectaions
         if(d->n_block != n_block || d->block_size != block_size) {
             guppi_error(__FUNCTION__, "existing databuf size mismatch");
@@ -160,7 +163,6 @@ struct paper_input_databuf *paper_input_databuf_create(int instance_id, int n_bl
             }
             return(NULL);
         }
-        return (struct paper_input_databuf *)d;
     }
 
     /* Try to lock in memory */
@@ -191,6 +193,10 @@ struct paper_input_databuf *paper_input_databuf_create(int instance_id, int n_bl
     arg.array = (unsigned short *)malloc(sizeof(unsigned short)*n_block);
     memset(arg.array, 0, sizeof(unsigned short)*n_block);
     rv = semctl(d->semid, 0, SETALL, arg);
+    if (rv==-1) {
+        perror("semctl");
+        guppi_error(__FUNCTION__, "Error clearing semaphores.");
+    }
     free(arg.array);
 
     return (struct paper_input_databuf *)d;
@@ -295,11 +301,15 @@ int paper_input_databuf_set_filled(struct paper_input_databuf *d, int block_id)
  * passed in.  If they match, a pointer to the existing databuf is returned.
  * It the sizes do not match, NULL is returned (i.e. it is an error if the
  * databuf exists but the sizes do not match).
+ *
+ * In either case, the memory and semaphores will be cleared, so this method
+ * should only be called at startup (e.g. from an initialization function)!
  */
 struct paper_output_databuf *paper_output_databuf_create(int instance_id, int n_block, size_t block_size,
         int databuf_id)
 {
-    int init_buffer = 1;
+    int rv = 0;
+    int verify_sizing = 0;
 
     if(block_size != N_OUTPUT_MATRIX*sizeof(float)) {
         char msg[256];
@@ -328,8 +338,8 @@ printf("databuf_size %lu\n", databuf_size);
     if (shmid==-1 && errno == EEXIST) {
         // Already exists, call shmget again without IPC_CREAT
         shmid = shmget(key + databuf_id - 1, databuf_size, 0666);
-        // Do not init buffer
-        init_buffer = 0;
+        // Verify buffer sizing
+        verify_sizing = 1;
     }
     if (shmid==-1) {
         perror("shmget");
@@ -345,7 +355,7 @@ printf("databuf_size %lu\n", databuf_size);
         return(NULL);
     }
 
-    if(!init_buffer) {
+    if(verify_sizing) {
         // Make sure existing sizes match expectaions
         if(d->n_block != n_block || d->block_size != block_size) {
             guppi_error(__FUNCTION__, "existing databuf size mismatch");
@@ -354,11 +364,10 @@ printf("databuf_size %lu\n", databuf_size);
             }
             return(NULL);
         }
-        return (struct paper_output_databuf *)d;
     }
 
     /* Try to lock in memory */
-    int rv = shmctl(shmid, SHM_LOCK, NULL);
+    rv = shmctl(shmid, SHM_LOCK, NULL);
     if (rv==-1) {
         perror("shmctl");
         guppi_error(__FUNCTION__, "Error locking shared memory.");
@@ -385,6 +394,10 @@ printf("databuf_size %lu\n", databuf_size);
     arg.array = (unsigned short *)malloc(sizeof(unsigned short)*n_block);
     memset(arg.array, 0, sizeof(unsigned short)*n_block);
     rv = semctl(d->semid, 0, SETALL, arg);
+    if (rv==-1) {
+        perror("semctl");
+        guppi_error(__FUNCTION__, "Error clearing semaphores.");
+    }
     free(arg.array);
 
     return (struct paper_output_databuf *)d;
