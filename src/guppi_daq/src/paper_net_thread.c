@@ -35,11 +35,10 @@
 #include "guppi_defines.h"
 #include "paper_thread.h"
 
-#define TIMING_TEST
 #define DEBUG_NET
 
 typedef struct {
-    uint64_t count;
+    uint64_t mcnt;
     int      fid;	// Fengine ID
     int      cid;	// channel set ID
 } packet_header_t;
@@ -48,6 +47,8 @@ typedef struct {
     int initialized;
     uint64_t mcnt_start;
     uint64_t mcnt_offset;
+    uint64_t mcnt_prior;
+    int out_of_seq_cnt;
     int block_i;
     int sub_block_i;
     int block_active[N_INPUT_BLOCKS];
@@ -56,6 +57,7 @@ typedef struct {
 static struct guppi_status *st_p;
 static uint32_t dropped_pkt_count;
 static uint32_t block_mgt_error_count;
+static uint32_t input_databuf_wait_count;
 
 #if defined TIMING_TEST || defined NET_TIMING_TEST
 static unsigned long fluffed_words = 0;
@@ -63,12 +65,24 @@ static unsigned long fluffed_words = 0;
 
 void print_pkt_header(packet_header_t * pkt_header) {
 
-    printf("packet header : count %llu fid %d cid %d\n", (long long unsigned)pkt_header->count, pkt_header->fid, pkt_header->cid);
+    printf("packet header : count %llu fid %d cid %d\n", (long long unsigned)pkt_header->mcnt, pkt_header->fid, pkt_header->cid);
 }
 
 void print_block_info(block_info_t * binfo) {
     printf("binfo : mcnt_start %llu mcnt_offset %llu block_i %d sub_block_i %d\n", 
            (long long unsigned)binfo->mcnt_start, (long long unsigned)binfo->mcnt_offset, binfo->block_i, binfo->sub_block_i);
+}
+
+void print_block_active(block_info_t * binfo) {
+    int i;
+    for(i=0;i<N_INPUT_BLOCKS;i++) { 
+	if(i == binfo->block_i) {
+		fprintf(stdout, "*%03d ", binfo->block_active[i]);	
+	} else {
+		fprintf(stdout, " %03d ", binfo->block_active[i]);	
+	}
+    }
+    fprintf(stdout, "\n");
 }
 
 void print_ring_mcnts(paper_input_databuf_t *paper_input_databuf_p) {
@@ -94,7 +108,7 @@ void get_header (struct guppi_udp_packet *p, packet_header_t * pkt_header) {
 
     uint64_t raw_header;
     raw_header = be64toh(*(unsigned long long *)p->data);
-    pkt_header->count       = raw_header >> 16;
+    pkt_header->mcnt        = raw_header >> 16;
     pkt_header->cid         = raw_header        & 0x000000000000000F;
     pkt_header->fid         = (raw_header >> 8) & 0x00000000000000FF;
 
@@ -110,106 +124,65 @@ void get_header (struct guppi_udp_packet *p, packet_header_t * pkt_header) {
     } else if(pkt_counter % 8 == 0) {
 	fake_fid += 4;
     }
-    pkt_header->count = fake_mcnt;
+    pkt_header->mcnt = fake_mcnt;
     pkt_counter++;
-    //printf("%d %d\n", pkt_counter, fake_mcnt);
 #endif
 }
 
-void set_blocks_filled(paper_input_databuf_t *paper_input_databuf_p, 
-		       int block_i,   
-		       int block_active[],
-		       int blocks_to_set) {
-// The non-exceptional call of this routine will be when a block is full.
-//   In this case, block_i will be two beyond the full block and blocks_to_set 
-//   will be such that the final block acted upon will be the full block. 
-//   This will almost always result in only the full block being set.
-// The exceptional call of this routine will be when we encounter an active,
-//   but for some reason abandoned, block.  In this case, block_i will be the 
-//   abandoned block and blocks_to_set will be such that the final block acted 
-//   upon will be two prior to the abandoned block.
+void input_databuf_wait_free(paper_input_databuf_t *paper_input_databuf_p, int block_i, const char * calling_function) {
 
-    int i;
-    int blocks_set;
-    int found_active_block = 0;
-    int rv, first_time=1;
+    int rv, first_time = 1;
 
-    for(i = block_i, blocks_set = 0; blocks_set < blocks_to_set; i = inc_block_i(i), blocks_set++) {
-	if(found_active_block || block_active[i]) {
-		// at first active block, all subsequent blocks are considered active
-		found_active_block = 1;
-		if(!block_active[i]) {
-			if((rv = paper_input_databuf_wait_free(paper_input_databuf_p, block_i)) != GUPPI_OK) {
-				if (rv==GUPPI_TIMEOUT) {
-					return;
-				} else {
-					guppi_error(__FUNCTION__, "error waiting for free databuf");
-					run_threads=0;
-					pthread_exit(NULL);
-					return;
-				}
-    			}
-		}
-		if(block_active[i] == N_PACKETS_PER_BLOCK) {
-			paper_input_databuf_p->block[i].header.good_data = 1;
-		} else { 
-			paper_input_databuf_p->block[i].header.good_data = 0;		// TODO needed?
-			dropped_pkt_count += N_PACKETS_PER_BLOCK - block_active[i];
-            guppi_status_lock_safe(st_p);
-   	    hputu4(st_p->buf, "DROPKTS", dropped_pkt_count);
-            guppi_status_unlock_safe(st_p);
-
-			printf("missing %d packets for block %d at mcnt %ld  and time %ld\n", 
-	                       N_PACKETS_PER_BLOCK - block_active[i], 
-	                       i, 
-		               paper_input_databuf_p->block[i].header.mcnt[0],
-                               time(NULL));
-		}
-		//paper_input_databuf_set_filled(paper_input_databuf_p, i);
-
-
-
- while((rv = paper_input_databuf_set_filled(paper_input_databuf_p, i)) != GUPPI_OK) {	
+    while((rv = paper_input_databuf_wait_free(paper_input_databuf_p, block_i)) != GUPPI_OK) {	
           if (rv==GUPPI_TIMEOUT) {
-#if 1
                 guppi_status_lock_safe(st_p);
                 hputs(st_p->buf, STATUS_KEY, "blocked_out");
                 guppi_status_unlock_safe(st_p);
-#endif
 		if(first_time) {
 			first_time = 0;
-			printf("waiting for data block %d to be marked filled\n", block_i);
-			//input_databuf_wait_count++;
+			printf("%s : waiting for data block %d to be free\n", calling_function, block_i);
+			input_databuf_wait_count++;
 		}
                 continue;
             } else {
-                guppi_error(__FUNCTION__, "error waiting for databuf filled call");
+                guppi_error(calling_function, "error waiting for free databuf");
                 run_threads=0;
                 pthread_exit(NULL);
                 break;
             }
-
- }
-
-
-
-
-
-
-		block_active[i] = 0;
-	}
     }
 }
 
-int calc_block_indexes(uint64_t pkt_mcnt, block_info_t *binfo) {
+void set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t *binfo, int block_to_set_i) { 
 
-    if(!binfo->initialized) {
-    	if(pkt_mcnt % N_SUB_BLOCKS_PER_INPUT_BLOCK != 0) {
-		return -1;				// insist that we start on a multiple of sub_blocks/block
-	}
-	binfo->mcnt_start = pkt_mcnt;	        // good to go
-	binfo->initialized = 1;
-    }
+    int rv, first_time=1;
+
+    if(binfo->block_active[block_to_set_i]) {
+    	while((rv = paper_input_databuf_set_filled(paper_input_databuf_p, block_to_set_i)) != GUPPI_OK) {	
+          	if (rv==GUPPI_TIMEOUT) {
+                	guppi_status_lock_safe(st_p);
+                	hputs(st_p->buf, STATUS_KEY, "blocked_out");
+                	guppi_status_unlock_safe(st_p);
+			if(first_time) {
+				first_time = 0;
+				printf("waiting for data block %d to be marked filled\n", block_to_set_i);
+			}
+                	continue;
+            	} else {
+                	guppi_error(__FUNCTION__, "error waiting for databuf filled call");
+                	run_threads=0;
+                	pthread_exit(NULL);
+                	break;
+            	}
+    	}
+        guppi_status_lock_safe(st_p);
+        hputu4(st_p->buf, "BLKLSTF", block_to_set_i);
+        guppi_status_unlock_safe(st_p);
+    	binfo->block_active[block_to_set_i] = 0;
+    } 
+}
+
+void calc_block_indexes(block_info_t *binfo, uint64_t pkt_mcnt) {
 
     // calculate block and sub_block subscripts while taking care of count rollover
     if(pkt_mcnt >= binfo->mcnt_start) {
@@ -220,118 +193,95 @@ int calc_block_indexes(uint64_t pkt_mcnt, block_info_t *binfo) {
     binfo->block_i     = (binfo->mcnt_offset) / N_SUB_BLOCKS_PER_INPUT_BLOCK % N_INPUT_BLOCKS; 
     binfo->sub_block_i = (binfo->mcnt_offset) % N_SUB_BLOCKS_PER_INPUT_BLOCK; 
 
-
     if(pkt_mcnt < binfo->mcnt_start && binfo->block_i == 0 && binfo->sub_block_i == 0) {
-	binfo->mcnt_start = pkt_mcnt;				// reset on block,sub 0
+	binfo->mcnt_start = pkt_mcnt;	// on rollover, reset on block,sub 0
     }
-//print_block_info(binfo);
-    return 0;
 } 
 
-void initialize_block(paper_input_databuf_t * paper_input_databuf_p, block_info_t * binfo, uint64_t pkt_mcnt) {
-// this routine may initialize a partial block (binfo->sub_block_i != 0)   
-    int i;
+#define MAX_MCNT_DIFF 64 
+int out_of_seq_mcnt(block_info_t * binfo, uint64_t pkt_mcnt) {
 
-    paper_input_databuf_p->block[binfo->block_i].header.mcnt[binfo->sub_block_i] = pkt_mcnt; 
+    if(abs(pkt_mcnt - binfo->mcnt_prior) <= MAX_MCNT_DIFF) {
+        binfo->mcnt_prior = pkt_mcnt;
+    	binfo->out_of_seq_cnt = 0;
+	return 0;
+    } else {
+	printf("Out of seq : mcnt jumps from %llu to %llu\n", (long long unsigned)binfo->mcnt_prior, (long long unsigned)pkt_mcnt);
+    	binfo->out_of_seq_cnt++;
+	return 1;
+    }
+}
+
+#define MAX_OUT_OF_SEQ 5
+int handle_out_of_seq_mcnt(block_info_t * binfo) {
+
+    if(binfo->out_of_seq_cnt > MAX_OUT_OF_SEQ) {
+	printf("exceeded max (%d) out of sequence mcnts - reinitializing\n", MAX_OUT_OF_SEQ);
+	binfo->initialized = 0;
+    }
+    return -1;
+}
+
+void initialize_block(paper_input_databuf_t * paper_input_databuf_p, block_info_t * binfo, uint64_t pkt_mcnt) {
+
+    int i;
 
     paper_input_databuf_p->block[binfo->block_i].header.good_data = 0; 
 
-    for(i=binfo->sub_block_i+1; i<N_SUB_BLOCKS_PER_INPUT_BLOCK; i++) {
+    for(i=0; i<N_SUB_BLOCKS_PER_INPUT_BLOCK; i++) {
 	paper_input_databuf_p->block[binfo->block_i].header.mcnt[i] = 0;
     }
 }
 
-void manage_active_blocks(paper_input_databuf_t * paper_input_databuf_p, 
-			  block_info_t * binfo, uint64_t pkt_mcnt) {
-    int rv;
+void initialize_block_info(paper_input_databuf_t *paper_input_databuf_p, block_info_t * binfo, uint64_t pkt_mcnt) {
 
-    if(binfo->block_active[binfo->block_i] == 0) {    // is the block non-active?
+    int i;
 
-	// handle the non-active block
-	// check for the (unusual? impossible?) condition that we are not indexing the first sub_block
-	if(binfo->sub_block_i != 0) {
-		block_mgt_error_count++;
-		printf("starting on non-active (count %d) block[%d] but with sub_block[%d] rather than sub_block[0].\n", 
-		      binfo->block_active[binfo->block_i], binfo->block_i, binfo->sub_block_i);
+    // we might be *re*-initializing so mark all currently active blocks as filled
+    for(i = 0; i < N_INPUT_BLOCKS; i++) {
+    	if(binfo->block_active[i]) {
+		set_block_filled(paper_input_databuf_p, binfo, i);
+		binfo->block_active[i] = 0;
 	}
-	// init the block 
-	if((rv = paper_input_databuf_wait_free(paper_input_databuf_p, binfo->block_i)) != GUPPI_OK) {
-		if (rv==GUPPI_TIMEOUT) {
-			return;
-		} else {
-			guppi_error(__FUNCTION__, "error waiting for free databuf");
-			run_threads=0;
-			pthread_exit(NULL);
-			return;
-		}
-    	}
-	initialize_block(paper_input_databuf_p, binfo, pkt_mcnt);
-	// this non-active block is now ready to receive new data
-
-    } else {
-	// handle the active block
-	// Is it abandonded?
-	if(paper_input_databuf_p->block[binfo->block_i].header.mcnt[binfo->sub_block_i] != 0 &&
- 	   paper_input_databuf_p->block[binfo->block_i].header.mcnt[binfo->sub_block_i] != pkt_mcnt) {
-		// yes..
-		// TODO : abadoned block logic is a bit dicey - check/redo
-		printf("encountered an abandoned block : block[%d].sub_block[%d].header.mcnt = %llu while packet mcnt = %llu\n",
-			binfo->block_i, binfo->sub_block_i, 
-			(long long unsigned)paper_input_databuf_p->block[binfo->block_i].header.mcnt[binfo->sub_block_i],
-			(long long unsigned)pkt_mcnt);
-		// yes, the block is abandonded, indicating serious trouble (cable disconnect?) - go clean up the entire ring
-		block_mgt_error_count++;
-		set_blocks_filled(paper_input_databuf_p, binfo->block_i, binfo->block_active, N_INPUT_BLOCKS);
-		// re-acquire ownership of the block and assign the packet's mcnt
-		if((rv = paper_input_databuf_wait_free(paper_input_databuf_p, binfo->block_i)) != GUPPI_OK) {
-			if (rv==GUPPI_TIMEOUT) {
-				return;
-			} else {
-				guppi_error(__FUNCTION__, "error waiting for free databuf");
-				run_threads=0;
-				pthread_exit(NULL);
-				return;
-			}
-    		}
-		initialize_block(paper_input_databuf_p, binfo, pkt_mcnt);
-		binfo->block_active[binfo->block_i] = 0;	// re-init packet count for this block
-	} else {	 // block is not abandoned	
-		if(paper_input_databuf_p->block[binfo->block_i].header.mcnt[binfo->sub_block_i] == 0) {	// Are we starting a new sub_block?
-			paper_input_databuf_p->block[binfo->block_i].header.mcnt[binfo->sub_block_i] = pkt_mcnt;   // stamp it
-		}
-	} 
-    }	// this active block is now ready to receive new data
-
-    binfo->block_active[binfo->block_i] += 1;			// in all cases increment packet count for this block
+    }		
+    binfo->mcnt_start = pkt_mcnt;
+    binfo->mcnt_prior = pkt_mcnt;
+    binfo->out_of_seq_cnt = 0;
+    binfo->initialized = 1;
 }
 
 uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, struct guppi_udp_packet *p) {
 
     static block_info_t binfo;
-    static int first_time = 1;
     packet_header_t pkt_header;
     const uint64_t *payload_p;
-    int i;
-    int rv;
-    int       block_offset;
-    int       sub_block_offset;
+    int i, block_offset, sub_block_offset;
     uint64_t *dest_p;
 
-    // block management 
-    if(first_time) {
-	binfo.initialized = 0;
-	first_time = 0;
-    }
+    // housekeeping for each packet
     get_header(p, &pkt_header);
-    //print_pkt_header(&pkt_header);
-    rv = calc_block_indexes(pkt_header.count, &binfo);
-    if(rv == -1) {
-	return rv;		// idle until we are at a good stating point
+    if(! binfo.initialized) {
+	// insist that we start on a multiple of sub_blocks/block
+    	if(pkt_header.mcnt % N_SUB_BLOCKS_PER_INPUT_BLOCK != 0) {
+		return -1;
+    	}
+	initialize_block_info(paper_input_databuf_p, &binfo, pkt_header.mcnt);
     }
-    //print_block_info(&binfo);
-    manage_active_blocks(paper_input_databuf_p, &binfo, pkt_header.count);
-    //print_ring_mcnts(paper_input_databuf_p);
-    // end block management 
+    if(out_of_seq_mcnt(&binfo, pkt_header.mcnt)) {
+    	return(handle_out_of_seq_mcnt(&binfo));
+    }
+    calc_block_indexes(&binfo, pkt_header.mcnt);
+    if(! binfo.block_active[binfo.block_i]) {
+	// new block
+    	input_databuf_wait_free(paper_input_databuf_p, binfo.block_i, __FUNCTION__);
+	initialize_block(paper_input_databuf_p, &binfo, pkt_header.mcnt); 
+    }
+    if(paper_input_databuf_p->block[binfo.block_i].header.mcnt[binfo.sub_block_i] == 0) {                
+	// new sub_block
+     	paper_input_databuf_p->block[binfo.block_i].header.mcnt[binfo.sub_block_i] = pkt_header.mcnt;  
+    }
+    binfo.block_active[binfo.block_i] += 1;	// increment packet count for block
+    // end housekeeping
 
     // Calculate starting points for unpacking this packet into a sub_block.
     // One packet will never span more than one sub_block.
@@ -361,15 +311,12 @@ uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf
 
     // if all packets are accounted for, mark this block filled
     if(binfo.block_active[binfo.block_i] == N_PACKETS_PER_BLOCK) {
-#if 1
- 	// debug stuff
-	int i;
-	for(i=0;i<4;i++) fprintf(stdout, "%d ", binfo.block_active[i]);	
-	fprintf(stdout, "\n");
-#endif
-	// set the full block filled, as well as any previous abandoned blocks.  inc(inc) so we don't touch the "next" block.
-	set_blocks_filled(paper_input_databuf_p, inc_block_i(inc_block_i(binfo.block_i)), binfo.block_active, N_INPUT_BLOCKS-1);
-
+    	paper_input_databuf_p->block[binfo.block_i].header.good_data = 1; 
+	// mark the block 2 back
+	set_block_filled(paper_input_databuf_p, &binfo, dec_block_i(dec_block_i(binfo.block_i)));
+#if defined PRINT_BLOCK_ACTIVE
+	print_block_active(&binfo); 	
+#endif // PRINT_BLOCK_ACTIVE
         return paper_input_databuf_p->block[binfo.block_i].header.mcnt[0];
     }
 
