@@ -57,7 +57,6 @@ typedef struct {
 static struct guppi_status *st_p;
 static uint32_t dropped_pkt_count;
 static uint32_t block_mgt_error_count;
-static uint32_t input_databuf_wait_count;
 
 #if defined TIMING_TEST || defined NET_TIMING_TEST
 static unsigned long fluffed_words = 0;
@@ -131,24 +130,16 @@ void get_header (struct guppi_udp_packet *p, packet_header_t * pkt_header) {
 
 void input_databuf_wait_free(paper_input_databuf_t *paper_input_databuf_p, int block_i, const char * calling_function) {
 
-    int rv, first_time = 1;
+    int rv;
 
-    while((rv = paper_input_databuf_wait_free(paper_input_databuf_p, block_i)) != GUPPI_OK) {	
+    if((rv = paper_input_databuf_wait_free(paper_input_databuf_p, block_i)) != GUPPI_OK) {	
           if (rv==GUPPI_TIMEOUT) {
-                guppi_status_lock_safe(st_p);
-                hputs(st_p->buf, STATUS_KEY, "blocked_out");
-                guppi_status_unlock_safe(st_p);
-		if(first_time) {
-			first_time = 0;
-			printf("%s : waiting for data block %d to be free\n", calling_function, block_i);
-			input_databuf_wait_count++;
-		}
-                continue;
+                return;
             } else {
                 guppi_error(calling_function, "error waiting for free databuf");
                 run_threads=0;
                 pthread_exit(NULL);
-                break;
+                return;
             }
     }
 }
