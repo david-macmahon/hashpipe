@@ -422,6 +422,7 @@ static void *run(void * _args)
     guppi_status_lock_safe(&st);
     hgetu4(st.buf, "XID", &xengine_id); // No change if not found
     hputu4(st.buf, "XID", xengine_id);
+    hputu4(st.buf, "OUTDUMPS", 0);
     guppi_status_unlock_safe(&st);
 
     pkthdr_t hdr;
@@ -490,6 +491,7 @@ static void *run(void * _args)
 
     /* Main loop */
     int i_pkt, rv;
+    unsigned int dumps = 0;
     int block_idx = 0;
     signal(SIGINT,cc);
     signal(SIGTERM,cc);
@@ -581,6 +583,10 @@ static void *run(void * _args)
 
         // Setup for next block
         block_idx = (block_idx + 1) % db->header.n_block;
+
+        guppi_status_lock_safe(&st);
+        hputu4(st.buf, "OUTDUMPS", ++dumps);
+        guppi_status_unlock_safe(&st);
 
         /* Will exit if thread has been cancelled */
         pthread_testcancel();
