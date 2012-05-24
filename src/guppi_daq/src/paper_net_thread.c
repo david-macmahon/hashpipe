@@ -343,7 +343,7 @@ uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf
 			block_offset                                 + 
 			sizeof(paper_input_header_t)                 + 
 			sub_block_offset                             +
-			pkt_header.fid*2);
+			pkt_header.fid*N_INPUTS_PER_FENGINE);
     payload_p        = (uint64_t *)(p->data+8);
 
     // unpack the packet, fluffing as we go
