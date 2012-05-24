@@ -140,6 +140,7 @@ void set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t
 
 	missed_pkt_cnt += N_PACKETS_PER_BLOCK - binfo->block_active[block_i]; 
         guppi_status_lock_safe(st_p);
+        hputu4(st_p->buf, "NETBKOUT", block_i);
         hputu4(st_p->buf, "MISSEDPK", missed_pkt_cnt);
         guppi_status_unlock_safe(st_p);
 
