@@ -60,7 +60,7 @@ static void *run(void * _args, int doCPU)
     struct guppi_thread_args *args = (struct guppi_thread_args *)_args;
 
 #ifdef DEBUG_SEMS
-    fprintf(stderr, "s/tid %lu/                  GPU/\n", pthread_self());
+    fprintf(stderr, "s/tid %lu/                      GPU/\n", pthread_self());
 #endif
 
     THREAD_RUN_BEGIN(args);

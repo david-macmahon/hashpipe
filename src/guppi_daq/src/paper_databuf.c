@@ -20,6 +20,17 @@ static struct timespec start;
 static struct timespec now;
 #define ELAPSED_NS(stop) \
   (((int64_t)stop.tv_sec-start.tv_sec)*1000*1000*1000+(stop.tv_nsec-start.tv_nsec))
+
+#define SEMLOG(pd, msg)                                        \
+  do {                                                         \
+    clock_gettime(CLOCK_MONOTONIC, &now);                      \
+    fprintf(stderr, "%13ld tid %lu " msg " %d (%lx)\n",        \
+        ELAPSED_NS(now), pthread_self(), block_id,             \
+        guppi_databuf_total_mask((struct guppi_databuf *)pd)); \
+  } while(0)
+
+#else
+#define SEMLOG(pd, msg)
 #endif // DEBUG_SEMS
 
 #include "fitshead.h"
@@ -227,78 +238,48 @@ int paper_input_databuf_total_status(struct paper_input_databuf *d)
 int paper_input_databuf_wait_free(struct paper_input_databuf *d, int block_id)
 {
     int rv;
-#ifdef DEBUG_SEMS
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    fprintf(stderr, "%13ld tid %lu wait free %d\n", ELAPSED_NS(now), pthread_self(), block_id);
-#endif
+    SEMLOG(d, "wait free");
     rv = guppi_databuf_wait_free((struct guppi_databuf *)d, block_id);
-#ifdef DEBUG_SEMS
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    fprintf(stderr, "%13ld tid %lu got free %d\n", ELAPSED_NS(now), pthread_self(), block_id);
-#endif
+    SEMLOG(d, "got  free");
     return rv;
 }
 
 int paper_input_databuf_busywait_free(struct paper_input_databuf *d, int block_id)
 {
     int rv;
-#ifdef DEBUG_SEMS
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    fprintf(stderr, "%13ld tid %lu busy-wait free %d\n", ELAPSED_NS(now), pthread_self(), block_id);
-#endif
+    SEMLOG(d, "busy-wait free");
     rv = guppi_databuf_busywait_free((struct guppi_databuf *)d, block_id);
-#ifdef DEBUG_SEMS
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    fprintf(stderr, "%13ld tid %lu busy-got free %d\n", ELAPSED_NS(now), pthread_self(), block_id);
-#endif
+    SEMLOG(d, "busy-got  free");
     return rv;
 }
 
 int paper_input_databuf_wait_filled(struct paper_input_databuf *d, int block_id)
 {
     int rv;
-#ifdef DEBUG_SEMS
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    fprintf(stderr, "%13ld tid %lu wait fill %d\n", ELAPSED_NS(now), pthread_self(), block_id);
-#endif
+    SEMLOG(d, "wait fill");
     rv = guppi_databuf_wait_filled((struct guppi_databuf *)d, block_id);
-#ifdef DEBUG_SEMS
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    fprintf(stderr, "%13ld tid %lu got fill %d\n", ELAPSED_NS(now), pthread_self(), block_id);
-#endif
+    SEMLOG(d, "got  fill");
     return rv;
 }
 
 int paper_input_databuf_busywait_filled(struct paper_input_databuf *d, int block_id)
 {
     int rv;
-#ifdef DEBUG_SEMS
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    fprintf(stderr, "%13ld tid %lu busy-wait fill %d\n", ELAPSED_NS(now), pthread_self(), block_id);
-#endif
+    SEMLOG(d, "busy-wait fill");
     rv = guppi_databuf_busywait_filled((struct guppi_databuf *)d, block_id);
-#ifdef DEBUG_SEMS
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    fprintf(stderr, "%13ld tid %lu busy-got fill %d\n", ELAPSED_NS(now), pthread_self(), block_id);
-#endif
+    SEMLOG(d, "busy-got  fill");
     return rv;
 }
 
 int paper_input_databuf_set_free(struct paper_input_databuf *d, int block_id)
 {
-#ifdef DEBUG_SEMS
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    fprintf(stderr, "%13ld tid %lu set  free %d\n", ELAPSED_NS(now), pthread_self(), block_id);
-#endif
+    SEMLOG(d, "set  free");
     return guppi_databuf_set_free((struct guppi_databuf *)d, block_id);
 }
 
 int paper_input_databuf_set_filled(struct paper_input_databuf *d, int block_id)
 {
-#ifdef DEBUG_SEMS
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    fprintf(stderr, "%13ld tid %lu set  fill %d\n", ELAPSED_NS(now), pthread_self(), block_id);
-#endif
+    SEMLOG(d, "set  fill");
     return guppi_databuf_set_filled((struct guppi_databuf *)d, block_id);
 }
 
