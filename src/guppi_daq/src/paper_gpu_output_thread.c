@@ -360,7 +360,7 @@ static int init(struct guppi_thread_args *args)
     packets_per_dump = bytes_per_dump / BYTES_PER_PACKET;
 
     // Create paper_ouput_databuf
-    THREAD_INIT_DATABUF(args->instance_id, paper_output_databuf, 16,
+    THREAD_INIT_DATABUF(args->instance_id, paper_output_databuf, 2,
         xgpu_info.matLength*sizeof(Complex),
         args->input_buffer);
 
