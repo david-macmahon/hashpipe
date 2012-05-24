@@ -40,7 +40,7 @@
 typedef struct {
     uint64_t mcnt;
     int      fid;	// Fengine ID
-    int      cid;	// channel set ID
+    int      xid;	// Xengine ID
 } packet_header_t;
 
 typedef struct {
@@ -55,8 +55,6 @@ typedef struct {
 } block_info_t;
 
 static struct guppi_status *st_p;
-static uint32_t dropped_pkt_count;
-static uint32_t block_mgt_error_count;
 
 #if defined TIMING_TEST || defined NET_TIMING_TEST
 static unsigned long fluffed_words = 0;
@@ -64,7 +62,7 @@ static unsigned long fluffed_words = 0;
 
 void print_pkt_header(packet_header_t * pkt_header) {
 
-    printf("packet header : count %llu fid %d cid %d\n", (long long unsigned)pkt_header->mcnt, pkt_header->fid, pkt_header->cid);
+    printf("packet header : count %llu fid %d xid %d\n", (long long unsigned)pkt_header->mcnt, pkt_header->fid, pkt_header->xid);
 }
 
 void print_block_info(block_info_t * binfo) {
@@ -108,7 +106,7 @@ void get_header (struct guppi_udp_packet *p, packet_header_t * pkt_header) {
     uint64_t raw_header;
     raw_header = be64toh(*(unsigned long long *)p->data);
     pkt_header->mcnt        = raw_header >> 16;
-    pkt_header->cid         = raw_header        & 0x000000000000000F;
+    pkt_header->xid         = raw_header        & 0x000000000000000F;
     pkt_header->fid         = (raw_header >> 8) & 0x00000000000000FF;
 
 #ifdef TIMING_TEST
@@ -147,6 +145,7 @@ void input_databuf_wait_free(paper_input_databuf_t *paper_input_databuf_p, int b
 void set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t *binfo, int block_to_set_i) { 
 
     int rv, first_time=1;
+    static uint32_t missed_pkt_cnt;
 
     if(binfo->block_active[block_to_set_i]) {
     	while((rv = paper_input_databuf_set_filled(paper_input_databuf_p, block_to_set_i)) != GUPPI_OK) {	
@@ -166,8 +165,9 @@ void set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t
                 	break;
             	}
     	}
+	missed_pkt_cnt += N_PACKETS_PER_BLOCK - binfo->block_active[block_to_set_i]; 
         guppi_status_lock_safe(st_p);
-        hputu4(st_p->buf, "BLKLSTF", block_to_set_i);
+        hputu4(st_p->buf, "MISSEDPK", missed_pkt_cnt);
         guppi_status_unlock_safe(st_p);
     	binfo->block_active[block_to_set_i] = 0;
     } 
@@ -451,8 +451,6 @@ static void *run(void * _args)
         if(mcnt != -1) {
             guppi_status_lock_safe(&st);
             hputu8(st.buf, "NETMCNT", mcnt);
-   	    hputu4(st.buf, "DROPKTS", dropped_pkt_count);
-   	    hputu4(st.buf, "BLKMGTE", block_mgt_error_count);
             guppi_status_unlock_safe(&st);
         }
 
