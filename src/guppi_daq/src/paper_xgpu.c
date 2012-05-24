@@ -212,6 +212,8 @@ int main(int argc, char *argv[])
               modules[i]->name);
           exit(1);
       }
+
+      sleep(3);
     }
 
     /* Wait for SIGINT (i.e. control-c) or SIGTERM (aka "kill <pid>") */
