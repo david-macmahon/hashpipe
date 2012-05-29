@@ -406,7 +406,7 @@ int guppi_databuf_busywait_filled(struct guppi_databuf *d, int block_id) {
     struct sembuf op[2];
     op[0].sem_num = op[1].sem_num = block_id;
     op[0].sem_flg = IPC_NOWAIT;
-    op[1].sem_flg = 0;
+    op[1].sem_flg = IPC_NOWAIT;
     op[0].sem_op = -1;
     op[1].sem_op = 1;
     struct timespec timeout;
