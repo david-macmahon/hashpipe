@@ -182,7 +182,7 @@ int out_of_seq_mcnt(block_info_t * binfo, uint64_t pkt_mcnt) {
 int handle_out_of_seq_mcnt(block_info_t * binfo) {
 
     if(binfo->out_of_seq_cnt > MAX_OUT_OF_SEQ) {
-	printf("exceeded max (%d) out of sequence mcnts - reinitializing\n", MAX_OUT_OF_SEQ);
+	printf("exceeded max (%d) out of sequence mcnts - restarting\n", MAX_OUT_OF_SEQ);
 	binfo->initialized = 0;
     }
     return -1;
@@ -203,14 +203,23 @@ void initialize_block_info(paper_input_databuf_t *paper_input_databuf_p, block_i
 
     int i;
 
-    // we might be *re*-initializing so mark all currently active blocks as filled
+    // We might be restarting so mark all currently active blocks, with the exception
+    // of block_i, as filled. We will restart at block_i.  On program startup, this loop 
+    // as no functional effect as no blocks are active and all block_active elements are 0. 
     for(i = 0; i < N_INPUT_BLOCKS; i++) {
-    	if(binfo->block_active[i]) {
-		set_block_filled(paper_input_databuf_p, binfo, i);
-		binfo->block_active[i] = 0;
+	if(i == binfo->block_i) {
+		binfo->block_active[i] = 0;	
+	} else {
+    		if(binfo->block_active[i]) {
+			set_block_filled(paper_input_databuf_p, binfo, i);
+		}
 	}
     }		
-    binfo->mcnt_start = pkt_mcnt;
+
+    // On program startup block_i will be zero.  If we are restarting,  this will set 
+    // us up to restart at the beginning of block_i.  TODO: mcnt rollover logic  
+    binfo->mcnt_start = pkt_mcnt - binfo->block_i * N_SUB_BLOCKS_PER_INPUT_BLOCK;
+
     binfo->mcnt_prior = pkt_mcnt;
     binfo->out_of_seq_cnt = 0;
     binfo->initialized = 1;
