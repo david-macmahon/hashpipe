@@ -18,7 +18,6 @@
 #include <sys/resource.h>
 #include <sys/types.h>
 #include <errno.h>
-#include <fcntl.h>
 
 #include <xgpu.h>
 
@@ -412,8 +411,6 @@ static void *run(void * _args)
                 "Error opening UDP socket.");
         pthread_exit(NULL);
     }
-    /* Set to non-blocking */
-    fcntl(up.sock, F_SETFD, O_NONBLOCK);
     pthread_cleanup_push((void *)guppi_udp_close, &up);
 #endif
 
