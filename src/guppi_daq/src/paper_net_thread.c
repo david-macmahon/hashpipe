@@ -277,7 +277,9 @@ uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf
     }
     calc_block_indexes(&binfo, pkt_header.mcnt);
     if(! binfo.block_active[binfo.block_i]) {
-	// new block
+	// new block, pass along the block for two blocks ago
+	set_block_filled(paper_input_databuf_p, &binfo, dec_block_i(dec_block_i(binfo.block_i)));
+	// Wait (hopefully not long!) for free block for this packet
 	if((rv = paper_input_databuf_busywait_free(paper_input_databuf_p, binfo.block_i)) != GUPPI_OK) {    
 	    if (rv==GUPPI_TIMEOUT) {
 		// run_threads is 0 (i.e. shutting down)
@@ -328,15 +330,9 @@ uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf
     // if all packets are accounted for, mark this block filled
     if(binfo.block_active[binfo.block_i] == N_PACKETS_PER_BLOCK) {
     	paper_input_databuf_p->block[binfo.block_i].header.good_data = 1; 
-	// mark the block 2 back
-	set_block_filled(paper_input_databuf_p, &binfo, dec_block_i(dec_block_i(binfo.block_i)));
-#if defined PRINT_BLOCK_ACTIVE
-	print_block_active(&binfo); 	
-#endif // PRINT_BLOCK_ACTIVE
-        return paper_input_databuf_p->block[binfo.block_i].header.mcnt[0];
     }
 
-    return -1;
+    return pkt_header.mcnt;
 }
 
 static int init(struct guppi_thread_args *args)
