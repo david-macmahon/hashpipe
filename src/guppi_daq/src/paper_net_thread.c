@@ -62,12 +62,12 @@ static unsigned long fluffed_words = 0;
 
 void print_pkt_header(packet_header_t * pkt_header) {
 
-    printf("packet header : count %llu fid %d xid %d\n", (long long unsigned)pkt_header->mcnt, pkt_header->fid, pkt_header->xid);
+    printf("packet header : count %012lx fid %d xid %d\n", pkt_header->mcnt, pkt_header->fid, pkt_header->xid);
 }
 
 void print_block_info(block_info_t * binfo) {
-    printf("binfo : mcnt_start %llu mcnt_offset %llu block_i %d sub_block_i %d\n", 
-           (long long unsigned)binfo->mcnt_start, (long long unsigned)binfo->mcnt_offset, binfo->block_i, binfo->sub_block_i);
+    printf("binfo : mcnt_start %012lx mcnt_offset %012lx block_i %d sub_block_i %d\n",
+           binfo->mcnt_start, binfo->mcnt_offset, binfo->block_i, binfo->sub_block_i);
 }
 
 void print_block_active(block_info_t * binfo) {
@@ -88,7 +88,7 @@ void print_ring_mcnts(paper_input_databuf_t *paper_input_databuf_p) {
 
     for(i=0; i < N_INPUT_BLOCKS; i++) {
 	for(j=0; j < N_SUB_BLOCKS_PER_INPUT_BLOCK; j++) {
-		printf("block %d sub_block %d mcnt %lu\n", i, j, paper_input_databuf_p->block[i].header.mcnt[j]);
+		printf("block %d sub_block %3d mcnt %012lx\n", i, j, paper_input_databuf_p->block[i].header.mcnt[j]);
 	}
     }
 }
@@ -172,7 +172,7 @@ int out_of_seq_mcnt(block_info_t * binfo, uint64_t pkt_mcnt) {
     	binfo->out_of_seq_cnt = 0;
 	return 0;
     } else {
-	printf("Out of seq : mcnt jumps from %llu to %llu\n", (long long unsigned)binfo->mcnt_prior, (long long unsigned)pkt_mcnt);
+	printf("Out of seq : mcnt jumps from %012lx to %012lx\n", binfo->mcnt_prior, pkt_mcnt);
     	binfo->out_of_seq_cnt++;
 	return 1;
     }
