@@ -101,6 +101,21 @@ inline int dec_block_i(block_i) {
     return(block_i == 0 ? N_INPUT_BLOCKS - 1 : block_i - 1);
 }
 
+#define MAX_MCNT_LOG (1024*1024)
+static uint64_t mcnt_log[MAX_MCNT_LOG];
+static int mcnt_log_idx = 0;
+
+void dump_mcnt_log()
+{
+    int i;
+    FILE *f = fopen("mcnt.log","w");
+    for(i=0; i<MAX_MCNT_LOG; i++) {
+	if(mcnt_log[i] == 0) break;
+	fprintf(f, "%012lx\n", mcnt_log[i]);
+    }
+    fclose(f);
+}
+
 void get_header (struct guppi_udp_packet *p, packet_header_t * pkt_header) {
 
     uint64_t raw_header;
@@ -108,6 +123,8 @@ void get_header (struct guppi_udp_packet *p, packet_header_t * pkt_header) {
     pkt_header->mcnt        = raw_header >> 16;
     pkt_header->xid         = raw_header        & 0x00000000000000FF;
     pkt_header->fid         = (raw_header >> 8) & 0x00000000000000FF;
+
+    mcnt_log[mcnt_log_idx++ % MAX_MCNT_LOG] = pkt_header->mcnt;
 
 #ifdef TIMING_TEST
     static int fake_mcnt=0;
@@ -127,10 +144,22 @@ void get_header (struct guppi_udp_packet *p, packet_header_t * pkt_header) {
 }
 
 void set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t *binfo, int block_i) { 
+    static int last_filled = -1;
 
     static uint32_t missed_pkt_cnt;
 
     if(binfo->block_active[block_i]) {
+
+	last_filled = (last_filled+1) % ((struct guppi_databuf *)paper_input_databuf_p)->n_block;
+	if(last_filled != block_i) {
+	    printf("block %d being marked filled, but expected block %d!\n", block_i, last_filled);
+	    print_block_info(binfo);
+	    print_block_active(binfo);
+	    print_ring_mcnts(paper_input_databuf_p);
+	    dump_mcnt_log();
+	    abort(); // End process and generate core file (if ulimit allows)
+	}
+
 	if(paper_input_databuf_set_filled(paper_input_databuf_p, block_i) != GUPPI_OK) {
 	    guppi_error(__FUNCTION__, "error waiting for databuf filled call");
 	    run_threads=0;
