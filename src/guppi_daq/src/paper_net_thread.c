@@ -146,7 +146,7 @@ void get_header (struct guppi_udp_packet *p, packet_header_t * pkt_header) {
 void set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t *binfo, int block_i) { 
     static int last_filled = -1;
 
-    static uint32_t missed_pkt_cnt;
+    uint32_t block_missed_pkt_cnt, missed_pkt_cnt=0;
 
     if(binfo->block_active[block_i]) {
 
@@ -167,11 +167,16 @@ void set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t
 	    return;
 	}
 
-	missed_pkt_cnt += N_PACKETS_PER_BLOCK - binfo->block_active[block_i]; 
-        guppi_status_lock_safe(st_p);
-        hputu4(st_p->buf, "NETBKOUT", block_i);
-        hputu4(st_p->buf, "MISSEDPK", missed_pkt_cnt);
-        guppi_status_unlock_safe(st_p);
+	block_missed_pkt_cnt = N_PACKETS_PER_BLOCK - binfo->block_active[block_i];
+	guppi_status_lock_safe(st_p);
+	hputu4(st_p->buf, "NETBKOUT", block_i);
+	if(block_missed_pkt_cnt) {
+	    // Increment MISSEDPK by number of missed packets for this block
+	    hgetu4(st_p->buf, "MISSEDPK", &missed_pkt_cnt);
+	    missed_pkt_cnt += block_missed_pkt_cnt;
+	    hputu4(st_p->buf, "MISSEDPK", missed_pkt_cnt);
+	}
+	guppi_status_unlock_safe(st_p);
 
     	binfo->block_active[block_i] = 0;
     } 
@@ -386,10 +391,11 @@ static void *run(void * _args)
     struct guppi_udp_params up;
     //guppi_read_net_params(status_buf, &up);
     paper_read_net_params(status_buf, &up);
-    // Store bind host/port info in statsu buffer
+    // Store bind host/port info etc in status buffer
     guppi_status_lock_busywait_safe(&st);
     hputs(st.buf, "BINDHOST", up.bindhost);
     hputi4(st.buf, "BINDPORT", up.bindport);
+    hputu4(st.buf, "MISSEDPK", 0);
     guppi_status_unlock_safe(&st);
 
     struct guppi_udp_packet p;
