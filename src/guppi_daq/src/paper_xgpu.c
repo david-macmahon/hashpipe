@@ -190,6 +190,9 @@ int main(int argc, char *argv[])
       return 1;
     }
 
+    setvbuf(stdout, NULL, _IOLBF, 0);
+    setvbuf(stderr, NULL, _IONBF, 0);
+
 #ifdef DEBUG_SEMS
     fprintf(stderr, "sed '\n");
 #endif
