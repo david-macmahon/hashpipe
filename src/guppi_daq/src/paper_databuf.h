@@ -4,16 +4,24 @@
 #include <stdint.h>
 #include "guppi_databuf.h"
 
-#define N_INPUTS   64
+// Determined by F engine ADCs
 #define N_INPUTS_PER_FENGINE 8
-#define N_FENGINES  (N_INPUTS/N_INPUTS_PER_FENGINE)
 
-#define N_INPUT_BLOCKS 4
-#define N_PACKETS_PER_BLOCK 512
-#define N_SUB_BLOCKS_PER_INPUT_BLOCK 64
-#define N_TIME   4	// per sub_block
-#define N_CHAN 256	// per sub_block
-#define N_INPUT  8	// per sub_block
+// Correlator sizing
+#define N_INPUTS   64
+
+// Sizing for GPU input buffer (each "block" is one GPU input buffer)
+#define N_TIME_PER_BLOCK 256
+
+// Packet sizing (determined by F engine configuration)
+#define N_TIME   4	// per sub_block == per packet
+#define N_CHAN 256	// per sub_block == per packet == per block
+#define N_INPUT  8	// per sub_block == per packet
+
+// Derived from above quantities
+#define N_FENGINES  (N_INPUTS/N_INPUTS_PER_FENGINE)
+#define N_PACKETS_PER_BLOCK (N_TIME_PER_BLOCK * N_FENGINES / N_TIME)
+#define N_SUB_BLOCKS_PER_INPUT_BLOCK (N_TIME_PER_BLOCK / N_TIME)
 
 #define N_FLUFFED_BYTES_PER_BLOCK  ((N_PACKETS_PER_BLOCK * 8192) * 2)
 #define N_FLUFFED_WORDS_PER_BLOCK (N_FLUFFED_BYTES_PER_BLOCK / 8) 
@@ -27,6 +35,8 @@
 /*
  * INPUT BUFFER STRUCTURES
  */
+
+#define N_INPUT_BLOCKS 4
 
 typedef struct paper_input_input {
     int8_t sample;				
