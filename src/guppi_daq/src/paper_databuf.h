@@ -3,25 +3,30 @@
 
 #include <stdint.h>
 #include "guppi_databuf.h"
+#include "config.h"
 
 // Determined by F engine ADCs
 #define N_INPUTS_PER_FENGINE 8
 
-// Correlator sizing
-#define N_INPUTS   64
+// Determined by F engine packetizer
+#define N_INPUTS_PER_PACKET  N_INPUTS_PER_FENGINE
+#define N_BYTES_PER_PAYLOAD  8192
 
-// Sizing for GPU input buffer (each "block" is one GPU input buffer)
-#define N_TIME_PER_BLOCK 256
-
-// Packet sizing (determined by F engine configuration)
-#define N_TIME   4	// per sub_block == per packet
-#define N_CHAN 256	// per sub_block == per packet == per block
-#define N_INPUT  8	// per sub_block == per packet
+// X engine sizing (from xGPU)
+#define N_INPUTS          (2*XGPU_NSTATION)
+#define N_TIME_PER_BLOCK     XGPU_NTIME
+#define N_CHAN               XGPU_NFREQUENCY
 
 // Derived from above quantities
-#define N_FENGINES  (N_INPUTS/N_INPUTS_PER_FENGINE)
-#define N_PACKETS_PER_BLOCK (N_TIME_PER_BLOCK * N_FENGINES / N_TIME)
-#define N_SUB_BLOCKS_PER_INPUT_BLOCK (N_TIME_PER_BLOCK / N_TIME)
+#define N_TIME_PER_PACKET            (N_BYTES_PER_PAYLOAD/N_INPUTS_PER_PACKET/N_CHAN)
+#define N_FENGINES                   (N_INPUTS/N_INPUTS_PER_FENGINE)
+#define N_PACKETS_PER_BLOCK          (N_TIME_PER_BLOCK * N_FENGINES / N_TIME_PER_PACKET)
+#define N_SUB_BLOCKS_PER_INPUT_BLOCK (N_TIME_PER_BLOCK / N_TIME_PER_PACKET)
+
+// Validate packet dimensions
+#if    N_BYTES_PER_PAYLOAD != (N_TIME_PER_PACKET*N_CHAN*N_INPUTS_PER_PACKET)
+#error N_BYTES_PER_PAYLOAD != (N_TIME_PER_PACKET*N_CHAN*N_INPUTS_PER_PACKET)
+#endif
 
 #define N_FLUFFED_BYTES_PER_BLOCK  ((N_PACKETS_PER_BLOCK * 8192) * 2)
 #define N_FLUFFED_WORDS_PER_BLOCK (N_FLUFFED_BYTES_PER_BLOCK / 8) 
@@ -43,7 +48,7 @@ typedef struct paper_input_input {
 } paper_input_input_t;
 
 typedef struct paper_input_chan {
-    paper_input_input_t input[N_INPUT*8];	
+    paper_input_input_t input[N_INPUTS_PER_PACKET*N_FENGINES];
 } paper_input_chan_t;
 
 typedef struct paper_input_time {
@@ -51,7 +56,7 @@ typedef struct paper_input_time {
 } paper_input_time_t;
 
 typedef struct paper_input_sub_block {
-    paper_input_time_t time[N_TIME];
+    paper_input_time_t time[N_TIME_PER_PACKET];
 } paper_input_sub_block_t;
 
 typedef struct paper_input_complexity {

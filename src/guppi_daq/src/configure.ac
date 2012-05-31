@@ -69,9 +69,21 @@ LDFLAGS="${orig_LDFLAGS} -L${XGPUDIR}/lib"
 AC_CHECK_LIB([xgpu], [xgpuInit],
              # Found
              AC_SUBST(XGPUDIR,${XGPUDIR}),
-             # Not found there, check CUDADIR/lib64
+             # Not found there, error
              AC_MSG_ERROR([xGPU library not found]))
 LDFLAGS="${orig_LDFLAGS}"
+
+AC_DEFINE_UNQUOTED([XGPU_NSTATION],
+                   [`${XGPUDIR}/bin/xgpuinfo | sed -n '/Number of stations: /{s/.*: //;p}'`],
+                   [Number of stations == Ninputs/2])
+
+AC_DEFINE_UNQUOTED([XGPU_NFREQUENCY],
+                   [`${XGPUDIR}/bin/xgpuinfo | sed -n '/Number of frequencies: /{s/.*: //;p}'`],
+                   [Number of frequency channels per xGPU instance])
+
+AC_DEFINE_UNQUOTED([XGPU_NTIME],
+                   [`${XGPUDIR}/bin/xgpuinfo | sed -n '/time samples per GPU integration: /{s/.*: //;p}'`],
+                   [Number of time samples (i.e. spectra) per xGPU integration])
 
 ## FIXME: Replace `main' with a function in `-lm':
 #AC_CHECK_LIB([m], [main])

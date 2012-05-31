@@ -319,7 +319,7 @@ uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf
     payload_p        = (uint64_t *)(p->data+8);
 
     // unpack the packet, fluffing as we go
-    for(i=0; i<(N_TIME*N_CHAN); i++) {
+    for(i=0; i<(N_TIME_PER_PACKET*N_CHAN); i++) {
         uint64_t val = payload_p[i];
 	// Using complex block size (cbs) of 32
 	// 4 = cbs*sizeof(int8_t)/sizeof(uint64_t)
