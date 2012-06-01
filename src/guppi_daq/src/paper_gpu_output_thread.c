@@ -99,12 +99,11 @@
 //   integration.  The scaling factor is required to mimic the mcount values
 //   output by the FPGA X engines.  This allows the same catcher software to
 //   work with either FPGA or GPU X engines (or both).  The cacther software
-//   expects the mcount to be a (complex) sample count divided by 128.  IOW,
-//   mcount * 128 = number of 100 Mzps zamples since the last sync-up with 1
-//   PPS.  100 Mzps, or 100e6 zamples (compelex samples) per second, is the
-//   PAPER data rate.  The scaling factor is thus:
+//   expects the mcount to be a  sample count divided by 128.  In other words,
+//   mcount * 128 = number of 200 Msps samples since the last sync-up with 1
+//   PPS.  The scaling factor is thus:
 //
-//      timestamp = mcount * N_TIME_PER_PACKET * N_CHAN_TOTAL / 128
+//      timestamp = mcount * N_TIME_PER_PACKET * 2 * N_CHAN_TOTAL / 128
 //
 //   HEAPOFF.heap_offset is the offset within the integration buffer from which
 //   the packet's payload originated (each integration buffer requires multiple
@@ -537,7 +536,7 @@ static void *run(void * _args)
 
         // Update header's timestamp for this dump
         hdr.timestamp = TIMESTAMP(db->block[block_idx].header.mcnt *
-            N_TIME_PER_PACKET * N_CHAN_TOTAL / 128);
+            N_TIME_PER_PACKET * 2 * N_CHAN_TOTAL / 128);
 
         // Send data as multiple packets
         uint64_t byte_offset = 0;
