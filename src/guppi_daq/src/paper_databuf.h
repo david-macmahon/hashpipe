@@ -8,6 +8,9 @@
 // Determined by F engine ADCs
 #define N_INPUTS_PER_FENGINE 8
 
+// Determined by F engine
+#define N_CHAN_TOTAL 1024
+
 // Determined by F engine packetizer
 #define N_INPUTS_PER_PACKET  N_INPUTS_PER_FENGINE
 #define N_BYTES_PER_PAYLOAD  8192

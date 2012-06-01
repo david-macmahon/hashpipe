@@ -94,9 +94,17 @@
 //
 //   INSTIDS.instance_id is always sent as 0x0000.
 //
-//   TIMESTAMP.timestamp is mcount used for collating packets from all X
+//   TIMESTAMP.timestamp is scaled mcount used for collating packets from all X
 //   engines.  Not clear whether it is mcount at begining, middle, or end of
-//   integration.
+//   integration.  The scaling factor is required to mimic the mcount values
+//   output by the FPGA X engines.  This allows the same catcher software to
+//   work with either FPGA or GPU X engines (or both).  The cacther software
+//   expects the mcount to be a (complex) sample count divided by 128.  IOW,
+//   mcount * 128 = number of 100 Mzps zamples since the last sync-up with 1
+//   PPS.  100 Mzps, or 100e6 zamples (compelex samples) per second, is the
+//   PAPER data rate.  The scaling factor is thus:
+//
+//      timestamp = mcount * N_TIME_PER_PACKET * N_CHAN_TOTAL / 128
 //
 //   HEAPOFF.heap_offset is the offset within the integration buffer from which
 //   the packet's payload originated (each integration buffer requires multiple
@@ -528,7 +536,8 @@ static void *run(void * _args)
         reorder_and_convert(casper, db->block[block_idx].data);
 
         // Update header's timestamp for this dump
-        hdr.timestamp = TIMESTAMP(db->block[block_idx].header.mcnt << 6);
+        hdr.timestamp = TIMESTAMP(db->block[block_idx].header.mcnt *
+            N_TIME_PER_PACKET * N_CHAN_TOTAL / 128);
 
         // Send data as multiple packets
         uint64_t byte_offset = 0;
