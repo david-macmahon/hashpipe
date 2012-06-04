@@ -6,7 +6,7 @@ PATH="$(dirname $0):${PATH}"
 instance_id=0
 
 # Set default intcount
-intcount=2048
+intcount=1024
 
 # Set intsync to empty value
 intsync=
