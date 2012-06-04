@@ -67,6 +67,7 @@ clean_guppi_shmem_SOURCES = clean_guppi_shmem.c $(guppi_base)
 
 bin_PROGRAMS += paper_xgpu
 paper_xgpu_SOURCES = paper_xgpu.c $(paper_threads) $(paper_utils)
+paper_xgpu_LDADD = -lxgpu
 
 if COMPILE_VEGAS
 vegas_threads = $(guppi_threads) \

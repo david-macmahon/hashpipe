@@ -93,8 +93,6 @@ AC_CHECK_LIB([pthread], [pthread_create])
 ## FIXME: Replace `main' with a function in `-lrt':
 #AC_CHECK_LIB([rt], [main])
 
-AC_CHECK_LIB([xgpu], [xgpuInit])
-
 # Checks for header files.
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h limits.h netdb.h netinet/in.h stdint.h stdlib.h string.h sys/socket.h sys/time.h unistd.h xgpu.h])
 
