@@ -145,7 +145,7 @@ void get_header (struct guppi_udp_packet *p, packet_header_t * pkt_header) {
 void set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t *binfo, int block_i) { 
     static int last_filled = -1;
 
-    uint32_t block_missed_pkt_cnt, missed_pkt_cnt=0;
+    uint32_t block_missed_pkt_cnt, block_missed_feng, missed_pkt_cnt=0;
 
     if(binfo->block_active[block_i]) {
 
@@ -167,8 +167,15 @@ void set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t
 	}
 
 	block_missed_pkt_cnt = N_PACKETS_PER_BLOCK - binfo->block_active[block_i];
+	// If we missed more than N_SUB_BLOCKS_PER_INPUT_BLOCK, then assume we
+	// are missing one or more F engines.  Any missed packets beyond an
+	// integer multiple of N_SUB_BLOCKS_PER_INPUT_BLOCK will be considered
+	// as dropped packets.
+	block_missed_feng = block_missed_pkt_cnt / N_SUB_BLOCKS_PER_INPUT_BLOCK;
+	block_missed_pkt_cnt %= N_SUB_BLOCKS_PER_INPUT_BLOCK;
 	guppi_status_lock_busywait_safe(st_p);
 	hputu4(st_p->buf, "NETBKOUT", block_i);
+	hputu4(st_p->buf, "MISSEDFE", block_missed_feng);
 	if(block_missed_pkt_cnt) {
 	    // Increment MISSEDPK by number of missed packets for this block
 	    hgetu4(st_p->buf, "MISSEDPK", &missed_pkt_cnt);
@@ -394,6 +401,7 @@ static void *run(void * _args)
     guppi_status_lock_busywait_safe(&st);
     hputs(st.buf, "BINDHOST", up.bindhost);
     hputi4(st.buf, "BINDPORT", up.bindport);
+    hputu4(st.buf, "MISSEDFE", 0);
     hputu4(st.buf, "MISSEDPK", 0);
     guppi_status_unlock_safe(&st);
 
