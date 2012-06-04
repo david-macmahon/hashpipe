@@ -38,6 +38,15 @@ function init() {
     -o XID=$xid \
     -c $netcpu paper_net_thread \
     -c $gpucpu paper_gpu_thread \
+    -c $outcpu paper_gpu_output_thread
+
+  taskset $mask \
+  ./paper_xgpu -I $instance \
+    -o BINDHOST=$bindhost \
+    -o GPUDEV=$gpudev \
+    -o XID=$xid \
+    -c $netcpu paper_net_thread \
+    -c $gpucpu paper_gpu_thread \
     -c $outcpu paper_gpu_output_thread \
     2> out$instance
 }
