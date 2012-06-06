@@ -251,6 +251,7 @@ void initialize_block_info(paper_input_databuf_t *paper_input_databuf_p, block_i
 		binfo->block_active[i] = 0;	
 	} else {
     		if(binfo->block_active[i]) {
+			paper_input_databuf_p->block[i].header.good_data = 0;   // all data are bad at this point
 			set_block_filled(paper_input_databuf_p, binfo, i);
 		}
 	}
