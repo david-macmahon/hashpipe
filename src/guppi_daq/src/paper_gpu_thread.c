@@ -16,6 +16,15 @@
 #include <sys/types.h>
 
 #include <xgpu.h>
+// For compatibility with pre-v1.5.0 xGPU.
+// SYNCOP_SYNC_TRANSFER=0 is incorrect but that's
+// all that was supported pre-v1.5.0
+#ifndef SYNCOP_DUMP
+#define SYNCOP_DUMP 1
+#endif
+#ifndef SYNCOP_SYNC_TRANSFER
+#define SYNCOP_SYNC_TRANSFER 0
+#endif
 
 #include "fitshead.h"
 #include "sdfits.h"
@@ -230,7 +239,7 @@ static void *run(void * _args, int doCPU)
 
         clock_gettime(CLOCK_MONOTONIC, &start);
 
-        xgpuCudaXengine(&context, doDump);
+        xgpuCudaXengine(&context, doDump ? SYNCOP_DUMP : SYNCOP_SYNC_TRANSFER);
 
         clock_gettime(CLOCK_MONOTONIC, &finish);
 
