@@ -99,6 +99,7 @@ struct paper_input_databuf *paper_input_databuf_create(int instance_id, int n_bl
 {
     int rv = 0;
     int verify_sizing = 0;
+    static int first_time = 1;
 
 #ifdef DEBUG_SEMS
     // Init clock variables
@@ -111,19 +112,29 @@ struct paper_input_databuf *paper_input_databuf_create(int instance_id, int n_bl
 
     /* Calc databuf size */
     size_t paper_input_databuf_size = sizeof(paper_input_databuf_t);
-    struct rlimit rlim;
-    getrlimit(RLIMIT_MEMLOCK, &rlim);
-    if(paper_input_databuf_size < rlim.rlim_max) {
-	printf("Preemptive increse of RLIMIT_MEMLOCK from %lu to %lu (max) for a paper_input_databuf size of %lu.\n", 
-		rlim.rlim_cur, rlim.rlim_max, paper_input_databuf_size);
-	rlim.rlim_cur = rlim.rlim_max;
-	rv = setrlimit(RLIMIT_MEMLOCK, &rlim);
-	if(rv) {
-		perror("setrlimit");
-        	guppi_error(__FUNCTION__, "Error increasing RLIMIT_MEMLOCK");
-	}
-    } else {
-	guppi_error(__FUNCTION__, "Shared memory request is more than the max allowed");
+
+    // Make sure that we can lock the databuf to real memory. We are here multiple times and only need
+    // to do this once.
+    if(first_time) {
+	first_time = 0;
+    	struct rlimit rlim;
+    	getrlimit(RLIMIT_MEMLOCK, &rlim);
+    	if(paper_input_databuf_size > rlim.rlim_max) {
+		guppi_error(__FUNCTION__, "Input buffer size is greater than the maximum that may be locked");
+    	} else {
+		if(paper_input_databuf_size > rlim.rlim_cur) {
+			printf("Increasing RLIMIT_MEMLOCK from %lu to %lu (max) for a paper_input_databuf size of %lu.\n", 
+				rlim.rlim_cur, rlim.rlim_max, paper_input_databuf_size);
+			rlim.rlim_cur = rlim.rlim_max;
+			rv = setrlimit(RLIMIT_MEMLOCK, &rlim);
+			if(rv) {
+				perror("setrlimit");
+        			guppi_error(__FUNCTION__, "Error increasing RLIMIT_MEMLOCK");
+			}
+   		} else {
+    			printf("paper_input_databuf size %lu\n", paper_input_databuf_size); 
+    		}
+    	}
     }
 
     /* Get shared memory block */

@@ -61,7 +61,12 @@ static unsigned long fluffed_words = 0;
 
 void print_pkt_header(packet_header_t * pkt_header) {
 
-    printf("packet header : count %012lx fid %d xid %d\n", pkt_header->mcnt, pkt_header->fid, pkt_header->xid);
+    static long long prior_mcnt;
+
+    printf("packet header : mcnt %012lx (diff from prior %lld) fid %d xid %d\n", 
+	   pkt_header->mcnt, pkt_header->mcnt-prior_mcnt, pkt_header->fid, pkt_header->xid);
+
+    prior_mcnt = pkt_header->mcnt;
 }
 
 void print_block_info(block_info_t * binfo) {
@@ -188,24 +193,26 @@ void set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t
     } 
 }
 
-void calc_block_indexes(block_info_t *binfo, uint64_t pkt_mcnt) {
+int calc_block_indexes(block_info_t *binfo, uint64_t pkt_mcnt) {
 
-    // calculate block and sub_block subscripts while taking care of count rollover
-    if(pkt_mcnt >= binfo->mcnt_start) {
+    if(pkt_mcnt < binfo->mcnt_start) {
+	    guppi_error(__FUNCTION__, "current packet mcnt less than mcnt start");
+	    run_threads=0;
+	    pthread_exit(NULL);
+	    return -1;
+    } else {
 	binfo->mcnt_offset = pkt_mcnt - binfo->mcnt_start;
-    } else {							 // we have a count rollover
-	binfo->mcnt_offset = binfo->mcnt_offset + pkt_mcnt + 1;  // assumes that pkt_header.count is now very small, probably zero
-    } 
+    }
+
     binfo->block_i     = (binfo->mcnt_offset) / N_SUB_BLOCKS_PER_INPUT_BLOCK % N_INPUT_BLOCKS; 
     binfo->sub_block_i = (binfo->mcnt_offset) % N_SUB_BLOCKS_PER_INPUT_BLOCK; 
 
-    if(pkt_mcnt < binfo->mcnt_start && binfo->block_i == 0 && binfo->sub_block_i == 0) {
-	binfo->mcnt_start = pkt_mcnt;	// on rollover, reset on block,sub 0
-    }
+    return 0;
 } 
 
 #define MAX_MCNT_DIFF 64 
 int out_of_seq_mcnt(block_info_t * binfo, uint64_t pkt_mcnt) {
+// mcnt rollovers are seen and treated like any other out of sequence mcnt
 
     if(abs(pkt_mcnt - binfo->mcnt_prior) <= MAX_MCNT_DIFF) {
         binfo->mcnt_prior = pkt_mcnt;
@@ -251,13 +258,14 @@ void initialize_block_info(paper_input_databuf_t *paper_input_databuf_p, block_i
 		binfo->block_active[i] = 0;	
 	} else {
     		if(binfo->block_active[i]) {
+			paper_input_databuf_p->block[i].header.good_data = 0;   // all data are bad at this point
 			set_block_filled(paper_input_databuf_p, binfo, i);
 		}
 	}
     }		
 
     // On program startup block_i will be zero.  If we are restarting,  this will set 
-    // us up to restart at the beginning of block_i.  TODO: mcnt rollover logic  
+    // us up to restart at the beginning of block_i. 
     binfo->mcnt_start = pkt_mcnt - binfo->block_i * N_SUB_BLOCKS_PER_INPUT_BLOCK;
 
     binfo->mcnt_prior = pkt_mcnt;
@@ -286,7 +294,9 @@ uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf
     if(out_of_seq_mcnt(&binfo, pkt_header.mcnt)) {
     	return(handle_out_of_seq_mcnt(&binfo));
     }
-    calc_block_indexes(&binfo, pkt_header.mcnt);
+    if((rv = calc_block_indexes(&binfo, pkt_header.mcnt))) {
+	return rv;
+    }
     if(! binfo.block_active[binfo.block_i]) {
 	// new block, pass along the block for two blocks ago
 	set_block_filled(paper_input_databuf_p, &binfo, dec_block_i(dec_block_i(binfo.block_i)));
