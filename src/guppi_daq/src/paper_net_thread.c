@@ -278,6 +278,11 @@ void initialize_block_info(paper_input_databuf_t *paper_input_databuf_p, block_i
     binfo->initialized = 1;
 }
 
+// This function returns -1 unless the given packet causes a block to be marked
+// as filled in which case this function returns the marked block's first mcnt.
+// Any return value other than -1 will be stored in the status memory as
+// NETMCNT, so it is important that values other than -1 are returned rarely
+// (i.e. when marking a block as filled)!!!
 uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, struct guppi_udp_packet *p) {
 
     static block_info_t binfo;
@@ -286,6 +291,7 @@ uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf
     int rv;
     int i, block_offset, sub_block_offset;
     uint64_t *dest_p;
+    uint64_t netmcnt = -1; // Value to store in status memory
 
     // housekeeping for each packet
     get_header(p, &pkt_header);
@@ -304,7 +310,9 @@ uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf
     }
     if(! binfo.block_active[binfo.block_i]) {
 	// new block, pass along the block for two blocks ago
-	set_block_filled(paper_input_databuf_p, &binfo, dec_block_i(dec_block_i(binfo.block_i)));
+	i = dec_block_i(dec_block_i(binfo.block_i));
+	set_block_filled(paper_input_databuf_p, &binfo, i);
+	netmcnt = paper_input_databuf_p->block[i].header.mcnt[0];
 	// Wait (hopefully not long!) for free block for this packet
 	if((rv = paper_input_databuf_busywait_free(paper_input_databuf_p, binfo.block_i)) != GUPPI_OK) {    
 	    if (rv==GUPPI_TIMEOUT) {
@@ -359,7 +367,7 @@ uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf
     	paper_input_databuf_p->block[binfo.block_i].header.good_data = 1; 
     }
 
-    return pkt_header.mcnt;
+    return netmcnt;
 }
 
 static int init(struct guppi_thread_args *args)
