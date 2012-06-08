@@ -18,24 +18,28 @@
 // X engine sizing (from xGPU)
 #define N_INPUTS          (2*XGPU_NSTATION)
 #define N_TIME_PER_BLOCK     XGPU_NTIME
-#define N_CHAN               XGPU_NFREQUENCY
+#define N_CHAN_PER_X         XGPU_NFREQUENCY
 
 // Derived from above quantities
-#define N_TIME_PER_PACKET            (N_BYTES_PER_PAYLOAD/N_INPUTS_PER_PACKET/N_CHAN)
 #define N_FENGINES                   (N_INPUTS/N_INPUTS_PER_FENGINE)
-#define N_PACKETS_PER_BLOCK          (N_TIME_PER_BLOCK * N_FENGINES / N_TIME_PER_PACKET)
+#define N_CHAN_PER_F                 (N_CHAN_TOTAL/N_FENGINES)
+#define N_CHAN_PER_PACKET            (N_CHAN_PER_F)
+#define N_TIME_PER_PACKET            (N_BYTES_PER_PAYLOAD/N_INPUTS_PER_PACKET/N_CHAN_PER_PACKET)
 #define N_SUB_BLOCKS_PER_INPUT_BLOCK (N_TIME_PER_BLOCK / N_TIME_PER_PACKET)
+#define N_BYTES_PER_BLOCK            (N_TIME_PER_BLOCK * N_CHAN_PER_X * N_INPUTS)
+#define N_PACKETS_PER_BLOCK          (N_BYTES_PER_BLOCK / N_BYTES_PER_PAYLOAD)
+#define N_PACKETS_PER_BLOCK_PER_F    (N_PACKETS_PER_BLOCK / N_FENGINES)
 
 // Validate packet dimensions
-#if    N_BYTES_PER_PAYLOAD != (N_TIME_PER_PACKET*N_CHAN*N_INPUTS_PER_PACKET)
-#error N_BYTES_PER_PAYLOAD != (N_TIME_PER_PACKET*N_CHAN*N_INPUTS_PER_PACKET)
+#if    N_BYTES_PER_PAYLOAD != (N_TIME_PER_PACKET*N_CHAN_PER_PACKET*N_INPUTS_PER_PACKET)
+#error N_BYTES_PER_PAYLOAD != (N_TIME_PER_PACKET*N_CHAN_PER_PACKET*N_INPUTS_PER_PACKET)
 #endif
 
 #define N_FLUFFED_BYTES_PER_BLOCK  ((N_PACKETS_PER_BLOCK * 8192) * 2)
 #define N_FLUFFED_WORDS_PER_BLOCK (N_FLUFFED_BYTES_PER_BLOCK / 8) 
 
 // Number of floats in xGPU's "register tile order" output matrix.
-#define N_OUTPUT_MATRIX (2 * N_CHAN * (N_INPUTS/2 + 2) * N_INPUTS)
+#define N_OUTPUT_MATRIX (2 * N_CHAN_PER_X * (N_INPUTS/2 + 2) * N_INPUTS)
 
 #define PAGE_SIZE (4096)
 #define CACHE_ALIGNMENT (64)
@@ -55,7 +59,7 @@ typedef struct paper_input_chan {
 } paper_input_chan_t;
 
 typedef struct paper_input_time {
-    paper_input_chan_t chan[N_CHAN];		
+    paper_input_chan_t chan[N_CHAN_PER_X];
 } paper_input_time_t;
 
 typedef struct paper_input_sub_block {
@@ -94,7 +98,7 @@ typedef struct paper_input_databuf {
 
 typedef struct paper_output_header {
   uint64_t mcnt;
-  uint64_t flags[(N_CHAN+63)/64];
+  uint64_t flags[(N_CHAN_PER_X+63)/64];
 } paper_output_header_t;
 
 typedef struct paper_output_block {

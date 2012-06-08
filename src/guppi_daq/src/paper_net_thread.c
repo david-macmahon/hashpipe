@@ -172,12 +172,12 @@ void set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t
 	}
 
 	block_missed_pkt_cnt = N_PACKETS_PER_BLOCK - binfo->block_active[block_i];
-	// If we missed more than N_SUB_BLOCKS_PER_INPUT_BLOCK, then assume we
+	// If we missed more than N_PACKETS_PER_BLOCK_PER_F, then assume we
 	// are missing one or more F engines.  Any missed packets beyond an
-	// integer multiple of N_SUB_BLOCKS_PER_INPUT_BLOCK will be considered
+	// integer multiple of N_PACKETS_PER_BLOCK_PER_F will be considered
 	// as dropped packets.
-	block_missed_feng = block_missed_pkt_cnt / N_SUB_BLOCKS_PER_INPUT_BLOCK;
-	block_missed_pkt_cnt %= N_SUB_BLOCKS_PER_INPUT_BLOCK;
+	block_missed_feng = block_missed_pkt_cnt / N_PACKETS_PER_BLOCK_PER_F;
+	block_missed_pkt_cnt %= N_PACKETS_PER_BLOCK_PER_F;
 	guppi_status_lock_busywait_safe(st_p);
 	hputu4(st_p->buf, "NETBKOUT", block_i);
 	hputu4(st_p->buf, "MISSEDFE", block_missed_feng);
@@ -186,6 +186,8 @@ void set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t
 	    hgetu4(st_p->buf, "MISSEDPK", &missed_pkt_cnt);
 	    missed_pkt_cnt += block_missed_pkt_cnt;
 	    hputu4(st_p->buf, "MISSEDPK", missed_pkt_cnt);
+	    fprintf(stderr, "got %d packets instead of %d\n",
+		    binfo->block_active[block_i], N_PACKETS_PER_BLOCK);
 	}
 	guppi_status_unlock_safe(st_p);
 
@@ -196,9 +198,12 @@ void set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t
 int calc_block_indexes(block_info_t *binfo, uint64_t pkt_mcnt) {
 
     if(pkt_mcnt < binfo->mcnt_start) {
-	    guppi_error(__FUNCTION__, "current packet mcnt less than mcnt start");
-	    run_threads=0;
-	    pthread_exit(NULL);
+	char msg[120];
+	sprintf(msg, "current packet mcnt %012lx less than mcnt start %012lx", pkt_mcnt, binfo->mcnt_start);
+	    guppi_error(__FUNCTION__, msg);
+	    //guppi_error(__FUNCTION__, "current packet mcnt less than mcnt start");
+	    //run_threads=0;
+	    //pthread_exit(NULL);
 	    return -1;
     } else {
 	binfo->mcnt_offset = pkt_mcnt - binfo->mcnt_start;
@@ -332,11 +337,12 @@ uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf
 			block_offset                                 + 
 			sizeof(paper_input_header_t)                 + 
 			sub_block_offset                             +
+			(pkt_header.xid&1)*N_CHAN_PER_PACKET*N_INPUTS_PER_FENGINE +
 			pkt_header.fid*N_INPUTS_PER_FENGINE);
     payload_p        = (uint64_t *)(p->data+8);
 
     // unpack the packet, fluffing as we go
-    for(i=0; i<(N_TIME_PER_PACKET*N_CHAN); i++) {
+    for(i=0; i<(N_TIME_PER_PACKET*N_CHAN_PER_PACKET); i++) {
         uint64_t val = payload_p[i];
 	// Using complex block size (cbs) of 32
 	// 4 = cbs*sizeof(int8_t)/sizeof(uint64_t)
@@ -345,7 +351,7 @@ uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf
     }  // end upacking
 
 #if defined TIMING_TEST || defined NET_TIMING_TEST
-	fluffed_words += (N_TIME*N_CHAN);
+	fluffed_words += (N_TIME_PER_PACKET*N_CHAN_PER_PACKET);
 #endif // TIMING_TEST || NET_TIMING_TEST
 
     // if all packets are accounted for, mark this block filled
