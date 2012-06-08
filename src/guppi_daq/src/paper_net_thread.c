@@ -503,10 +503,22 @@ static void *run(void * _args)
         }
 
 #if defined TIMING_TEST || defined NET_TIMING_TEST
-	static int loop_count=1;
+
+#define ELAPSED_NS(start,stop) \
+  (((int64_t)stop.tv_sec-start.tv_sec)*1000*1000*1000+(stop.tv_nsec-start.tv_nsec))
+
+	static int loop_count=0;
+	static struct timespec start, stop;
+	if(loop_count == 0) {
+	    clock_gettime(CLOCK_MONOTONIC, &start);
+	}
 	//if(loop_count == 1000000) run_threads = 0; 
 	if(loop_count == 10*1000*1000) {
+	    clock_gettime(CLOCK_MONOTONIC, &stop);
+	    int64_t elapsed = ELAPSED_NS(start, stop);
 	    printf("fluffed %lu words\n", fluffed_words);
+	    printf("processed %d packets in %.6f ms (%.3f us per packet)\n",
+		    10*1000*1000, elapsed/1e6, elapsed/1e3/(10*1000*1000));
 	    exit(0);
 	}
 	loop_count++;
