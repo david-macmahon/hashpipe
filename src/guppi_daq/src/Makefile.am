@@ -50,10 +50,12 @@ paper_threads = $(paper_net)                  \
 		paper_gpu_cpu_output_thread.c \
 		paper_gpu_output_thread.c     \
 		paper_gpu_thread.c            \
+		paper_fluff_thread.c          \
 		paper_net_thread.c            \
 		guppi_thread_main.h
 
 paper_utils = $(guppi_utils) \
+	      paper_fluff.c  \
 	      paper_thread.c \
 	      paper_thread.h
 

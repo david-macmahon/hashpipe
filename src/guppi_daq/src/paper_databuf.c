@@ -279,6 +279,118 @@ int paper_input_databuf_set_filled(struct paper_input_databuf *d, int block_id)
     return guppi_databuf_set_filled((struct guppi_databuf *)d, block_id);
 }
 
+paper_gpu_input_databuf_t *paper_gpu_input_databuf_create(int instance_id, int n_block, size_t block_size,
+        int databuf_id)
+{
+    int rv = 0;
+    int verify_sizing = 0;
+
+#ifdef DEBUG_SEMS
+    // Init clock variables
+    if(databuf_id==1) {
+        clock_gettime(CLOCK_MONOTONIC, &start);
+        now.tv_sec = start.tv_sec;
+        now.tv_nsec = start.tv_nsec;
+    }
+#endif
+
+    /* Calc databuf size */
+    size_t paper_gpu_input_databuf_size = sizeof(paper_gpu_input_databuf_t);
+
+    /* Get shared memory block */
+    key_t key = guppi_databuf_key(instance_id);
+    if(key == GUPPI_KEY_ERROR) {
+        guppi_error(__FUNCTION__, "guppi_databuf_key error");
+        return(NULL);
+    }
+    int shmid;
+    shmid = shmget(key + databuf_id - 1, paper_gpu_input_databuf_size, 0666 | IPC_CREAT | IPC_EXCL);
+    if (shmid==-1 && errno == EEXIST) {
+        // Already exists, call shmget again without IPC_CREAT
+        shmid = shmget(key + databuf_id - 1, paper_gpu_input_databuf_size, 0666);
+        // Verify buffer sizing
+        verify_sizing = 1;
+    }
+    if (shmid==-1) {
+        perror("shmget");
+        guppi_error(__FUNCTION__, "shmget error");
+        return(NULL);
+    }
+
+    /* Attach */
+    struct guppi_databuf *d;
+    d = shmat(shmid, NULL, 0);
+    if (d==(void *)-1) {
+        guppi_error(__FUNCTION__, "shmat error");
+        return(NULL);
+    }
+
+    if(verify_sizing) {
+        // Make sure existing sizes match expectaions
+        if(d->n_block != n_block || d->block_size != block_size) {
+            guppi_error(__FUNCTION__, "existing databuf size mismatch");
+            if(shmdt(d)) {
+                guppi_error(__FUNCTION__, "shmdt error");
+            }
+            return(NULL);
+        }
+    }
+
+    /* Try to lock in memory */
+    rv = shmctl(shmid, SHM_LOCK, NULL);
+    if (rv==-1) {
+        perror("shmctl");
+        guppi_error(__FUNCTION__, "Error locking shared memory.");
+    }
+
+    /* Zero out memory */
+    memset(d, 0, paper_gpu_input_databuf_size);
+
+    /* Fill params into databuf */
+    d->shmid = shmid;
+    d->semid = 0;
+    d->n_block = n_block;
+    d->block_size = block_size;
+
+    /* Get semaphores set up */
+    d->semid = semget(key + databuf_id - 1, n_block, 0666 | IPC_CREAT);
+    if (d->semid==-1) { 
+        guppi_error(__FUNCTION__, "semget error");
+        return(NULL);
+    }
+
+    /* Init semaphores to 0 */
+    union semun arg;
+    arg.array = (unsigned short *)malloc(sizeof(unsigned short)*n_block);
+    memset(arg.array, 0, sizeof(unsigned short)*n_block);
+    rv = semctl(d->semid, 0, SETALL, arg);
+    if (rv==-1) {
+        perror("semctl");
+        guppi_error(__FUNCTION__, "Error clearing semaphores.");
+    }
+    free(arg.array);
+
+    return (struct paper_gpu_input_databuf *)d;
+}
+
+/*
+ * guppi_databuf_clear() does some VEGAS specific stuff so we have to duplicate
+ * its non-VEGAS functionality here.
+ */
+void paper_gpu_input_databuf_clear(struct paper_gpu_input_databuf *d)
+{
+    struct guppi_databuf *g = (struct guppi_databuf *)d;
+
+    /* Zero out semaphores */
+    union semun arg;
+    arg.array = (unsigned short *)malloc(sizeof(unsigned short)*g->n_block);
+    memset(arg.array, 0, sizeof(unsigned short)*g->n_block);
+    semctl(g->semid, 0, SETALL, arg);
+    free(arg.array);
+
+    // TODO memset to 0?
+}
+
 /*
  * guppi_databuf_create is non-general.  Instead of n_block and block_size, it
  * should take a single overall size since in the general case it cannot know
