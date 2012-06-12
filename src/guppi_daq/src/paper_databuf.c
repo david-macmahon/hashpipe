@@ -94,7 +94,7 @@ static struct timespec now;
  * In either case, the memory and semaphores will be cleared, so this method
  * should only be called at startup (e.g. from an initialization function)!
  */
-struct paper_input_databuf *paper_input_databuf_create(int instance_id, int n_block, size_t block_size,
+paper_input_databuf_t *paper_input_databuf_create(int instance_id, int n_block, size_t block_size,
         int databuf_id)
 {
     int rv = 0;
@@ -213,17 +213,6 @@ struct paper_input_databuf *paper_input_databuf_create(int instance_id, int n_bl
     return (struct paper_input_databuf *)d;
 }
 
-struct paper_input_databuf *paper_input_databuf_attach(int instance_id, int databuf_id)
-{
-    return (struct paper_input_databuf *)guppi_databuf_attach(instance_id, databuf_id);
-}
-
-/* Mimicking guppi_databuf's "detach" mispelling. */
-int paper_input_databuf_detach(struct paper_input_databuf *d)
-{
-    return guppi_databuf_detach((struct guppi_databuf *)d);
-}
-
 /*
  * guppi_databuf_clear() does some VEGAS specific stuff so we have to duplicate
  * its non-VEGAS functionality here.
@@ -240,16 +229,6 @@ void paper_input_databuf_clear(struct paper_input_databuf *d)
     free(arg.array);
 
     // TODO memset to 0?
-}
-
-int paper_input_databuf_block_status(struct paper_input_databuf *d, int block_id)
-{
-    return guppi_databuf_block_status((struct guppi_databuf *)d, block_id);
-}
-
-int paper_input_databuf_total_status(struct paper_input_databuf *d)
-{
-    return guppi_databuf_total_status((struct guppi_databuf *)d);
 }
 
 int paper_input_databuf_wait_free(struct paper_input_databuf *d, int block_id)
@@ -414,22 +393,11 @@ printf("databuf_size %lu\n", databuf_size);
     return (struct paper_output_databuf *)d;
 }
 
-struct paper_output_databuf *paper_output_databuf_attach(int instance_id, int databuf_id)
-{
-    return (struct paper_output_databuf *)guppi_databuf_attach(instance_id, databuf_id);
-}
-
-/* Mimicking guppi_databuf's "detach" mispelling. */
-int paper_output_databuf_detach(struct paper_output_databuf *d)
-{
-    return guppi_databuf_detach((struct guppi_databuf *)d);
-}
-
 /*
  * guppi_databuf_clear() does some VEGAS specific stuff so we have to duplicate
  * its non-VEGAS functionality here.
  */
-void paper_output_databuf_clear(struct paper_output_databuf *d)
+void paper_output_databuf_clear(paper_output_databuf_t *d)
 {
     struct guppi_databuf *g = (struct guppi_databuf *)d;
 
@@ -441,44 +409,4 @@ void paper_output_databuf_clear(struct paper_output_databuf *d)
     free(arg.array);
 
     // TODO memset to 0?
-}
-
-int paper_output_databuf_block_status(struct paper_output_databuf *d, int block_id)
-{
-    return guppi_databuf_block_status((struct guppi_databuf *)d, block_id);
-}
-
-int paper_output_databuf_total_status(struct paper_output_databuf *d)
-{
-    return guppi_databuf_total_status((struct guppi_databuf *)d);
-}
-
-int paper_output_databuf_wait_free(struct paper_output_databuf *d, int block_id)
-{
-    return guppi_databuf_wait_free((struct guppi_databuf *)d, block_id);
-}
-
-int paper_output_databuf_busywait_free(struct paper_output_databuf *d, int block_id)
-{
-    return guppi_databuf_busywait_free((struct guppi_databuf *)d, block_id);
-}
-
-int paper_output_databuf_wait_filled(struct paper_output_databuf *d, int block_id)
-{
-    return guppi_databuf_wait_filled((struct guppi_databuf *)d, block_id);
-}
-
-int paper_output_databuf_busywait_filled(struct paper_output_databuf *d, int block_id)
-{
-    return guppi_databuf_busywait_filled((struct guppi_databuf *)d, block_id);
-}
-
-int paper_output_databuf_set_free(struct paper_output_databuf *d, int block_id)
-{
-    return guppi_databuf_set_free((struct guppi_databuf *)d, block_id);
-}
-
-int paper_output_databuf_set_filled(struct paper_output_databuf *d, int block_id)
-{
-    return guppi_databuf_set_filled((struct guppi_databuf *)d, block_id);
 }

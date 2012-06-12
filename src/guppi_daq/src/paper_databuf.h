@@ -116,58 +116,106 @@ typedef struct paper_output_databuf {
  * INPUT BUFFER FUNCTIONS
  */
 
-struct paper_input_databuf *paper_input_databuf_create(int instance_id, int n_block, size_t block_size,
+paper_input_databuf_t *paper_input_databuf_create(int instance_id, int n_block, size_t block_size,
         int databuf_id);
 
-struct paper_input_databuf *paper_input_databuf_attach(int instance_id, int databuf_id);
+static inline paper_input_databuf_t *paper_input_databuf_attach(int instance_id, int databuf_id)
+{
+    return (paper_input_databuf_t *)guppi_databuf_attach(instance_id, databuf_id);
+}
 
-int paper_input_databuf_detach(struct paper_input_databuf *d);
+/* Mimicking guppi_databuf's "detach" mispelling. */
+static inline int paper_input_databuf_detach(paper_input_databuf_t *d)
+{
+    return guppi_databuf_detach((struct guppi_databuf *)d);
+}
 
-void paper_input_databuf_clear(struct paper_input_databuf *d);
+void paper_input_databuf_clear(paper_input_databuf_t *d);
 
-int paper_input_databuf_block_status(struct paper_input_databuf *d, int block_id);
+static inline int paper_input_databuf_block_status(paper_input_databuf_t *d, int block_id)
+{
+    return guppi_databuf_block_status((struct guppi_databuf *)d, block_id);
+}
 
-int paper_input_databuf_total_status(struct paper_input_databuf *d);
+static inline int paper_input_databuf_total_status(paper_input_databuf_t *d)
+{
+    return guppi_databuf_total_status((struct guppi_databuf *)d);
+}
 
-int paper_input_databuf_wait_free(struct paper_input_databuf *d, int block_id);
 
-int paper_input_databuf_busywait_free(struct paper_input_databuf *d, int block_id);
+int paper_input_databuf_wait_free(paper_input_databuf_t *d, int block_id);
 
-int paper_input_databuf_wait_filled(struct paper_input_databuf *d, int block_id);
+int paper_input_databuf_busywait_free(paper_input_databuf_t *d, int block_id);
 
-int paper_input_databuf_busywait_filled(struct paper_input_databuf *d, int block_id);
+int paper_input_databuf_wait_filled(paper_input_databuf_t *d, int block_id);
 
-int paper_input_databuf_set_free(struct paper_input_databuf *d, int block_id);
+int paper_input_databuf_busywait_filled(paper_input_databuf_t *d, int block_id);
 
-int paper_input_databuf_set_filled(struct paper_input_databuf *d, int block_id);
+int paper_input_databuf_set_free(paper_input_databuf_t *d, int block_id);
+
+int paper_input_databuf_set_filled(paper_input_databuf_t *d, int block_id);
 
 /*
  * OUTPUT BUFFER FUNCTIONS
  */
 
-struct paper_output_databuf *paper_output_databuf_create(int instance_id, int n_block, size_t block_size,
+paper_output_databuf_t *paper_output_databuf_create(int instance_id, int n_block, size_t block_size,
         int databuf_id);
 
-struct paper_output_databuf *paper_output_databuf_attach(int instance_id, int databuf_id);
 
-int paper_output_databuf_detach(struct paper_output_databuf *d);
 
-void paper_output_databuf_clear(struct paper_output_databuf *d);
 
-int paper_output_databuf_block_status(struct paper_output_databuf *d, int block_id);
+void paper_output_databuf_clear(paper_output_databuf_t *d);
 
-int paper_output_databuf_total_status(struct paper_output_databuf *d);
+static inline paper_output_databuf_t *paper_output_databuf_attach(int instance_id, int databuf_id)
+{
+    return (paper_output_databuf_t *)guppi_databuf_attach(instance_id, databuf_id);
+}
 
-int paper_output_databuf_wait_free(struct paper_output_databuf *d, int block_id);
+/* Mimicking guppi_databuf's "detach" mispelling. */
+static inline int paper_output_databuf_detach(paper_output_databuf_t *d)
+{
+    return guppi_databuf_detach((struct guppi_databuf *)d);
+}
 
-int paper_output_databuf_busywait_free(struct paper_output_databuf *d, int block_id);
+static inline int paper_output_databuf_block_status(paper_output_databuf_t *d, int block_id)
+{
+    return guppi_databuf_block_status((struct guppi_databuf *)d, block_id);
+}
 
-int paper_output_databuf_wait_filled(struct paper_output_databuf *d, int block_id);
+static inline int paper_output_databuf_total_status(paper_output_databuf_t *d)
+{
+    return guppi_databuf_total_status((struct guppi_databuf *)d);
+}
 
-int paper_output_databuf_busywait_filled(struct paper_output_databuf *d, int block_id);
+static inline int paper_output_databuf_wait_free(paper_output_databuf_t *d, int block_id)
+{
+    return guppi_databuf_wait_free((struct guppi_databuf *)d, block_id);
+}
 
-int paper_output_databuf_set_free(struct paper_output_databuf *d, int block_id);
+static inline int paper_output_databuf_busywait_free(paper_output_databuf_t *d, int block_id)
+{
+    return guppi_databuf_busywait_free((struct guppi_databuf *)d, block_id);
+}
 
-int paper_output_databuf_set_filled(struct paper_output_databuf *d, int block_id);
+static inline int paper_output_databuf_wait_filled(paper_output_databuf_t *d, int block_id)
+{
+    return guppi_databuf_wait_filled((struct guppi_databuf *)d, block_id);
+}
+
+static inline int paper_output_databuf_busywait_filled(paper_output_databuf_t *d, int block_id)
+{
+    return guppi_databuf_busywait_filled((struct guppi_databuf *)d, block_id);
+}
+
+static inline int paper_output_databuf_set_free(paper_output_databuf_t *d, int block_id)
+{
+    return guppi_databuf_set_free((struct guppi_databuf *)d, block_id);
+}
+
+static inline int paper_output_databuf_set_filled(paper_output_databuf_t *d, int block_id)
+{
+    return guppi_databuf_set_filled((struct guppi_databuf *)d, block_id);
+}
 
 #endif // _PAPER_DATABUF_H
