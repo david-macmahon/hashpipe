@@ -168,7 +168,10 @@ paper_input_databuf_t *paper_input_databuf_create(int instance_id, int n_block, 
     if(verify_sizing) {
         // Make sure existing sizes match expectaions
         if(d->n_block != n_block || d->block_size != block_size) {
-            guppi_error(__FUNCTION__, "existing databuf size mismatch");
+            char msg[128];
+            sprintf(msg, "existing databuf size mismatch (%d x %lu) != (%d x %lu)",
+                d->n_block, d->block_size, n_block, block_size);
+            guppi_error(__FUNCTION__, msg);
             if(shmdt(d)) {
                 guppi_error(__FUNCTION__, "shmdt error");
             }
@@ -328,7 +331,10 @@ paper_gpu_input_databuf_t *paper_gpu_input_databuf_create(int instance_id, int n
     if(verify_sizing) {
         // Make sure existing sizes match expectaions
         if(d->n_block != n_block || d->block_size != block_size) {
-            guppi_error(__FUNCTION__, "existing databuf size mismatch");
+            char msg[128];
+            sprintf(msg, "existing databuf size mismatch (%d x %lu) != (%d x %lu)",
+                d->n_block, d->block_size, n_block, block_size);
+            guppi_error(__FUNCTION__, msg);
             if(shmdt(d)) {
                 guppi_error(__FUNCTION__, "shmdt error");
             }
@@ -460,7 +466,10 @@ printf("databuf_size %lu\n", databuf_size);
     if(verify_sizing) {
         // Make sure existing sizes match expectaions
         if(d->n_block != n_block || d->block_size != block_size) {
-            guppi_error(__FUNCTION__, "existing databuf size mismatch");
+            char msg[128];
+            sprintf(msg, "existing databuf size mismatch (%d x %lu) != (%d x %lu)",
+                d->n_block, d->block_size, n_block, block_size);
+            guppi_error(__FUNCTION__, msg);
             if(shmdt(d)) {
                 guppi_error(__FUNCTION__, "shmdt error");
             }
