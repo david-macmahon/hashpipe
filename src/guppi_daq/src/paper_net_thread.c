@@ -346,13 +346,9 @@ static int init(struct guppi_thread_args *args)
     /* Attach to status shared mem area */
     THREAD_INIT_STATUS(args->instance_id, STATUS_KEY);
 
-    // Get sizing parameters
-    XGPUInfo xgpu_info;
-    xgpuInfo(&xgpu_info);
-
     /* Create paper_input_databuf for output buffer */
-    THREAD_INIT_DATABUF(args->instance_id, paper_input_databuf, 4,
-        xgpu_info.vecLength*sizeof(ComplexInput),
+    THREAD_INIT_DATABUF(args->instance_id, paper_input_databuf, N_INPUT_BLOCKS,
+        N_BYTES_PER_BLOCK,
         args->output_buffer);
 
     // Success!
