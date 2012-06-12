@@ -123,31 +123,23 @@ void dump_mcnt_log()
     fclose(f);
 }
 
-void get_header (struct guppi_udp_packet *p, packet_header_t * pkt_header) {
-
+void get_header (struct guppi_udp_packet *p, packet_header_t * pkt_header)
+{
+#ifdef TIMING_TEST
+    static int pkt_counter=0;
+    pkt_header->mcnt = (pkt_counter / (Nx*Nq*Nf)) %  Nm;
+    pkt_header->xid  = (pkt_counter / (   Nq*Nf)) %  Nx;
+    pkt_header->fid  = (pkt_counter             ) % (Nq*Nf);
+    pkt_counter++;
+#else
     uint64_t raw_header;
     raw_header = be64toh(*(unsigned long long *)p->data);
     pkt_header->mcnt        = raw_header >> 16;
     pkt_header->xid         = raw_header        & 0x00000000000000FF;
     pkt_header->fid         = (raw_header >> 8) & 0x00000000000000FF;
+#endif
 
     mcnt_log[mcnt_log_idx++ % MAX_MCNT_LOG] = pkt_header->mcnt;
-
-#ifdef TIMING_TEST
-    static int fake_mcnt=0;
-    static int fake_fid=0;
-    static int pkt_counter=0;
-
-    if(pkt_counter == 8) {
-	fake_mcnt++;
-        fake_fid = 0;
-	pkt_counter=0;
-    } else if(pkt_counter % 8 == 0) {
-	fake_fid += 4;
-    }
-    pkt_header->mcnt = fake_mcnt;
-    pkt_counter++;
-#endif
 }
 
 void set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t *binfo, int block_i) { 
