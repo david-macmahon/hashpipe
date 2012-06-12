@@ -70,6 +70,11 @@ static void *run(void * _args)
     /* Main loop */
     int i, rv;
     uint64_t mcnt = 0;
+    uint64_t *data;
+    int m,x,q,f,t,c;
+#ifdef FAKE_TEST_INPUT1
+    int q1, f1;
+#endif
     int block_idx = 0;
     signal(SIGINT,cc);
     signal(SIGTERM,cc);
@@ -113,50 +118,45 @@ static void *run(void * _args)
  
         // Fill in sub-block headers
         for(i=0; i<N_SUB_BLOCKS_PER_INPUT_BLOCK; i++) {
-          db->block[block_idx].header.mcnt[i] = mcnt;
           db->block[block_idx].header.good_data = 1;
-          mcnt++;
+          db->block[block_idx].header.mcnt = mcnt;
+          mcnt+=Nm;
         }
 
-        // Fill in random data
-        xgpuRandomComplex((ComplexInput *)db->block[block_idx].complexity,
-            N_SUB_BLOCKS_PER_INPUT_BLOCK*sizeof(paper_input_sub_block_t)/sizeof(ComplexInput));
+#ifndef FAKE_TEST_INPUT
+#define FAKE_TEST_INPUT 0
+#endif
 
-#ifdef FAKE_TEST_INPUT
+#define FAKE_TEST_FID (FAKE_TEST_INPUT/N_INPUTS_PER_PACKET)
+
 #ifndef FAKE_TEST_CHAN
 #define FAKE_TEST_CHAN 0
 #endif
-        // For testing, zero out block and set input FAKE_TEST_INPUT, chan 0 to
+
+        // For testing, zero out block and set input FAKE_TEST_INPUT, FAKE_TEST_CHAN to
         // all -16 (-1 * 16)
-        memset(db->block[block_idx].sub_block, 0,
-            N_SUB_BLOCKS_PER_INPUT_BLOCK*sizeof(paper_input_sub_block_t));
-        for(i=0; i<N_SUB_BLOCKS_PER_INPUT_BLOCK; i++) {
-          int j;
-          for(j=0; j<N_TIME; j++) {
-            db->block[block_idx].sub_block[i].time[j].chan[FAKE_TEST_CHAN].input[FAKE_TEST_INPUT].real = -16;
+        data = db->block[block_idx].data;
+        memset(data, 0, N_BYTES_PER_BLOCK);
+
+        x = FAKE_TEST_CHAN/N_CHAN_PER_X;
+        c = FAKE_TEST_CHAN%N_CHAN_PER_X;
+        q = FAKE_TEST_FID/4;
+        f = FAKE_TEST_FID%4;
 #ifdef FAKE_TEST_INPUT1
-            db->block[block_idx].sub_block[i].time[j].chan[FAKE_TEST_CHAN].input[FAKE_TEST_INPUT1].real = -16;
+#define FAKE_TEST_FID1 (FAKE_TEST_INPUT1/N_INPUTS_PER_PACKET)
+        q1 = FAKE_TEST_FID1/4;
+        f1 = FAKE_TEST_FID1%4;
+#endif
+        for(m=0; m<Nm; m++) {
+          for(t=0; t<Nt; t++) {
+            data[paper_input_databuf_data_idx(m,x,q,f,t,c)] =
+              ((uint64_t)0xf0) << (8*(7-(FAKE_TEST_INPUT%N_INPUTS_PER_PACKET)));
+#ifdef FAKE_TEST_INPUT1
+            data[paper_input_databuf_data_idx(m,x,q1,f1,t,c)] =
+              ((uint64_t)0xf0) << (8*(7-(FAKE_TEST_INPUT1%N_INPUTS_PER_PACKET)));
 #endif
           }
         }
-#elif defined(DUP_ALL_INPUTS)
-        // Duplicate input 0 to all other inputs
-        for(i=0; i<N_SUB_BLOCKS_PER_INPUT_BLOCK; i++) {
-          int j;
-          for(j=0; j<N_TIME; j++) {
-            int c;
-            for(c=0; c<N_CHAN; c++) {
-              int input;
-              for(input=1; input<N_INPUT; input++) {
-                db->block[block_idx].sub_block[i].time[j].chan[c].input[input].real =
-                  db->block[block_idx].sub_block[i].time[j].chan[c].input[0].real;
-                db->block[block_idx].sub_block[i].time[j].chan[c].input[input].imag =
-                  db->block[block_idx].sub_block[i].time[j].chan[c].input[0].imag;
-              }
-            }
-          }
-        }
-#endif
 
         // Mark block as full
         paper_input_databuf_set_filled(db, block_idx);
