@@ -184,6 +184,7 @@ paper_input_databuf_t *paper_input_databuf_create(int instance_id, int n_block, 
     if (rv==-1) {
         perror("shmctl");
         guppi_error(__FUNCTION__, "Error locking shared memory.");
+        return NULL;
     }
 
     /* Zero out memory */
@@ -210,6 +211,8 @@ paper_input_databuf_t *paper_input_databuf_create(int instance_id, int n_block, 
     if (rv==-1) {
         perror("semctl");
         guppi_error(__FUNCTION__, "Error clearing semaphores.");
+        free(arg.array);
+        return NULL;
     }
     free(arg.array);
 
@@ -347,6 +350,7 @@ paper_gpu_input_databuf_t *paper_gpu_input_databuf_create(int instance_id, int n
     if (rv==-1) {
         perror("shmctl");
         guppi_error(__FUNCTION__, "Error locking shared memory.");
+        return NULL;
     }
 
     /* Zero out memory */
@@ -373,6 +377,8 @@ paper_gpu_input_databuf_t *paper_gpu_input_databuf_create(int instance_id, int n
     if (rv==-1) {
         perror("semctl");
         guppi_error(__FUNCTION__, "Error clearing semaphores.");
+        free(arg.array);
+        return NULL;
     }
     free(arg.array);
 
@@ -482,6 +488,7 @@ printf("databuf_size %lu\n", databuf_size);
     if (rv==-1) {
         perror("shmctl");
         guppi_error(__FUNCTION__, "Error locking shared memory.");
+        return NULL;
     }
 
     /* Zero out memory */
@@ -508,6 +515,8 @@ printf("databuf_size %lu\n", databuf_size);
     if (rv==-1) {
         perror("semctl");
         guppi_error(__FUNCTION__, "Error clearing semaphores.");
+        free(arg.array);
+        return NULL;
     }
     free(arg.array);
 
