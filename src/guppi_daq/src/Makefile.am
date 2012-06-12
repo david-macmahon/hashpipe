@@ -3,6 +3,7 @@ AM_CFLAGS = -g -fPIC -O3 -Wall -Werror -fno-strict-aliasing
 AM_LDFLAGS = -L@XGPUDIR@/lib -Wl,-rpath,"@XGPUDIR@/lib"
 
 bin_PROGRAMS  =
+noinst_PROGRAMS  =
 
 guppi_base = guppi_databuf.c \
 	     guppi_error.c   \
@@ -68,6 +69,10 @@ clean_guppi_shmem_SOURCES = clean_guppi_shmem.c $(guppi_base)
 bin_PROGRAMS += paper_xgpu
 paper_xgpu_SOURCES = paper_xgpu.c $(paper_threads) $(paper_utils)
 paper_xgpu_LDADD = -lxgpu
+
+noinst_PROGRAMS += paper_fluff_test
+paper_fluff_test_SOURCES = paper_fluff_test.c paper_fluff.c
+paper_fluff_test_LDADD = -lrt
 
 if COMPILE_VEGAS
 vegas_threads = $(guppi_threads) \

@@ -47,6 +47,7 @@ src/raw_read
 src/raw_head
 src/vegas_hpc_hbw
 src/vegas_hpc_lbw
+src/paper_fluff_test
 src/paper_xgpu
 src/*.so
 # Autotools cruft
