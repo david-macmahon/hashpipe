@@ -42,6 +42,10 @@ typedef struct {
     int      xid;	// Xengine ID
 } packet_header_t;
 
+// The fields of a block_info_t structure hold (at least) two different kinds
+// of data.  Some fields hold data that persist over many packets while other
+// fields hold data that are only applicable to the current packet (or the
+// previous packet).
 typedef struct {
     int initialized;
     uint64_t mcnt_start;
@@ -49,15 +53,16 @@ typedef struct {
     uint64_t mcnt_prior;
     int out_of_seq_cnt;
     int block_i;
-    int sub_block_i;
+    // The m,x,q,f fields hold four of the six dimensional indices for
+    // the first data word of the current packet (i.e. t=0 and c=0).
+    int m; // formerly known as sub_block_i
+    int x;
+    int q;
+    int f;
     int block_active[N_INPUT_BLOCKS];
 } block_info_t;
 
 static struct guppi_status *st_p;
-
-#if defined TIMING_TEST || defined NET_TIMING_TEST
-static unsigned long fluffed_words = 0;
-#endif
 
 void print_pkt_header(packet_header_t * pkt_header) {
 
@@ -70,8 +75,8 @@ void print_pkt_header(packet_header_t * pkt_header) {
 }
 
 void print_block_info(block_info_t * binfo) {
-    printf("binfo : mcnt_start %012lx mcnt_offset %012lx block_i %d sub_block_i %d\n",
-           binfo->mcnt_start, binfo->mcnt_offset, binfo->block_i, binfo->sub_block_i);
+    printf("binfo : mcnt_start %012lx mcnt_offset %012lx block_i %d m=%02d x=%d q=%d f=%d\n",
+           binfo->mcnt_start, binfo->mcnt_offset, binfo->block_i, binfo->m, binfo->x, binfo->q, binfo->f);
 }
 
 void print_block_active(block_info_t * binfo) {
@@ -88,12 +93,10 @@ void print_block_active(block_info_t * binfo) {
 
 void print_ring_mcnts(paper_input_databuf_t *paper_input_databuf_p) {
 
-    int i, j;
+    int i;
 
     for(i=0; i < N_INPUT_BLOCKS; i++) {
-	for(j=0; j < N_SUB_BLOCKS_PER_INPUT_BLOCK; j++) {
-		printf("block %d sub_block %3d mcnt %012lx\n", i, j, paper_input_databuf_p->block[i].header.mcnt[j]);
-	}
+	printf("block %d mcnt %012lx\n", i, paper_input_databuf_p->block[i].header.mcnt);
     }
 }
 
@@ -195,22 +198,25 @@ void set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t
     } 
 }
 
-int calc_block_indexes(block_info_t *binfo, uint64_t pkt_mcnt) {
+int calc_block_indexes(block_info_t *binfo, packet_header_t * pkt_header) {
 
-    if(pkt_mcnt < binfo->mcnt_start) {
+    if(pkt_header->mcnt < binfo->mcnt_start) {
 	char msg[120];
-	sprintf(msg, "current packet mcnt %012lx less than mcnt start %012lx", pkt_mcnt, binfo->mcnt_start);
+	sprintf(msg, "current packet mcnt %012lx less than mcnt start %012lx", pkt_header->mcnt, binfo->mcnt_start);
 	    guppi_error(__FUNCTION__, msg);
 	    //guppi_error(__FUNCTION__, "current packet mcnt less than mcnt start");
 	    //run_threads=0;
 	    //pthread_exit(NULL);
 	    return -1;
     } else {
-	binfo->mcnt_offset = pkt_mcnt - binfo->mcnt_start;
+	binfo->mcnt_offset = pkt_header->mcnt - binfo->mcnt_start;
     }
 
     binfo->block_i     = (binfo->mcnt_offset) / N_SUB_BLOCKS_PER_INPUT_BLOCK % N_INPUT_BLOCKS; 
-    binfo->sub_block_i = (binfo->mcnt_offset) % N_SUB_BLOCKS_PER_INPUT_BLOCK; 
+    binfo->m = (binfo->mcnt_offset) % Nm;
+    binfo->x = (pkt_header->xid) % Nx;
+    binfo->q = (pkt_header->fid) / 4;
+    binfo->f = (pkt_header->xid) % 4;
 
     return 0;
 } 
@@ -242,13 +248,9 @@ int handle_out_of_seq_mcnt(block_info_t * binfo) {
 
 void initialize_block(paper_input_databuf_t * paper_input_databuf_p, block_info_t * binfo, uint64_t pkt_mcnt) {
 
-    int i;
-
     paper_input_databuf_p->block[binfo->block_i].header.good_data = 0; 
-
-    for(i=0; i<N_SUB_BLOCKS_PER_INPUT_BLOCK; i++) {
-	paper_input_databuf_p->block[binfo->block_i].header.mcnt[i] = 0;
-    }
+    // Round pkt_mcnt down to nearest multiple of Nm
+    paper_input_databuf_p->block[binfo->block_i].header.mcnt = pkt_mcnt - (pkt_mcnt%Nm);
 }
 
 void initialize_block_info(paper_input_databuf_t *paper_input_databuf_p, block_info_t * binfo, uint64_t pkt_mcnt) {
@@ -289,7 +291,7 @@ uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf
     packet_header_t pkt_header;
     const uint64_t *payload_p;
     int rv;
-    int i, block_offset, sub_block_offset;
+    int i;
     uint64_t *dest_p;
     uint64_t netmcnt = -1; // Value to store in status memory
 
@@ -305,14 +307,14 @@ uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf
     if(out_of_seq_mcnt(&binfo, pkt_header.mcnt)) {
     	return(handle_out_of_seq_mcnt(&binfo));
     }
-    if((rv = calc_block_indexes(&binfo, pkt_header.mcnt))) {
+    if((rv = calc_block_indexes(&binfo, &pkt_header))) {
 	return rv;
     }
     if(! binfo.block_active[binfo.block_i]) {
 	// new block, pass along the block for two blocks ago
 	i = dec_block_i(dec_block_i(binfo.block_i));
 	set_block_filled(paper_input_databuf_p, &binfo, i);
-	netmcnt = paper_input_databuf_p->block[i].header.mcnt[0];
+	netmcnt = paper_input_databuf_p->block[i].header.mcnt;
 	// Wait (hopefully not long!) for free block for this packet
 	if((rv = paper_input_databuf_busywait_free(paper_input_databuf_p, binfo.block_i)) != GUPPI_OK) {    
 	    if (rv==GUPPI_TIMEOUT) {
@@ -328,46 +330,16 @@ uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf
 
 	initialize_block(paper_input_databuf_p, &binfo, pkt_header.mcnt); 
     }
-    if(paper_input_databuf_p->block[binfo.block_i].header.mcnt[binfo.sub_block_i] == 0) {                
-	// new sub_block
-     	paper_input_databuf_p->block[binfo.block_i].header.mcnt[binfo.sub_block_i] = pkt_header.mcnt;  
-    }
     binfo.block_active[binfo.block_i] += 1;	// increment packet count for block
     // end housekeeping
 
-    // Calculate starting points for unpacking this packet into a sub_block.
-    // One packet will never span more than one sub_block.
-    block_offset     = binfo.block_i     * sizeof(paper_input_block_t);
-    sub_block_offset = binfo.sub_block_i * sizeof(paper_input_sub_block_t);
-    dest_p           = (uint64_t *)((uint8_t *)paper_input_databuf_p +
-			sizeof(struct guppi_databuf)                 + 
-			sizeof(guppi_databuf_cache_alignment)        +
-			block_offset                                 + 
-			sizeof(paper_input_header_t)                 + 
-			sub_block_offset                             +
-// TODO The xid handling should be made more generic.  Right now the only
-// supported assymetric mode is N_CHAN_PER_X = 2*N_CHAN_PER_PACKET.
-#if N_CHAN_PER_X != N_CHAN_PER_PACKET
-#if 2 * N_CHAN_PER_PACKET != N_CHAN_PER_X
-#error The only supported asymmetric mode is N_CHAN_PER_X == 2 * N_CHAN_PER_PACKET
-#endif
-			(pkt_header.xid&1)*N_CHAN_PER_PACKET*N_INPUTS_PER_FENGINE +
-#endif
-			pkt_header.fid*N_INPUTS_PER_FENGINE);
+    // Calculate starting points for unpacking this packet into block's data buffer.
+    dest_p = paper_input_databuf_p->block[binfo.block_i].data
+	+ paper_input_databuf_data_idx(binfo.m, binfo.x, binfo.q, binfo.f, 0, 0);
     payload_p        = (uint64_t *)(p->data+8);
 
-    // unpack the packet, fluffing as we go
-    for(i=0; i<(N_TIME_PER_PACKET*N_CHAN_PER_PACKET); i++) {
-        uint64_t val = payload_p[i];
-	// Using complex block size (cbs) of 32
-	// 4 = cbs*sizeof(int8_t)/sizeof(uint64_t)
-	dest_p[2*N_FENGINES*i] =  val & 0xf0f0f0f0f0f0f0f0LL;
-	dest_p[2*N_FENGINES*i+4] = (val & 0x0f0f0f0f0f0f0f0fLL) << 4;
-    }  // end upacking
-
-#if defined TIMING_TEST || defined NET_TIMING_TEST
-	fluffed_words += (N_TIME_PER_PACKET*N_CHAN_PER_PACKET);
-#endif // TIMING_TEST || NET_TIMING_TEST
+    // Copy data into buffer
+    memcpy(dest_p, payload_p, N_BYTES_PER_PACKET);
 
     // if all packets are accounted for, mark this block filled
     if(binfo.block_active[binfo.block_i] == N_PACKETS_PER_BLOCK) {
@@ -532,7 +504,6 @@ static void *run(void * _args)
 	if(loop_count == END_LOOP_COUNT) {
 	    clock_gettime(CLOCK_MONOTONIC, &stop);
 	    int64_t elapsed = ELAPSED_NS(start, stop);
-	    printf("fluffed %lu words\n", fluffed_words);
 	    printf("processed %d packets in %.6f ms (%.3f us per packet)\n",
 		    END_LOOP_COUNT, elapsed/1e6, elapsed/1e3/END_LOOP_COUNT);
 	    exit(0);
