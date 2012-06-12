@@ -345,7 +345,14 @@ uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf
 			block_offset                                 + 
 			sizeof(paper_input_header_t)                 + 
 			sub_block_offset                             +
+// TODO The xid handling should be made more generic.  Right now the only
+// supported assymetric mode is N_CHAN_PER_X = 2*N_CHAN_PER_PACKET.
+#if N_CHAN_PER_X != N_CHAN_PER_PACKET
+#if 2 * N_CHAN_PER_PACKET != N_CHAN_PER_X
+#error The only supported asymmetric mode is N_CHAN_PER_X == 2 * N_CHAN_PER_PACKET
+#endif
 			(pkt_header.xid&1)*N_CHAN_PER_PACKET*N_INPUTS_PER_FENGINE +
+#endif
 			pkt_header.fid*N_INPUTS_PER_FENGINE);
     payload_p        = (uint64_t *)(p->data+8);
 
