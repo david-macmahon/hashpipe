@@ -515,18 +515,19 @@ static void *run(void * _args)
 #define ELAPSED_NS(start,stop) \
   (((int64_t)stop.tv_sec-start.tv_sec)*1000*1000*1000+(stop.tv_nsec-start.tv_nsec))
 
+#define END_LOOP_COUNT (1*1000*1000)
 	static int loop_count=0;
 	static struct timespec start, stop;
 	if(loop_count == 0) {
 	    clock_gettime(CLOCK_MONOTONIC, &start);
 	}
 	//if(loop_count == 1000000) run_threads = 0; 
-	if(loop_count == 10*1000*1000) {
+	if(loop_count == END_LOOP_COUNT) {
 	    clock_gettime(CLOCK_MONOTONIC, &stop);
 	    int64_t elapsed = ELAPSED_NS(start, stop);
 	    printf("fluffed %lu words\n", fluffed_words);
 	    printf("processed %d packets in %.6f ms (%.3f us per packet)\n",
-		    10*1000*1000, elapsed/1e6, elapsed/1e3/(10*1000*1000));
+		    END_LOOP_COUNT, elapsed/1e6, elapsed/1e3/END_LOOP_COUNT);
 	    exit(0);
 	}
 	loop_count++;
