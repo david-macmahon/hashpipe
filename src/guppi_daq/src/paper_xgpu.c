@@ -14,6 +14,7 @@
 #include <poll.h>
 #include <getopt.h>
 #include <errno.h>
+#include <sys/resource.h> 
 
 #include <xgpu.h>
 
@@ -69,6 +70,14 @@ int main(int argc, char *argv[])
     int instance_id  = 0;
     int input_buffer  = 0;
     int output_buffer = 1;
+
+    // Preemptively set RLIMIT_MEMLOCK to max
+    struct rlimit rlim;
+    getrlimit(RLIMIT_MEMLOCK, &rlim);
+    rlim.rlim_cur = rlim.rlim_max;
+    if(setrlimit(RLIMIT_MEMLOCK, &rlim)) {
+      perror("setrlimit");
+    }
 
     guppi_thread_args_init(&args[num_threads]);
     args[num_threads].instance_id   = instance_id;
