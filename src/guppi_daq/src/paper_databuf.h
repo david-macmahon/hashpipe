@@ -107,7 +107,7 @@ typedef uint8_t paper_input_header_cache_alignment[
 typedef struct paper_input_block {
   paper_input_header_t header;
   paper_input_header_cache_alignment padding; // Maintain cache alignment
-  uint64_t data[]; // (N_BYTES_PER_BLOCK/sizeof(uint64_t))
+  uint64_t data[N_BYTES_PER_BLOCK/sizeof(uint64_t)];
 } paper_input_block_t;
 
 // Used to pad after guppi_databuf to maintain cache alignment
@@ -158,7 +158,7 @@ typedef struct paper_input_databuf {
 typedef struct paper_gpu_input_block {
   paper_input_header_t header;
   paper_input_header_cache_alignment padding; // Maintain cache alignment
-  uint64_t data[]; // (2*N_BYTES_PER_BLOCK/sizeof(uint64_t))
+  uint64_t data[(2*N_BYTES_PER_BLOCK/sizeof(uint64_t))];
 } paper_gpu_input_block_t;
 
 typedef struct paper_gpu_input_databuf {
