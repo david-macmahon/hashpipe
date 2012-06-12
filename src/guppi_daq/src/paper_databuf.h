@@ -51,35 +51,63 @@
 
 #define N_INPUT_BLOCKS 4
 
-typedef struct paper_input_input {
-    int8_t sample;				
-} paper_input_input_t;
-
-typedef struct paper_input_chan {
-    paper_input_input_t input[N_INPUTS_PER_PACKET*N_FENGINES];
-} paper_input_chan_t;
-
-typedef struct paper_input_time {
-    paper_input_chan_t chan[N_CHAN_PER_X];
-} paper_input_time_t;
-
-typedef struct paper_input_sub_block {
-    paper_input_time_t time[N_TIME_PER_PACKET];
-} paper_input_sub_block_t;
-
-typedef struct paper_input_complexity {
-  paper_input_sub_block_t sub_block[N_SUB_BLOCKS_PER_INPUT_BLOCK];
-} paper_input_complexity_t;
-
 typedef struct paper_input_header {
-  int64_t good_data;       // functions as a boolean, 64 bit to maintain word alignment
-  uint8_t padding[CACHE_ALIGNMENT-sizeof(int64_t)]; // Maintain cache alignment
-  uint64_t mcnt[N_SUB_BLOCKS_PER_INPUT_BLOCK];
+  int64_t good_data; // functions as a boolean, 64 bit to maintain word alignment
+  uint64_t mcnt;     // mcount of first packet
 } paper_input_header_t;
+
+typedef uint8_t paper_input_header_cache_alignment[
+  CACHE_ALIGNMENT - (sizeof(paper_input_header_t)%CACHE_ALIGNMENT)
+];
+
+// == paper_databuf_input_t ==
+//
+// * Net thread output
+// * Fluffer thread input
+// * Ordered sequence of packets in "data" field:
+//
+//   +-- mcount
+//   |
+//   |       +-- xid
+//   |       |
+//   |       |       |<--feng-->|      |<-packet->|
+//   V       V       |          |      |          |
+//   m       x       |q       f |      |t       c |
+//   ==      ==      |==      ==|      |==      ==|
+//   m0 }--> x0 }--> |q0 }--> f0| }--> |t0 }--> c0|
+//   m1      x1      |q1      f1|      |t1      c1|
+//   m2              |q2      f2|      |t2      c2|
+//   :               |:       : |      |:       : |
+//   ==      ==       ==      ==        ==      ==
+//   Nm      Nx       Nq      Nf        Nt      Nc
+//
+//   Each 8 byte word represents eight complex inputs.
+//   Each byte is a 4bit+4bit complex value.
+//
+// m = packet's mcount - block's first mcount
+// x = packet's XID - X engine's xid_base
+// q = packet's FID / 4 (4 is number of FIDs per complex block)
+// f = packet's FID % 4 (4 is number of FIDs per complex block)
+// t = time sample within packet
+// c = channel within time sample within packet
+// Nt * Nc == packet's payload
+
+#define Nm (N_TIME_PER_BLOCK/N_TIME_PER_PACKET)
+#define Nx (N_CHAN_PER_X/N_CHAN_PER_F)
+#define Nq (N_FENGINES/4)
+#define Nf 4
+#define Nt N_TIME_PER_PACKET
+#define Nc N_CHAN_PER_PACKET
+
+// Copmutes paper_input_databuf_t.data word (uint64_t) offset for complex data
+// word (8 inputs) corresponding to the given parameters.
+#define paper_input_databuf_data_idx(m,x,q,f,t,c) \
+  (c+Nc*(t+Nt*(f+Nf*(q+Nq*(x+Nx*m)))))
 
 typedef struct paper_input_block {
   paper_input_header_t header;
-  paper_input_complexity_t complexity[2];	// [0] is real, [1] is imag
+  paper_input_header_cache_alignment padding; // Maintain cache alignment
+  uint64_t data[]; // (N_BYTES_PER_BLOCK/sizeof(uint64_t))
 } paper_input_block_t;
 
 // Used to pad after guppi_databuf to maintain cache alignment
@@ -92,6 +120,52 @@ typedef struct paper_input_databuf {
   guppi_databuf_cache_alignment padding; // Maintain cache alignment
   paper_input_block_t block[N_INPUT_BLOCKS];
 } paper_input_databuf_t;
+
+/*
+ * GPU INPUT BUFFER STRUCTURES
+ */
+
+#define N_GPU_INPUT_BLOCKS 2
+
+// == paper_gpu_input_databuf_t ==
+//
+// * Fluffer thread output
+// * GPU thread input
+// * Multidimensional array in "data" field:
+//
+//   +--time--+      +--chan--+      +-inputs-+
+//   |        |      |        |      |        |
+//   V        V      V        V      V        V
+//   m        t      x        c      q        f
+//   ==      ==      ==      ==      ==      ==
+//   m0 }--> t0 }--> x0 }--> c0 }--> q0 }--> f0
+//   m1      t1      x1      c1      q1      f1
+//   m2      t2              c2      q2      f2
+//   :       :               :       :       :
+//   ==      ==      ==      ==      ==      ==
+//   Nm      Nt      Nx      Nc      Nq      Nf
+//
+//   Each group of eight 8 byte words (i.e. every 64 bytes) contains thirty-two
+//   8bit+8bit complex inputs (8 inputs * four F engines) using complex block
+//   size 32.
+
+// Returns word (uint64_t) offset for real input data word (8 inputs)
+// corresponding to the given parameters.  Corresponding imaginary data word is
+// 4 words later (complex block size 32).
+#define paper_gpu_input_databuf_data_idx(m,x,q,f,t,c) \
+  (f+2*Nf*(q+Nq*(c+Nc*(x+Nx*(t+Nt*m)))))
+
+typedef struct paper_gpu_input_block {
+  paper_input_header_t header;
+  paper_input_header_cache_alignment padding; // Maintain cache alignment
+  uint64_t data[]; // (2*N_BYTES_PER_BLOCK/sizeof(uint64_t))
+} paper_gpu_input_block_t;
+
+typedef struct paper_gpu_input_databuf {
+  struct guppi_databuf header;
+  guppi_databuf_cache_alignment padding; // Maintain cache alignment
+  paper_gpu_input_block_t block[N_INPUT_BLOCKS];
+} paper_gpu_input_databuf_t;
 
 /*
  * OUTPUT BUFFER STRUCTURES
@@ -156,14 +230,71 @@ int paper_input_databuf_set_free(paper_input_databuf_t *d, int block_id);
 int paper_input_databuf_set_filled(paper_input_databuf_t *d, int block_id);
 
 /*
+ * GPU INPUT BUFFER FUNCTIONS
+ */
+
+paper_gpu_input_databuf_t *paper_gpu_input_databuf_create(int instance_id, int n_block, size_t block_size,
+        int databuf_id);
+
+void paper_gpu_input_databuf_clear(paper_gpu_input_databuf_t *d);
+
+static inline paper_gpu_input_databuf_t *paper_gpu_input_databuf_attach(int instance_id, int databuf_id)
+{
+    return (paper_gpu_input_databuf_t *)guppi_databuf_attach(instance_id, databuf_id);
+}
+
+/* Mimicking guppi_databuf's "detach" mispelling. */
+static inline int paper_gpu_input_databuf_detach(paper_gpu_input_databuf_t *d)
+{
+    return guppi_databuf_detach((struct guppi_databuf *)d);
+}
+
+static inline int paper_gpu_input_databuf_block_status(paper_gpu_input_databuf_t *d, int block_id)
+{
+    return guppi_databuf_block_status((struct guppi_databuf *)d, block_id);
+}
+
+static inline int paper_gpu_input_databuf_total_status(paper_gpu_input_databuf_t *d)
+{
+    return guppi_databuf_total_status((struct guppi_databuf *)d);
+}
+
+static inline int paper_gpu_input_databuf_wait_free(paper_gpu_input_databuf_t *d, int block_id)
+{
+    return guppi_databuf_wait_free((struct guppi_databuf *)d, block_id);
+}
+
+static inline int paper_gpu_input_databuf_busywait_free(paper_gpu_input_databuf_t *d, int block_id)
+{
+    return guppi_databuf_busywait_free((struct guppi_databuf *)d, block_id);
+}
+
+static inline int paper_gpu_input_databuf_wait_filled(paper_gpu_input_databuf_t *d, int block_id)
+{
+    return guppi_databuf_wait_filled((struct guppi_databuf *)d, block_id);
+}
+
+static inline int paper_gpu_input_databuf_busywait_filled(paper_gpu_input_databuf_t *d, int block_id)
+{
+    return guppi_databuf_busywait_filled((struct guppi_databuf *)d, block_id);
+}
+
+static inline int paper_gpu_input_databuf_set_free(paper_gpu_input_databuf_t *d, int block_id)
+{
+    return guppi_databuf_set_free((struct guppi_databuf *)d, block_id);
+}
+
+static inline int paper_gpu_input_databuf_set_filled(paper_gpu_input_databuf_t *d, int block_id)
+{
+    return guppi_databuf_set_filled((struct guppi_databuf *)d, block_id);
+}
+
+/*
  * OUTPUT BUFFER FUNCTIONS
  */
 
 paper_output_databuf_t *paper_output_databuf_create(int instance_id, int n_block, size_t block_size,
         int databuf_id);
-
-
-
 
 void paper_output_databuf_clear(paper_output_databuf_t *d);
 

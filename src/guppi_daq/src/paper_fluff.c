@@ -20,8 +20,8 @@ int paper_fluff(const uint64_t const * const in, uint64_t * out)
           // Surprisingly, it's slightly faster to switch the f and q loops
           for(f=0; f<Nf; f++) {
             for(q=0; q<Nq; q++) {
-              i = in_idx( m,x,q,f,t,c);
-              o = out_idx(m,x,q,f,t,c);
+              i = paper_input_databuf_data_idx(m,x,q,f,t,c);
+              o = paper_gpu_input_databuf_data_idx(m,x,q,f,t,c);
 #ifdef DEBUG_FLUFF_GEN
               printf("m=%02d t=%02d x=%d c=%02d q=%d f=%d : in=%d out=%d\n",
                   m, t, x, c, q, f, i, o);
