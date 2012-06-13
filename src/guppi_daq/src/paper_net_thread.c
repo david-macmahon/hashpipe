@@ -399,6 +399,7 @@ static void *run(void * _args)
     hputi4(st.buf, "BINDPORT", up.bindport);
     hputu4(st.buf, "MISSEDFE", 0);
     hputu4(st.buf, "MISSEDPK", 0);
+    hputs(st.buf, STATUS_KEY, "running");
     guppi_status_unlock_safe(&st);
 
     struct guppi_udp_packet p;
@@ -419,7 +420,6 @@ static void *run(void * _args)
 #endif
 
     /* Main loop */
-    unsigned waiting=-1;
     signal(SIGINT,cc);
     while (run_threads) {
 
@@ -442,15 +442,7 @@ static void *run(void * _args)
                 pthread_exit(NULL);
             }
         }
-	
 #endif
-        /* Update status if needed */
-        if (waiting!=0) {
-            guppi_status_lock_busywait_safe(st_p);
-            hputs(st_p->buf, STATUS_KEY, "receiving");
-            guppi_status_unlock_safe(st_p);
-            waiting=0;
-        }
 
         // Copy packet into any blocks where it belongs.
         const uint64_t mcnt = write_paper_packet_to_blocks((paper_input_databuf_t *)db, &p);
