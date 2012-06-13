@@ -160,8 +160,8 @@ static XGPUInfo xgpu_info;
 #define BYTES_PER_PACKET 4096
 
 // PACKET_DELAY_NS is number of nanoseconds to delay between packets.  This is
-// to prevent overflowing the network interface's TX queue.  The delay is 8
-// times longer than necessary for a single packet so that up to 8 instances
+// to prevent overflowing the network interface's TX queue.  The delay is 4
+// times longer than necessary for a single packet so that up to 4 instances
 // can dump simulatneously without problems.  For larger correlators running
 // fewer instance per GPU host, this may be too long, but for now it shouldn't
 // be a problem.  Note that this accounts only for the packet's payload (i.e.
@@ -169,7 +169,7 @@ static XGPUInfo xgpu_info;
 //
 // 1000 megabit per second =  1 nanosecond per bit
 //  100 megabit per second = 10 nanosecond per bit
-#define PACKET_DELAY_NS (10 * 8 * 8 * BYTES_PER_PACKET)
+#define PACKET_DELAY_NS (4 * 10 * 8 * BYTES_PER_PACKET)
 
 // bytes_per_dump depends on xgpu_info.triLength
 static uint64_t bytes_per_dump = 0;
@@ -365,6 +365,7 @@ static int init(struct guppi_thread_args *args)
     xgpuInfo(&xgpu_info);
     bytes_per_dump = xgpu_info.triLength * sizeof(Complex);
     packets_per_dump = bytes_per_dump / BYTES_PER_PACKET;
+    printf("bytes_per_dump = %lu\n", bytes_per_dump);
 
     // Create paper_ouput_databuf
     THREAD_INIT_DATABUF(args->instance_id, paper_output_databuf, 2,
@@ -400,6 +401,9 @@ static void reorder_and_convert(int32_t *casper, const float *regtile)
     }
   }
 }
+
+#define ELAPSED_NS(start,stop) \
+  (((int64_t)stop.tv_sec-start.tv_sec)*1000*1000*1000+(stop.tv_nsec-start.tv_nsec))
 
 static void *run(void * _args)
 {
@@ -500,6 +504,7 @@ static void *run(void * _args)
     int i_pkt, rv;
     unsigned int dumps = 0;
     int block_idx = 0;
+    struct timespec start, stop;
     signal(SIGINT,cc);
     signal(SIGTERM,cc);
     while (run_threads) {
@@ -523,6 +528,8 @@ static void *run(void * _args)
                 break;
             }
         }
+
+        clock_gettime(CLOCK_MONOTONIC, &start);
 
         // Note processing status, current input block
         guppi_status_lock_safe(&st);
@@ -592,8 +599,12 @@ static void *run(void * _args)
         // Setup for next block
         block_idx = (block_idx + 1) % db->header.n_block;
 
+        clock_gettime(CLOCK_MONOTONIC, &stop);
+
         guppi_status_lock_safe(&st);
         hputu4(st.buf, "OUTDUMPS", ++dumps);
+        hputr4(st.buf, "OUTSECS", (float)ELAPSED_NS(start,stop)/1e9);
+        hputr4(st.buf, "OUTMBPS", (1e3*8*bytes_per_dump)/ELAPSED_NS(start,stop));
         guppi_status_unlock_safe(&st);
 
         /* Will exit if thread has been cancelled */
