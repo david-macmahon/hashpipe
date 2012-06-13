@@ -46,8 +46,8 @@ static int init(struct guppi_thread_args *args)
     XGPUInfo xgpu_info;
     xgpuInfo(&xgpu_info);
 
-    /* Create paper_input_databuf */
-    THREAD_INIT_DATABUF(args->instance_id, paper_input_databuf, 4,
+    /* Create paper_gpu_input_databuf */
+    THREAD_INIT_DATABUF(args->instance_id, paper_gpu_input_databuf, N_GPU_INPUT_BLOCKS,
         xgpu_info.vecLength*sizeof(ComplexInput),
         args->input_buffer);
 
@@ -79,9 +79,9 @@ static void *run(void * _args, int doCPU)
     /* Attach to status shared mem area */
     THREAD_RUN_ATTACH_STATUS(args->instance_id, st);
 
-    /* Attach to paper_input_databuf */
+    /* Attach to paper_gpu_input_databuf */
     THREAD_RUN_ATTACH_DATABUF(args->instance_id,
-        paper_input_databuf, db_in, args->input_buffer);
+        paper_gpu_input_databuf, db_in, args->input_buffer);
 
     /* Attach to paper_ouput_databuf */
     THREAD_RUN_ATTACH_DATABUF(args->instance_id,
@@ -116,7 +116,7 @@ static void *run(void * _args, int doCPU)
     // matrix_x to prevent xgpuInit from allocating memory.
     XGPUContext context;
     context.array_h = (ComplexInput *)db_in->block[0].data;
-    context.array_len = (db_in->header.n_block * sizeof(paper_input_block_t) - sizeof(paper_input_header_t)) / sizeof(ComplexInput);
+    context.array_len = (db_in->header.n_block * sizeof(paper_gpu_input_block_t) - sizeof(paper_input_header_t)) / sizeof(ComplexInput);
     context.matrix_h = (Complex *)db_out->block[0].data;
     context.matrix_len = (db_out->header.n_block * sizeof(paper_output_block_t) - sizeof(paper_output_header_t)) / sizeof(Complex);
 
@@ -138,7 +138,7 @@ static void *run(void * _args, int doCPU)
         guppi_status_unlock_safe(&st);
 
         // Wait for new input block to be filled
-        while ((rv=paper_input_databuf_wait_filled(db_in, curblock_in)) != GUPPI_OK) {
+        while ((rv=paper_gpu_input_databuf_wait_filled(db_in, curblock_in)) != GUPPI_OK) {
             if (rv==GUPPI_TIMEOUT) {
                 guppi_status_lock_safe(&st);
                 hputs(st.buf, STATUS_KEY, "blocked_in");
@@ -161,7 +161,7 @@ static void *run(void * _args, int doCPU)
         // If integration status "off"
         if(!strcmp(integ_status, "off")) {
             // Mark input block as free and advance
-            paper_input_databuf_set_free(db_in, curblock_in);
+            paper_gpu_input_databuf_set_free(db_in, curblock_in);
             curblock_in = (curblock_in + 1) % db_in->header.n_block;
             // Skip to next input buffer
             continue;
@@ -173,7 +173,7 @@ static void *run(void * _args, int doCPU)
             if(db_in->block[curblock_in].header.mcnt < start_mcount) {
               // Drop input buffer
               // Mark input block as free and advance
-              paper_input_databuf_set_free(db_in, curblock_in);
+              paper_gpu_input_databuf_set_free(db_in, curblock_in);
               curblock_in = (curblock_in + 1) % db_in->header.n_block;
               // Skip to next input buffer
               continue;
@@ -207,7 +207,7 @@ static void *run(void * _args, int doCPU)
 
 
         // Setup for current chunk
-        context.input_offset = curblock_in * sizeof(paper_input_block_t) / sizeof(ComplexInput);
+        context.input_offset = curblock_in * sizeof(paper_gpu_input_block_t) / sizeof(ComplexInput);
         context.output_offset = curblock_out * sizeof(paper_output_block_t) / sizeof(Complex);
 
         // Call CUDA X engine function
@@ -316,7 +316,7 @@ static void *run(void * _args, int doCPU)
         }
 
         // Mark input block as free and advance
-        paper_input_databuf_set_free(db_in, curblock_in);
+        paper_gpu_input_databuf_set_free(db_in, curblock_in);
         curblock_in = (curblock_in + 1) % db_in->header.n_block;
 
         /* Check for cancel */
