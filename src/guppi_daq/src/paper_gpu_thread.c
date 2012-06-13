@@ -108,7 +108,9 @@ static void *run(void * _args, int doCPU)
     int curblock_in=0;
     int curblock_out=0;
 
-    struct timespec start, finish;
+    struct timespec start, stop;
+    uint64_t elapsed_gpu_ns  = 0;
+    uint64_t gpu_block_count = 0;
 
     // Initialize context to point at first input and output memory blocks.
     // This seems redundant since we do this just before calling
@@ -241,15 +243,16 @@ static void *run(void * _args, int doCPU)
 
         xgpuCudaXengine(&context, doDump ? SYNCOP_DUMP : SYNCOP_SYNC_TRANSFER);
 
-        clock_gettime(CLOCK_MONOTONIC, &finish);
-
-        // Note processing time
-        guppi_status_lock_safe(&st);
-        hputi4(st.buf, "GPU_NS", ELAPSED_NS(start,finish));
-        guppi_status_unlock_safe(&st);
+        clock_gettime(CLOCK_MONOTONIC, &stop);
+        elapsed_gpu_ns += ELAPSED_NS(start, stop);
+        gpu_block_count++;
 
         if(doDump) {
+          clock_gettime(CLOCK_MONOTONIC, &start);
           xgpuClearDeviceIntegrationBuffer(&context);
+          clock_gettime(CLOCK_MONOTONIC, &stop);
+          elapsed_gpu_ns += ELAPSED_NS(start, stop);
+
           // TODO Maybe need to subtract all or half the integration time here
           // depending on recevier's expectations.
           db_out->block[curblock_out].header.mcnt = last_mcount;
@@ -270,11 +273,16 @@ static void *run(void * _args, int doCPU)
           curblock_out = (curblock_out + 1) % db_out->header.n_block;
           // TODO Need to handle or at least check for overflow!
 
-          // Update GPU dump counter
+          // Update GPU dump counter and GPU Gbps
           gpu_dumps++;
           guppi_status_lock_safe(&st);
           hputi8(st.buf, "GPUDUMPS", gpu_dumps);
+          hputr4(st.buf, "GPUGBPS", (float)(8*N_BYTES_PER_BLOCK*gpu_block_count)/elapsed_gpu_ns);
           guppi_status_unlock_safe(&st);
+
+          // Start new average
+          elapsed_gpu_ns  = 0;
+          gpu_block_count = 0;
         }
 
         if(doCPU) {
