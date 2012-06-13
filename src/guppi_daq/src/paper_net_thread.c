@@ -360,6 +360,9 @@ static int init(struct guppi_thread_args *args)
     return 0;
 }
 
+#define ELAPSED_NS(start,stop) \
+  (((int64_t)stop.tv_sec-start.tv_sec)*1000*1000*1000+(stop.tv_nsec-start.tv_nsec))
+
 static void *run(void * _args)
 {
     // Cast _args
@@ -420,12 +423,17 @@ static void *run(void * _args)
 #endif
 
     /* Main loop */
+    uint64_t packet_count = 0;
+    uint64_t elapsed_handling_ns = 0;
+    float ns_per_pkt = 0.0;
+    struct timespec start, stop;
     signal(SIGINT,cc);
     while (run_threads) {
 
 #ifndef TIMING_TEST
         /* Read packet */
 	do {
+	    clock_gettime(CLOCK_MONOTONIC, &start);
 	    p.packet_size = recv(up.sock, p.data, GUPPI_MAX_PACKET_SIZE, 0);
 	} while (p.packet_size == -1 && (errno == EAGAIN || errno == EWOULDBLOCK) && run_threads);
 	if(!run_threads) break;
@@ -443,30 +451,40 @@ static void *run(void * _args)
             }
         }
 #endif
+	packet_count++;
 
         // Copy packet into any blocks where it belongs.
         const uint64_t mcnt = write_paper_packet_to_blocks((paper_input_databuf_t *)db, &p);
+
+	clock_gettime(CLOCK_MONOTONIC, &stop);
+	elapsed_handling_ns += ELAPSED_NS(start, stop);
+
         if(mcnt != -1) {
+            // Update status
+            ns_per_pkt = (float)elapsed_handling_ns / packet_count;
             guppi_status_lock_busywait_safe(&st);
             hputu8(st.buf, "NETMCNT", mcnt);
+	    // Gbps = bits_per_packet / ns_per_packet
+	    // (N_BYTES_PER_PACKET excludes header, so +8 for the header)
+            hputr4(st.buf, "NETGBPS", 8*(N_BYTES_PER_PACKET+8)/ns_per_pkt);
             guppi_status_unlock_safe(&st);
+	    // Start new average
+	    elapsed_handling_ns = 0;
+	    packet_count = 0;
         }
 
 #if defined TIMING_TEST || defined NET_TIMING_TEST
 
-#define ELAPSED_NS(start,stop) \
-  (((int64_t)stop.tv_sec-start.tv_sec)*1000*1000*1000+(stop.tv_nsec-start.tv_nsec))
-
 #define END_LOOP_COUNT (1*1000*1000)
 	static int loop_count=0;
-	static struct timespec start, stop;
+	static struct timespec tt_start, tt_stop;
 	if(loop_count == 0) {
-	    clock_gettime(CLOCK_MONOTONIC, &start);
+	    clock_gettime(CLOCK_MONOTONIC, &tt_start);
 	}
 	//if(loop_count == 1000000) run_threads = 0; 
 	if(loop_count == END_LOOP_COUNT) {
-	    clock_gettime(CLOCK_MONOTONIC, &stop);
-	    int64_t elapsed = ELAPSED_NS(start, stop);
+	    clock_gettime(CLOCK_MONOTONIC, &tt_stop);
+	    int64_t elapsed = ELAPSED_NS(tt_start, tt_stop);
 	    printf("processed %d packets in %.6f ms (%.3f us per packet)\n",
 		    END_LOOP_COUNT, elapsed/1e6, elapsed/1e3/END_LOOP_COUNT);
 	    exit(0);
