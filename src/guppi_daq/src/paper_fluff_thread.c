@@ -140,7 +140,8 @@ static void *run(void * _args)
 
         // Note processing time
         guppi_status_lock_safe(&st);
-        hputi4(st.buf, "FLUFF_NS", ELAPSED_NS(start,finish));
+        // Bits per fluff / ns per fluff = Gbps
+        hputr4(st.buf, "FLUFGBPS", (float)(8*N_BYTES_PER_BLOCK)/ELAPSED_NS(start,finish));
         guppi_status_unlock_safe(&st);
 
         // Mark input block as free and advance
