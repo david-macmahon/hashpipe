@@ -142,6 +142,15 @@ void get_header (struct guppi_udp_packet *p, packet_header_t * pkt_header)
     mcnt_log[mcnt_log_idx++ % MAX_MCNT_LOG] = pkt_header->mcnt;
 }
 
+static void die(paper_input_databuf_t *paper_input_databuf_p, block_info_t *binfo)
+{
+    print_block_info(binfo);
+    print_block_active(binfo);
+    print_ring_mcnts(paper_input_databuf_p);
+    dump_mcnt_log();
+    abort(); // End process and generate core file (if ulimit allows)
+}
+
 void set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t *binfo, int block_i) { 
     static int last_filled = -1;
 
@@ -152,11 +161,7 @@ void set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t
 	last_filled = (last_filled+1) % ((struct guppi_databuf *)paper_input_databuf_p)->n_block;
 	if(last_filled != block_i) {
 	    printf("block %d being marked filled, but expected block %d!\n", block_i, last_filled);
-	    print_block_info(binfo);
-	    print_block_active(binfo);
-	    print_ring_mcnts(paper_input_databuf_p);
-	    dump_mcnt_log();
-	    abort(); // End process and generate core file (if ulimit allows)
+	    die(paper_input_databuf_p, binfo);
 	}
 
 	if(paper_input_databuf_set_filled(paper_input_databuf_p, block_i) != GUPPI_OK) {
