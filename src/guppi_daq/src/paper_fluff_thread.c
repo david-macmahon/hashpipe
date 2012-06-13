@@ -131,8 +131,10 @@ static void *run(void * _args)
         hputu8(st.buf, "FLUFMCNT", db_in->block[curblock_in].header.mcnt);
         guppi_status_unlock_safe(&st);
 
-        // Call fluff function
+        // Copy header and call fluff function
         clock_gettime(CLOCK_MONOTONIC, &start);
+
+        memcpy(&db_out->block[curblock_out].header, &db_in->block[curblock_in].header, sizeof(paper_input_header_t));
 
         paper_fluff(db_in->block[curblock_in].data, db_out->block[curblock_out].data);
 
