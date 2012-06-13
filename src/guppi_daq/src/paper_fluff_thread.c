@@ -143,13 +143,13 @@ static void *run(void * _args)
         hputi4(st.buf, "FLUFF_NS", ELAPSED_NS(start,finish));
         guppi_status_unlock_safe(&st);
 
-        // Mark output block as full and advance
-        paper_gpu_input_databuf_set_filled(db_out, curblock_out);
-        curblock_out = (curblock_out + 1) % db_out->header.n_block;
-
         // Mark input block as free and advance
         paper_input_databuf_set_free(db_in, curblock_in);
         curblock_in = (curblock_in + 1) % db_in->header.n_block;
+
+        // Mark output block as full and advance
+        paper_gpu_input_databuf_set_filled(db_out, curblock_out);
+        curblock_out = (curblock_out + 1) % db_out->header.n_block;
 
         /* Check for cancel */
         pthread_testcancel();
