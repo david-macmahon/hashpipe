@@ -424,28 +424,6 @@ static void *run(void * _args)
     while (run_threads) {
 
 #ifndef TIMING_TEST
-        /* Wait for data */
-#if 0
-        rv = guppi_udp_wait(&up);
-        if (rv!=GUPPI_OK) {
-            if (rv==GUPPI_TIMEOUT) { 
-                /* Set "waiting" flag */
-                if (waiting!=1) {
-                    guppi_status_lock_busywait_safe(st_p);
-                    hputs(st_p->buf, STATUS_KEY, "waiting");
-                    guppi_status_unlock_safe(st_p);
-                    waiting=1;
-                }
-                continue; 
-            } else {
-                guppi_error("guppi_net_thread", 
-                        "guppi_udp_wait returned error");
-                perror("guppi_udp_wait");
-                pthread_exit(NULL);
-            }
-        }
-#endif
-	
         /* Read packet */
 	do {
 	    p.packet_size = recv(up.sock, p.data, GUPPI_MAX_PACKET_SIZE, 0);
