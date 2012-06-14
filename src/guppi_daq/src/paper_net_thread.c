@@ -425,16 +425,23 @@ static void *run(void * _args)
     /* Main loop */
     uint64_t packet_count = 0;
     uint64_t elapsed_handling_ns = 0;
+    uint64_t elapsed_recv_ns = 0;
+    uint64_t elapsed_proc_ns = 0;
     float ns_per_pkt = 0.0;
+    float ns_per_recv = 0.0;
+    float ns_per_proc = 0.0;
     struct timespec start, stop;
+    struct timespec recv_start, recv_stop;
     signal(SIGINT,cc);
     while (run_threads) {
 
 #ifndef TIMING_TEST
         /* Read packet */
+	clock_gettime(CLOCK_MONOTONIC, &recv_start);
 	do {
 	    clock_gettime(CLOCK_MONOTONIC, &start);
 	    p.packet_size = recv(up.sock, p.data, GUPPI_MAX_PACKET_SIZE, 0);
+	    clock_gettime(CLOCK_MONOTONIC, &recv_stop);
 	} while (p.packet_size == -1 && (errno == EAGAIN || errno == EWOULDBLOCK) && run_threads);
 	if(!run_threads) break;
         if (up.packet_size != p.packet_size) {
@@ -458,18 +465,27 @@ static void *run(void * _args)
 
 	clock_gettime(CLOCK_MONOTONIC, &stop);
 	elapsed_handling_ns += ELAPSED_NS(start, stop);
+	elapsed_recv_ns += ELAPSED_NS(recv_start, recv_stop);
+	elapsed_proc_ns += ELAPSED_NS(recv_stop, stop);
 
         if(mcnt != -1) {
             // Update status
             ns_per_pkt = (float)elapsed_handling_ns / packet_count;
+            ns_per_recv = (float)elapsed_recv_ns / packet_count;
+            ns_per_proc = (float)elapsed_proc_ns / packet_count;
             guppi_status_lock_busywait_safe(&st);
             hputu8(st.buf, "NETMCNT", mcnt);
 	    // Gbps = bits_per_packet / ns_per_packet
 	    // (N_BYTES_PER_PACKET excludes header, so +8 for the header)
             hputr4(st.buf, "NETGBPS", 8*(N_BYTES_PER_PACKET+8)/ns_per_pkt);
+            hputr4(st.buf, "NETRECNS", ns_per_recv);
+            hputr4(st.buf, "NETPKTNS", ns_per_pkt);
+            hputr4(st.buf, "NETPRCNS", ns_per_proc);
             guppi_status_unlock_safe(&st);
 	    // Start new average
 	    elapsed_handling_ns = 0;
+	    elapsed_recv_ns = 0;
+	    elapsed_proc_ns = 0;
 	    packet_count = 0;
         }
 
