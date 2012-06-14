@@ -383,7 +383,6 @@ static inline int32_t convert(float f)
   }
 }
 
-#define HTOBE32(x) (x)
 #define convert(x) ((int32_t)(x + (x < 0 ? -0.5 : +0.5)))
 static void reorder_and_convert(int32_t *casper, const float * regtile)
 {
@@ -393,8 +392,8 @@ static void reorder_and_convert(int32_t *casper, const float * regtile)
   for(c=0; c<N_CHAN_PER_X; c++) {
     for(i=0; i<N_CASPER_COMPLEX; i++) {
       off_t idx_regtile = 0;//idx_map[i];
-      int32_t re = HTOBE32(convert(regtile   [idx_regtile]));
-      int32_t im = HTOBE32(convert(regtile_im[idx_regtile]));
+      int32_t re = htobe32(convert(regtile   [idx_regtile]));
+      int32_t im = htobe32(convert(regtile_im[idx_regtile]));
       *casper = re;
       *casper = im;
     }
