@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <endian.h>
+#include <sched.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -252,21 +253,23 @@ static inline off_t tri_index(const int i, const int j)
 }
 
 // casper_chan_length is the number of complex cross products per channel for
-// the casper correlator output format with n_inputs.
-// NB: n_inputs = n_station * n_pol
-static inline size_t casper_chan_length(const int n_inputs)
+// the casper correlator output format with N_INPUTS.
+// NB: N_INPUTS = N_STATION * N_POL
+#define CASPER_CHAN_LENGTH (4 * N_INPUTS/2 * (N_INPUTS/2+1) / 2)
+static inline size_t casper_chan_length()
 {
   // Four cross products for each combination of input pairs
-  return 4 * n_inputs/2 * (n_inputs/2+1) / 2;
+  return CASPER_CHAN_LENGTH;
 }
 
 // regtile_chan_length is the number of complex cross products per channel for
-// the xGPU register tile order correlator output format with n_inputs.
-// NB: n_inputs = n_station * n_pol
-static inline size_t regtile_chan_length(const int n_inputs)
+// the xGPU register tile order correlator output format with N_INPUTS.
+// NB: N_INPUTS = N_STATION * N_POL
+#define REGTILE_CHAN_LENGTH (4 * 4 * N_INPUTS/4 * (N_INPUTS/4+1) / 2)
+static inline size_t regtile_chan_length()
 {
   // Four cross products for each quadrant of 4 input x 4 input tile
-  return 4 * 4 * n_inputs/4 * (n_inputs/4+1) / 2;
+  return REGTILE_CHAN_LENGTH;
 }
 
 // Returns index into the GPU's register tile ordered output buffer for the
@@ -306,8 +309,10 @@ static off_t regtile_index(const int in0, const int in1)
 // passing (2*ant_idx+pol_idx) as the input number (NB: ant_idx ad pol_idx are
 // also 0 based).  Return value is valid if in1 >= in0.  The corresponding
 // imaginary component is located in the word immediately following the real
-// component.
-static off_t casper_index(const int in0, const int in1)
+// component.  A casper ordered buffer consists of four complex values for each
+// pair of input pairs.  Thus, the number of complex values in a casper ordered
+// buffer are: 4 * (N/2 * (N/2 + 1)) / 2 = N * (N/2 + 1)
+static off_t casper_index(const int in0, const int in1, const int n)
 {
   const int a0 = in0 >> 1;
   const int a1 = in1 >> 1;
@@ -315,7 +320,7 @@ static off_t casper_index(const int in0, const int in1)
   const int p1 = in1 & 1;
   const int delta = a1-a0;
   const int num_words_per_cell = 8;
-  const int nant_2 = xgpu_info.nstation / 2;
+  const int nant_2 = (n/2) / 2;
 
   // Three cases: top triangle, middle rectangle, bottom triangle
   const int triangle_size = ((nant_2 + 1) * nant_2)/2;
@@ -325,8 +330,8 @@ static off_t casper_index(const int in0, const int in1)
 
   if(delta > nant_2) {
     // bottom triangle
-    cell_index = last_cell_offset - tri_index(nant_2-2-a0, xgpu_info.nstation-1-a1);
-  } else if (a1 < xgpu_info.nstation/2) {
+    cell_index = last_cell_offset - tri_index(nant_2-2-a0, (n/2)-1-a1);
+  } else if (a1 < (n/2)/2) {
     // top triangle
     cell_index = tri_index(a1, a0);
   } else {
@@ -341,6 +346,30 @@ static off_t casper_index(const int in0, const int in1)
   return index;
 }
 
+// A casper ordered buffer consists of four complex values for each pair of
+// input pairs.  Thus, the number of complex values in a casper ordered buffer
+// are: 4 * (N/2 * (N/2 + 1)) / 2 = N * (N/2 + 1)
+#define N_CASPER_COMPLEX (N_INPUTS * (N_INPUTS/2 + 1))
+
+// Lookup table mapping casper_idx to regtile_idx
+static off_t *idx_map;//[N_CASPER_COMPLEX];
+
+static int init_idx_map()
+{
+  int i, j;
+  idx_map = malloc(N_CASPER_COMPLEX * sizeof(off_t));
+  if(!idx_map) {
+    return -1;
+  }
+
+  for(i=0; i<N_INPUTS; i++) {
+    for(j=i; j<N_INPUTS; j++) {
+      idx_map[casper_index(i,j,N_INPUTS)/2] = regtile_index(i,j);
+    }
+  }
+  return 0;
+}
+
 // TODO Handle Inf and NaNs?  They "should never happen", right?  :-)
 static inline int32_t convert(float f)
 {
@@ -353,6 +382,28 @@ static inline int32_t convert(float f)
     return lroundf(f);
   }
 }
+
+#define HTOBE32(x) (x)
+#define convert(x) ((int32_t)(x + (x < 0 ? -0.5 : +0.5)))
+static void reorder_and_convert(int32_t *casper, const float * regtile)
+{
+  int c, i;
+  const int matLength = xgpu_info.matLength;
+  const float * regtile_im = regtile + matLength;
+  for(c=0; c<N_CHAN_PER_X; c++) {
+    for(i=0; i<N_CASPER_COMPLEX; i++) {
+      off_t idx_regtile = 0;//idx_map[i];
+      int32_t re = HTOBE32(convert(regtile   [idx_regtile]));
+      int32_t im = HTOBE32(convert(regtile_im[idx_regtile]));
+      *casper = re;
+      *casper = im;
+    }
+
+    regtile    +=   REGTILE_CHAN_LENGTH;
+    regtile_im +=   REGTILE_CHAN_LENGTH;
+  }
+}
+#undef convert
 
 static int init(struct guppi_thread_args *args)
 {
@@ -372,34 +423,12 @@ static int init(struct guppi_thread_args *args)
         xgpu_info.matLength*sizeof(Complex),
         args->input_buffer);
 
+    if(init_idx_map()) {
+      return -1;
+    }
+
     // Success!
     return 0;
-}
-
-static void reorder_and_convert(int32_t *casper, const float *regtile)
-{
-  int c, i, j;
-  const int n_inputs = xgpu_info.nstation * xgpu_info.npol;
-  const int n_chan = xgpu_info.nfrequency;
-  const int matLength = xgpu_info.matLength;
-  for(c=0; c<n_chan; c++) {
-    for(i=0; i<n_inputs; i++) {
-      for(j=i; j<n_inputs; j++) {
-        const int idx_casper = 2*c*casper_chan_length(n_inputs) + casper_index(i,j);
-        const int idx_regtile = c*regtile_chan_length(n_inputs) + regtile_index(i,j);
-        // Real
-        casper[idx_casper] = htobe32(convert(regtile[idx_regtile]));
-#if 0
-        if(casper[idx_casper] != 0) {
-          printf("c=%d, i=%d, j=%d, regtile[%d]=%f\n", c, i ,j, idx_regtile, regtile[idx_regtile]);
-          printf("c=%d, i=%d, j=%d, casper[%d]=%d %x\n", c, i ,j, idx_casper, be32toh(casper[idx_casper]), be32toh(casper[idx_casper]));
-        }
-#endif
-        // Imag
-        casper[idx_casper+1] = htobe32(convert(regtile[idx_regtile+matLength]));
-      }
-    }
-  }
 }
 
 #define ELAPSED_NS(start,stop) \
@@ -425,10 +454,10 @@ static void *run(void * _args)
     struct iovec msg_iov[2];
     struct msghdr msg;
     unsigned int xengine_id = 0;
-    struct timespec packet_delay = {
-      .tv_sec = 0,
-      .tv_nsec = PACKET_DELAY_NS
-    };
+    //struct timespec packet_delay = {
+    //  .tv_sec = 0,
+    //  .tv_nsec = PACKET_DELAY_NS
+    //};
 
     guppi_status_lock_safe(&st);
     hgetu4(st.buf, "XID", &xengine_id); // No change if not found
@@ -473,8 +502,7 @@ static void *run(void * _args)
     msg.msg_flags = 0;
 
     // Allocate buffer for casper ordered integer data
-    const int n_inputs = xgpu_info.nstation * xgpu_info.npol;
-    const int casper_length = xgpu_info.nfrequency * casper_chan_length(n_inputs);
+    const int casper_length = xgpu_info.nfrequency * casper_chan_length();
 
     int32_t *casper = malloc(casper_length * sizeof(*casper) * 2);
     if(!casper) {
@@ -505,6 +533,7 @@ static void *run(void * _args)
     unsigned int dumps = 0;
     int block_idx = 0;
     struct timespec start, stop;
+    struct timespec rc_start, rc_stop;
     signal(SIGINT,cc);
     signal(SIGTERM,cc);
     while (run_threads) {
@@ -539,7 +568,9 @@ static void *run(void * _args)
 
         // Reorder GPU block from register tile order to PAPER correlator order
         // (and convert to 32 bit integers.)
+        clock_gettime(CLOCK_MONOTONIC, &rc_start);
         reorder_and_convert(casper, db->block[block_idx].data);
+        clock_gettime(CLOCK_MONOTONIC, &rc_stop);
 
         // Update header's timestamp for this dump
         hdr.timestamp = TIMESTAMP(db->block[block_idx].header.mcnt *
@@ -586,7 +617,8 @@ static void *run(void * _args)
           }
 
           // Delay to prevent overflowing network TX queue
-          nanosleep(&packet_delay, NULL);
+          //nanosleep(&packet_delay, NULL);
+          //usleep(PACKET_DELAY_NS/1000);
 
           // Increment byte_offset and data pointer
           byte_offset += BYTES_PER_PACKET;
@@ -603,6 +635,7 @@ static void *run(void * _args)
 
         guppi_status_lock_safe(&st);
         hputu4(st.buf, "OUTDUMPS", ++dumps);
+        hputr8(st.buf, "OUTRCMS", ELAPSED_NS(rc_start,rc_stop)/1e6);
         hputr4(st.buf, "OUTSECS", (float)ELAPSED_NS(start,stop)/1e9);
         hputr4(st.buf, "OUTMBPS", (1e3*8*bytes_per_dump)/ELAPSED_NS(start,stop));
         guppi_status_unlock_safe(&st);
