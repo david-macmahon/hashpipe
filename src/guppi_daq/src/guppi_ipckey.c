@@ -38,8 +38,8 @@ static key_t guppi_ipckey(int proj_id)
 
 #ifdef GUPPI_VERBOSE
     fprintf(stderr,
-            "using pathname '%s' and proj_id '%c' to generate base IPC key\n",
-            keyfile, proj_id);
+            "using pathname '%s' and proj_id '%d' to generate base IPC key\n",
+            keyfile, proj_id&0xff);
 #endif
 
     key = ftok(keyfile, proj_id);
