@@ -95,14 +95,14 @@ int main(int argc, char *argv[]) {
         if (d->semid) { 
             rv = semctl(d->semid, 0, IPC_RMID); 
             if (rv==-1) {
-                fprintf(stderr, "Error removing databuf semaphore\n");
+                fprintf(stderr, "Error removing databuf semaphore %u\n", d->semid);
                 perror("semctl");
                 ex=1;
             }
         }
         rv = shmctl(d->shmid, IPC_RMID, NULL);
         if (rv==-1) {
-            fprintf(stderr, "Error deleting databuf segment.\n");
+            fprintf(stderr, "Error deleting databuf segment %u.\n", d->shmid);
             perror("shmctl");
             ex=1;
         }
