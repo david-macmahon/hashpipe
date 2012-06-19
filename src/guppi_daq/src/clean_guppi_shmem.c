@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
     /* Databuf shared mem */
     struct guppi_databuf *d=NULL;
     int i = 0;
-    for (i=1; i<=2; i++) {
+    for (i=1; i<=20; i++) {
         d = guppi_databuf_attach(instance_id, i); // Repeat for however many needed ..
         if (d==NULL) continue;
         if (d->semid) { 
