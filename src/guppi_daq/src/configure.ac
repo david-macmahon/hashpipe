@@ -68,21 +68,48 @@ LDFLAGS="${orig_LDFLAGS}"
 LDFLAGS="${orig_LDFLAGS} -L${XGPUDIR}/lib"
 AC_CHECK_LIB([xgpu], [xgpuInit],
              # Found
-             AC_SUBST(XGPUDIR,${XGPUDIR}),
-             # Not found there, error
-             AC_MSG_ERROR([xGPU library not found]))
+             AC_SUBST(XGPU_LIBDIR,${XGPUDIR}/lib),
+             # Not found there, check XGPUDIR
+             AS_UNSET(ac_cv_lib_xgpu_xgpuInit)
+             LDFLAGS="${orig_LDFLAGS} -L${XGPUDIR}"
+             AC_CHECK_LIB([xgpu], [xgpuInit],
+                          # Found
+                          AC_SUBST(XGPU_LIBDIR,${XGPUDIR}),
+                          # Not found there, error
+                          AC_MSG_ERROR([xGPU library not found])))
 LDFLAGS="${orig_LDFLAGS}"
 
+AC_CHECK_FILE([${XGPUDIR}/include/xgpu.h],
+              # Found
+              AC_SUBST(XGPU_INCDIR,${XGPUDIR}/include),
+              # Not found there, check XGPUDIR
+              AC_CHECK_FILE([${XGPUDIR}/xgpu.h],
+                            # Found
+                            AC_SUBST(XGPU_INCDIR,${XGPUDIR}),
+                            # Not found there, error
+                            AC_MSG_ERROR([xgpu.h header file not found])))
+
+
+AC_CHECK_FILE([${XGPUDIR}/bin/xgpuinfo],
+              # Found
+              AC_SUBST(XGPU_BINDIR,${XGPUDIR}/bin),
+              # Not found there, check XGPUDIR
+              AC_CHECK_FILE([${XGPUDIR}/xgpuinfo],
+                            # Found
+                            AC_SUBST(XGPU_BINDIR,${XGPUDIR}),
+                            # Not found there, error
+                            AC_MSG_ERROR([xgpuinfo program not found])))
+
 AC_DEFINE_UNQUOTED([XGPU_NSTATION],
-                   [`${XGPUDIR}/bin/xgpuinfo | sed -n '/Number of stations: /{s/.*: //;p}'`],
+                   [`${XGPU_BINDIR}/xgpuinfo | sed -n '/Number of stations: /{s/.*: //;p}'`],
                    [Number of stations == Ninputs/2])
 
 AC_DEFINE_UNQUOTED([XGPU_NFREQUENCY],
-                   [`${XGPUDIR}/bin/xgpuinfo | sed -n '/Number of frequencies: /{s/.*: //;p}'`],
+                   [`${XGPU_BINDIR}/xgpuinfo | sed -n '/Number of frequencies: /{s/.*: //;p}'`],
                    [Number of frequency channels per xGPU instance])
 
 AC_DEFINE_UNQUOTED([XGPU_NTIME],
-                   [`${XGPUDIR}/bin/xgpuinfo | sed -n '/time samples per GPU integration: /{s/.*: //;p}'`],
+                   [`${XGPU_BINDIR}/xgpuinfo | sed -n '/time samples per GPU integration: /{s/.*: //;p}'`],
                    [Number of time samples (i.e. spectra) per xGPU integration])
 
 ## FIXME: Replace `main' with a function in `-lm':
@@ -94,7 +121,7 @@ AC_CHECK_LIB([pthread], [pthread_create])
 #AC_CHECK_LIB([rt], [main])
 
 # Checks for header files.
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h limits.h netdb.h netinet/in.h stdint.h stdlib.h string.h sys/socket.h sys/time.h unistd.h xgpu.h])
+AC_CHECK_HEADERS([arpa/inet.h fcntl.h limits.h netdb.h netinet/in.h stdint.h stdlib.h string.h sys/socket.h sys/time.h unistd.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_INT64_T
