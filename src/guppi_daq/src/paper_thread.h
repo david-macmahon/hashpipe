@@ -69,6 +69,10 @@ void list_pipeline_thread_modules(FILE * f);
 // Set CPU affinity of calling thread
 int set_cpu_affinity(unsigned int mask);
 
+// Get CPU affinity of calling thread
+// Returns 0 on error
+unsigned int get_cpu_affinity();
+
 // Set priority of calling thread
 int set_priority(int priority);
 
