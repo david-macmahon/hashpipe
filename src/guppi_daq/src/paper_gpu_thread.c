@@ -277,7 +277,7 @@ static void *run(void * _args, int doCPU)
           gpu_dumps++;
           guppi_status_lock_safe(&st);
           hputi8(st.buf, "GPUDUMPS", gpu_dumps);
-          hputr4(st.buf, "GPUGBPS", (float)(8*N_BYTES_PER_BLOCK*gpu_block_count)/elapsed_gpu_ns);
+          hputr4(st.buf, "GPUGBPS", (float)(8*N_FLUFFED_BYTES_PER_BLOCK*gpu_block_count)/elapsed_gpu_ns);
           guppi_status_unlock_safe(&st);
 
           // Start new average
