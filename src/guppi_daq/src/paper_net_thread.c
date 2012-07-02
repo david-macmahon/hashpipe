@@ -123,7 +123,7 @@ void dump_mcnt_log()
     fclose(f);
 }
 
-void get_header (struct guppi_udp_packet *p, packet_header_t * pkt_header)
+static inline void get_header (struct guppi_udp_packet *p, packet_header_t * pkt_header)
 {
 #ifdef TIMING_TEST
     static int pkt_counter=0;
@@ -195,7 +195,7 @@ void set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t
     } 
 }
 
-int calc_block_indexes(block_info_t *binfo, packet_header_t * pkt_header) {
+static inline int calc_block_indexes(block_info_t *binfo, packet_header_t * pkt_header) {
 
     if(pkt_header->mcnt < binfo->mcnt_start) {
 	char msg[120];
@@ -219,7 +219,7 @@ int calc_block_indexes(block_info_t *binfo, packet_header_t * pkt_header) {
 } 
 
 #define MAX_MCNT_DIFF 64 
-int out_of_seq_mcnt(block_info_t * binfo, uint64_t pkt_mcnt) {
+static inline int out_of_seq_mcnt(block_info_t * binfo, uint64_t pkt_mcnt) {
 // mcnt rollovers are seen and treated like any other out of sequence mcnt
 
     if(abs(pkt_mcnt - binfo->mcnt_prior) <= MAX_MCNT_DIFF) {
@@ -234,7 +234,7 @@ int out_of_seq_mcnt(block_info_t * binfo, uint64_t pkt_mcnt) {
 }
 
 #define MAX_OUT_OF_SEQ 5
-int handle_out_of_seq_mcnt(block_info_t * binfo) {
+static inline int handle_out_of_seq_mcnt(block_info_t * binfo) {
 
     if(binfo->out_of_seq_cnt > MAX_OUT_OF_SEQ) {
 	printf("exceeded max (%d) out of sequence mcnts - restarting\n", MAX_OUT_OF_SEQ);
@@ -243,14 +243,14 @@ int handle_out_of_seq_mcnt(block_info_t * binfo) {
     return -1;
 }
 
-void initialize_block(paper_input_databuf_t * paper_input_databuf_p, block_info_t * binfo, uint64_t pkt_mcnt) {
+static inline void initialize_block(paper_input_databuf_t * paper_input_databuf_p, block_info_t * binfo, uint64_t pkt_mcnt) {
 
     paper_input_databuf_p->block[binfo->block_i].header.good_data = 0; 
     // Round pkt_mcnt down to nearest multiple of Nm
     paper_input_databuf_p->block[binfo->block_i].header.mcnt = pkt_mcnt - (pkt_mcnt%Nm);
 }
 
-void initialize_block_info(paper_input_databuf_t *paper_input_databuf_p, block_info_t * binfo, uint64_t pkt_mcnt) {
+static inline void initialize_block_info(paper_input_databuf_t *paper_input_databuf_p, block_info_t * binfo, uint64_t pkt_mcnt) {
 
     int i;
 
@@ -282,7 +282,7 @@ void initialize_block_info(paper_input_databuf_t *paper_input_databuf_p, block_i
 // Any return value other than -1 will be stored in the status memory as
 // NETMCNT, so it is important that values other than -1 are returned rarely
 // (i.e. when marking a block as filled)!!!
-uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, struct guppi_udp_packet *p) {
+static inline uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, struct guppi_udp_packet *p) {
 
     static block_info_t binfo;
     packet_header_t pkt_header;
