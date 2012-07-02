@@ -8,8 +8,8 @@ case ${hostname} in
     instances=(
       #                     GPU     NET FLF GPU OUT
       # mask  bind_host     DEV XID CPU CPU CPU CPU
-      '0x0606 192.168.2.41   0   1   2   8   1   8' # Instance 0, bond0 (eth2+eth3)
-      '0x6060 192.168.2.42   1   5   6  12   5  12' # Instance 1, bond1 (eth4+eth5)
+      '0x0707 192.168.2.41   0   1   2   8   1   8' # Instance 0, bond0 (eth2+eth3)
+      '0x7070 192.168.2.42   1   5   6  12   5  12' # Instance 1, bond1 (eth4+eth5)
     );;
 
   paper5) \
@@ -62,6 +62,7 @@ do
     echo
     echo Starting instance $1
     init $1 $args &
+    echo Instance $1 pid $!
   else
     echo Instance $1 not defined for host $hostname
   fi
