@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
     getrlimit(RLIMIT_MEMLOCK, &rlim);
     rlim.rlim_cur = rlim.rlim_max;
     if(setrlimit(RLIMIT_MEMLOCK, &rlim)) {
-      perror("setrlimit");
+      perror("setrlimit(RLIMIT_MEMLOCK)");
     }
 
     guppi_thread_args_init(&args[num_threads]);
