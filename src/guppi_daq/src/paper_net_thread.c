@@ -338,7 +338,7 @@ static inline uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper
 
 	initialize_block(paper_input_databuf_p, &binfo, pkt_header.mcnt); 
     }
-    binfo.block_active[binfo.block_i] += 1;	// increment packet count for block
+    binfo.block_active[binfo.block_i]++;	// increment packet count for block
     // end housekeeping
 
     // Calculate starting points for unpacking this packet into block's data buffer.
