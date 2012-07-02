@@ -20,7 +20,7 @@
 #include "guppi_error.h"
 #include "paper_databuf.h"
 
-#define STATUS_KEY "GPUOUT"  /* Define before guppi_threads.h */
+#define STATUS_KEY "OUTSTAT"  /* Define before guppi_threads.h */
 #include "guppi_threads.h"
 #include "paper_thread.h"
 
