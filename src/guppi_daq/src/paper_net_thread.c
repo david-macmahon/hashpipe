@@ -108,6 +108,7 @@ inline int dec_block_i(block_i) {
     return(block_i == 0 ? N_INPUT_BLOCKS - 1 : block_i - 1);
 }
 
+#ifdef LOG_MCNTS
 #define MAX_MCNT_LOG (1024*1024)
 static uint64_t mcnt_log[MAX_MCNT_LOG];
 static int mcnt_log_idx = 0;
@@ -122,6 +123,7 @@ void dump_mcnt_log()
     }
     fclose(f);
 }
+#endif
 
 static inline void get_header (struct guppi_udp_packet *p, packet_header_t * pkt_header)
 {
@@ -139,7 +141,9 @@ static inline void get_header (struct guppi_udp_packet *p, packet_header_t * pkt
     pkt_header->fid         = (raw_header >> 8) & 0x00000000000000FF;
 #endif
 
+#ifdef LOG_MCNTS
     mcnt_log[mcnt_log_idx++ % MAX_MCNT_LOG] = pkt_header->mcnt;
+#endif
 }
 
 static void die(paper_input_databuf_t *paper_input_databuf_p, block_info_t *binfo)
@@ -147,7 +151,9 @@ static void die(paper_input_databuf_t *paper_input_databuf_p, block_info_t *binf
     print_block_info(binfo);
     print_block_active(binfo);
     print_ring_mcnts(paper_input_databuf_p);
+#ifdef LOG_MCNTS
     dump_mcnt_log();
+#endif
     abort(); // End process and generate core file (if ulimit allows)
 }
 
