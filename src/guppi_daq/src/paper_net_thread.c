@@ -197,8 +197,8 @@ void set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t
 	    hgetu4(st_p->buf, "MISSEDPK", &missed_pkt_cnt);
 	    missed_pkt_cnt += block_missed_pkt_cnt;
 	    hputu4(st_p->buf, "MISSEDPK", missed_pkt_cnt);
-	    fprintf(stderr, "got %d packets instead of %d\n",
-		    binfo->block_active[block_i], N_PACKETS_PER_BLOCK);
+	//  fprintf(stderr, "got %d packets instead of %d\n",
+	//	    binfo->block_active[block_i], N_PACKETS_PER_BLOCK);
 	}
 	guppi_status_unlock_safe(st_p);
 
