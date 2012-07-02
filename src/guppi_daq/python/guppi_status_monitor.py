@@ -49,10 +49,11 @@ def display_status(stdscr, stat, instance_id):
         flip=0
         keys = stat.hdr.keys()
         keys.sort()
+        try:
+          keys.remove('INSTANCE')
+        except:
+          pass
         for k in keys:
-            # Don't show INSTANCE record in the list
-            # (it's already in the title)
-            if k == 'INSTANCE': continue
 
             v = stat.hdr[k]
             if (curline < ymax-3):
