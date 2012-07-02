@@ -82,6 +82,7 @@ int guppi_status_attach(int instance_id, struct guppi_status *s)
     /* Now attach to the segment */
     s->buf = shmat(s->shmid, NULL, 0);
     if (s->buf == (void *)-1) {
+        perror("shmat");
         printf("shmid=%d\n", s->shmid);
         guppi_error("guppi_status_attach", "shmat error");
         return(GUPPI_ERR_SYS);
