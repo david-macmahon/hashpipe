@@ -53,7 +53,12 @@ def display_status(stdscr, stat, instance_id):
           keys.remove('INSTANCE')
         except:
           pass
-        prefix = keys[0][0:3]
+
+        if len(keys) > 0:
+            prefix = keys[0][0:3]
+        else:
+            prefix = ''
+
         for k in keys:
             if k[0:3] != prefix:
                 prefix = k[0:3]
