@@ -164,6 +164,11 @@ void set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t
 
     if(binfo->block_active[block_i]) {
 
+	// if all packets are accounted for, mark this block as good
+	if(binfo->block_active[block_i] == N_PACKETS_PER_BLOCK) {
+	    paper_input_databuf_p->block[block_i].header.good_data = 1;
+	}
+
 	last_filled = (last_filled+1) % ((struct guppi_databuf *)paper_input_databuf_p)->n_block;
 	if(last_filled != block_i) {
 	    printf("block %d being marked filled, but expected block %d!\n", block_i, last_filled);
@@ -344,10 +349,6 @@ static inline uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper
     // Copy data into buffer
     memcpy(dest_p, payload_p, N_BYTES_PER_PACKET);
 
-    // if all packets are accounted for, mark this block filled
-    if(binfo.block_active[binfo.block_i] == N_PACKETS_PER_BLOCK) {
-    	paper_input_databuf_p->block[binfo.block_i].header.good_data = 1; 
-    }
 
     return netmcnt;
 }
