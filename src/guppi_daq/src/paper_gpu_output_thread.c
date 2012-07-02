@@ -113,7 +113,7 @@
 //   integration buffer.
 //
 //   PKTINFO.legnth is the length in bytes of the packet payload.  Maximum
-//   allowed value is 8192.
+//   allowed value is theoretically 8192, but recevier imposes a limit of 4096.
 //
 //   PKTINFO.count is sent as 0x0000 and is unused by the receiver.
 //
@@ -146,7 +146,36 @@ typedef struct pkthdr {
   uint64_t pktinfo;
   uint64_t timestamp;
   uint64_t offset;
+  uint64_t heaplen; // for padding to 128 byte header; ignored by receiver
 } pkthdr_t;
+
+// BYTES_PER_PACKET is limited by recevier code and must be multiple of 8
+#define BYTES_PER_PACKET 4096
+
+#ifdef SEND_BE32
+typedef int32_t pktdata_t;
+// TODO Handle Inf and NaNs?  They "should never happen", right?  :-)
+static inline pktdata_t convert(float f)
+{
+  if(f > INT32_MAX) {
+    return INT32_MAX;
+  } else if(f < INT32_MIN+1) {
+    // +1 to keep saturation symmetric
+    return INT32_MIN+1;
+  } else {
+    return (pktdata_t)lroundf(f);
+  }
+}
+#define CONVERT(x) (htobe32(convert(x)))
+#else
+typedef float pktdata_t;
+#define CONVERT(x) (x)
+#endif
+
+typedef struct pkt {
+  pkthdr_t hdr;
+  pktdata_t data[BYTES_PER_PACKET/sizeof(pktdata_t)];
+} pkt_t;
 
 // Macros for generating values for the pkthdr_t fields
 #define HEADER (htobe64(0x4b52000300000004))
@@ -154,11 +183,9 @@ typedef struct pkthdr {
 #define PKTINFO(x)   (htobe64(0x0033000000000000 | (((uint64_t)(x) &       0xffffff) << 24)))
 #define TIMESTAMP(x) (htobe64(0x0003000000000000 | ( (uint64_t)(x) & 0xffffffffffff       )))
 #define OFFSET(x)    (htobe64(0x0005000000000000 | ( (uint64_t)(x) & 0xffffffffffff       )))
+#define HEAPLEN(x)   (htobe64(0x0004000000000000 | ( (uint64_t)(x) & 0xffffffffffff       )))
 
 static XGPUInfo xgpu_info;
-
-// BYTES_PER_PACKET is limited by recevier code and must be multiple of 8
-#define BYTES_PER_PACKET 4096
 
 // PACKET_DELAY_NS is number of nanoseconds to delay between packets.  This is
 // to prevent overflowing the network interface's TX queue.  The delay is 4
@@ -346,18 +373,18 @@ static off_t casper_index(const int in0, const int in1, const int n)
   return index;
 }
 
-// A casper ordered buffer consists of four complex values for each pair of
-// input pairs.  Thus, the number of complex values in a casper ordered buffer
-// are: 4 * (N/2 * (N/2 + 1)) / 2 = N * (N/2 + 1)
-#define N_CASPER_COMPLEX (N_INPUTS * (N_INPUTS/2 + 1))
+// For each channel, a casper ordered buffer contains four complex values for
+// each pair of input pairs.  Thus, the number of complex values in a casper
+// ordered buffer are: 4 * (N/2 * (N/2 + 1)) / 2 = N * (N/2 + 1)
+#define N_CASPER_COMPLEX_PER_CHAN (N_INPUTS * (N_INPUTS/2 + 1))
 
 // Lookup table mapping casper_idx to regtile_idx
-static off_t *idx_map;//[N_CASPER_COMPLEX];
+static off_t *idx_map;
 
 static int init_idx_map()
 {
   int i, j;
-  idx_map = malloc(N_CASPER_COMPLEX * sizeof(off_t));
+  idx_map = malloc(N_CASPER_COMPLEX_PER_CHAN * sizeof(off_t));
   if(!idx_map) {
     return -1;
   }
@@ -369,40 +396,6 @@ static int init_idx_map()
   }
   return 0;
 }
-
-// TODO Handle Inf and NaNs?  They "should never happen", right?  :-)
-static inline int32_t convert(float f)
-{
-  if(f > INT32_MAX) {
-    return INT32_MAX;
-  } else if(f < INT32_MIN+1) {
-    // +1 to keep saturation symmetric
-    return INT32_MIN+1;
-  } else {
-    return lroundf(f);
-  }
-}
-
-#define convert(x) ((int32_t)(x + (x < 0 ? -0.5 : +0.5)))
-static void reorder_and_convert(int32_t *casper, const float * regtile)
-{
-  int c, i;
-  const int matLength = xgpu_info.matLength;
-  const float * regtile_im = regtile + matLength;
-  for(c=0; c<N_CHAN_PER_X; c++) {
-    for(i=0; i<N_CASPER_COMPLEX; i++) {
-      off_t idx_regtile = 0;//idx_map[i];
-      int32_t re = htobe32(convert(regtile   [idx_regtile]));
-      int32_t im = htobe32(convert(regtile_im[idx_regtile]));
-      *casper = re;
-      *casper = im;
-    }
-
-    regtile    +=   REGTILE_CHAN_LENGTH;
-    regtile_im +=   REGTILE_CHAN_LENGTH;
-  }
-}
-#undef convert
 
 static int init(struct guppi_thread_args *args)
 {
@@ -450,13 +443,11 @@ static void *run(void * _args)
 
     // Setup socket and message structures
     int sockfd;
-    struct iovec msg_iov[2];
-    struct msghdr msg;
     unsigned int xengine_id = 0;
-    //struct timespec packet_delay = {
-    //  .tv_sec = 0,
-    //  .tv_nsec = PACKET_DELAY_NS
-    //};
+    struct timespec packet_delay = {
+      .tv_sec = 0,
+      .tv_nsec = PACKET_DELAY_NS
+    };
 
     guppi_status_lock_safe(&st);
     hgetu4(st.buf, "XID", &xengine_id); // No change if not found
@@ -464,10 +455,10 @@ static void *run(void * _args)
     hputu4(st.buf, "OUTDUMPS", 0);
     guppi_status_unlock_safe(&st);
 
-    pkthdr_t hdr;
-    hdr.header = HEADER;
-    hdr.instids = INSTIDS(xengine_id);
-    hdr.pktinfo = PKTINFO(BYTES_PER_PACKET);
+    pkt_t pkt;
+    pkt.hdr.header = HEADER;
+    pkt.hdr.instids = INSTIDS(xengine_id);
+    pkt.hdr.pktinfo = PKTINFO(BYTES_PER_PACKET);
 
     // TODO Get catcher hostname and port from somewhere
 
@@ -485,33 +476,6 @@ static void *run(void * _args)
         pthread_exit(NULL);
     }
 
-    // Init scatter/gather list
-    msg_iov[0].iov_base = &hdr;
-    msg_iov[0].iov_len = sizeof(hdr);
-    msg_iov[1].iov_base = 0;
-    msg_iov[1].iov_len = BYTES_PER_PACKET;
-
-    // Init msg structure
-    msg.msg_name = NULL;
-    msg.msg_namelen = 0;
-    msg.msg_iov = msg_iov;
-    msg.msg_iovlen = 2;
-    msg.msg_control = 0;
-    msg.msg_controllen = 0;
-    msg.msg_flags = 0;
-
-    // Allocate buffer for casper ordered integer data
-    const int casper_length = xgpu_info.nfrequency * casper_chan_length();
-
-    int32_t *casper = malloc(casper_length * sizeof(*casper) * 2);
-    if(!casper) {
-        guppi_error(__FUNCTION__, "error allocating CASPER-ordered buffer");
-        run_threads=0;
-        pthread_exit(NULL);
-        return 0;
-    }
-    memset(casper, 0, casper_length * sizeof(*casper) * 2);
-
 #ifdef TEST_INDEX_CALCS
     int i, j;
     for(i=0; i<32; i++) {
@@ -528,11 +492,12 @@ static void *run(void * _args)
 #endif
 
     /* Main loop */
-    int i_pkt, rv;
+    int rv;
+    int chan;
+    int i;
     unsigned int dumps = 0;
     int block_idx = 0;
     struct timespec start, stop;
-    struct timespec rc_start, rc_stop;
     signal(SIGINT,cc);
     signal(SIGTERM,cc);
     while (run_threads) {
@@ -565,64 +530,49 @@ static void *run(void * _args)
         hputi4(st.buf, "OUTBLKIN", block_idx);
         guppi_status_unlock_safe(&st);
 
-        // Reorder GPU block from register tile order to PAPER correlator order
-        // (and convert to 32 bit integers.)
-        clock_gettime(CLOCK_MONOTONIC, &rc_start);
-        reorder_and_convert(casper, db->block[block_idx].data);
-        clock_gettime(CLOCK_MONOTONIC, &rc_stop);
-
         // Update header's timestamp for this dump
-        hdr.timestamp = TIMESTAMP(db->block[block_idx].header.mcnt *
+        pkt.hdr.timestamp = TIMESTAMP(db->block[block_idx].header.mcnt *
             N_TIME_PER_PACKET * 2 * N_CHAN_TOTAL / 128);
 
-        // Send data as multiple packets
-        uint64_t byte_offset = 0;
-        char *data = (char *)casper;
-#if 0
-        int bytes_to_send = casper_length * 2 * sizeof(int32_t);
-        printf("bytes_to_send = %d; packets_per_dump * BYTES_PER_PACKET = %d * %d = %d\n",
-            bytes_to_send, packets_per_dump, BYTES_PER_PACKET, packets_per_dump*BYTES_PER_PACKET);
-#endif
+        // Unpack and convert in packet sized chunks
+        float * pf_re  = db->block[block_idx].data;
+        float * pf_im  = db->block[block_idx].data + xgpu_info.matLength;
+        pktdata_t * p_out = pkt.data;
+        uint32_t nbytes = 0;
+        for(chan=0; chan<N_CHAN_PER_X; chan++) {
+          for(i=0; i<CASPER_CHAN_LENGTH; i++) {
+            off_t idx_regtile = idx_map[i];
+            pktdata_t re = CONVERT(pf_re[idx_regtile]);
+            pktdata_t im = CONVERT(pf_im[idx_regtile]);
+            *p_out++ = re;
+            *p_out++ = im;
+            nbytes += 2*sizeof(pktdata_t);
+            if(nbytes % BYTES_PER_PACKET == 0) {
+              int bytes_sent = send(sockfd, &pkt, sizeof(pkt.hdr)+BYTES_PER_PACKET, 0);
+              if(bytes_sent == -1) {
+                if(errno != ECONNREFUSED) {
+                  perror("send");
+                }
+                // Break out of both for loops
+                goto done_sending;
+              } else if(bytes_sent != sizeof(pkt.hdr)+BYTES_PER_PACKET) {
+                printf("only sent %d of %lu bytes!!!\n", bytes_sent, sizeof(pkt.hdr)+BYTES_PER_PACKET);
+              }
 
-        // TODO Make this more robust to handle the case where bytes_per_dump
-        // is not an integer multiple pf BYTES_PER_PACKET.
-        for(i_pkt=0; i_pkt<packets_per_dump; i_pkt++) {
-          // Update header's byte_offset for this chunk
-          hdr.offset = OFFSET(byte_offset);
-          // Update payload's base pointer for this chunk
-          msg_iov[1].iov_base = data;
-#if 0
-          if(msg.msg_iovlen != 2) {
-            printf("msg.msg_iovlen == %lu !!!\n", msg.msg_iovlen);
-          }
-          if(msg_iov[0].iov_len != sizeof(hdr)) {
-            printf("msg_iov[1].iov_len == %lu !!!\n", msg_iov[1].iov_len);
-          }
-          if(msg_iov[1].iov_len != BYTES_PER_PACKET) {
-            printf("msg_iov[1].iov_len == %lu !!!\n", msg_iov[1].iov_len);
-          }
-#endif
-          // Send packet
-          int bytes_sent = sendmsg(sockfd, &msg, 0);
-          if(bytes_sent == -1) {
-            if(errno != ECONNREFUSED) {
-              perror("sendmsg");
+              // Delay to prevent overflowing network TX queue
+              nanosleep(&packet_delay, NULL);
+
+              // Setup for next packet
+              p_out = pkt.data;
+              // Update header's byte_offset for this chunk
+              pkt.hdr.offset = OFFSET(nbytes);
             }
-            // TODO Log error?
-            // Break out of for loop
-            break;
-          } else if(bytes_sent != sizeof(hdr)+BYTES_PER_PACKET) {
-            printf("only sent %d of %lu bytes!!!\n", bytes_sent, sizeof(hdr)+BYTES_PER_PACKET);
           }
-
-          // Delay to prevent overflowing network TX queue
-          //nanosleep(&packet_delay, NULL);
-          //usleep(PACKET_DELAY_NS/1000);
-
-          // Increment byte_offset and data pointer
-          byte_offset += BYTES_PER_PACKET;
-          data += BYTES_PER_PACKET;
+          pf_re += REGTILE_CHAN_LENGTH;
+          pf_im += REGTILE_CHAN_LENGTH;
         }
+
+done_sending:
 
         // Mark block as free
         paper_output_databuf_set_free(db, block_idx);
@@ -634,7 +584,6 @@ static void *run(void * _args)
 
         guppi_status_lock_safe(&st);
         hputu4(st.buf, "OUTDUMPS", ++dumps);
-        hputr8(st.buf, "OUTRCMS", ELAPSED_NS(rc_start,rc_stop)/1e6);
         hputr4(st.buf, "OUTSECS", (float)ELAPSED_NS(start,stop)/1e9);
         hputr4(st.buf, "OUTMBPS", (1e3*8*bytes_per_dump)/ELAPSED_NS(start,stop));
         guppi_status_unlock_safe(&st);
