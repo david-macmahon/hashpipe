@@ -79,6 +79,26 @@ int main(int argc, char *argv[])
       perror("setrlimit(RLIMIT_MEMLOCK)");
     }
 
+#ifdef RTPRIO
+    // This should not be needed and is disabled by default, but since it was
+    // tried once I thought it best to leave it in here as a compile-time
+    // option.
+
+    // Set RLIMIT_RTPRIO to 1
+    getrlimit(RLIMIT_RTPRIO, &rlim);
+    rlim.rlim_cur = 1;
+    if(setrlimit(RLIMIT_RTPRIO, &rlim)) {
+      perror("setrlimit(RLIMIT_RTPRIO)");
+    }
+
+    struct sched_param sched_param = {
+      .sched_priority = 1
+    };
+    if(sched_setscheduler(0, SCHED_RR, &sched_param)) {
+      perror("sched_setscheduler");
+    }
+#endif // RTPRIO
+
     guppi_thread_args_init(&args[num_threads]);
     args[num_threads].instance_id   = instance_id;
     args[num_threads].input_buffer  = input_buffer;
