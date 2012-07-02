@@ -70,7 +70,7 @@ typedef uint8_t paper_input_header_cache_alignment[
 //   |
 //   |       +-- xid
 //   |       |
-//   |       |       |<--feng-->|      |<-packet->|
+//   |       |       |<--fid--->|      |<-packet->|
 //   V       V       |          |      |          |
 //   m       x       |q       f |      |t       c |
 //   ==      ==      |==      ==|      |==      ==|
@@ -133,17 +133,17 @@ typedef struct paper_input_databuf {
 // * GPU thread input
 // * Multidimensional array in "data" field:
 //
-//   +--time--+      +--chan--+      +-inputs-+
+//   +--time--+      +--chan--+      +--fid---+
 //   |        |      |        |      |        |
 //   V        V      V        V      V        V
-//   m        t      x        c      q        f
+//   m        t      c        x      q        f
 //   ==      ==      ==      ==      ==      ==
-//   m0 }--> t0 }--> x0 }--> c0 }--> q0 }--> f0
-//   m1      t1      x1      c1      q1      f1
-//   m2      t2              c2      q2      f2
-//   :       :               :       :       :
+//   m0 }--> t0 }--> c0 }--> x0 }--> q0 }--> f0
+//   m1      t1      c1      x1      q1      f1
+//   m2      t2      c2              q2      f2
+//   :       :       :               :       :
 //   ==      ==      ==      ==      ==      ==
-//   Nm      Nt      Nx      Nc      Nq      Nf
+//   Nm      Nt      Nc      Nx      Nq      Nf
 //
 //   Each group of eight 8 byte words (i.e. every 64 bytes) contains thirty-two
 //   8bit+8bit complex inputs (8 inputs * four F engines) using complex block
@@ -153,7 +153,7 @@ typedef struct paper_input_databuf {
 // corresponding to the given parameters.  Corresponding imaginary data word is
 // 4 words later (complex block size 32).
 #define paper_gpu_input_databuf_data_idx(m,x,q,f,t,c) \
-  (f+2*Nf*(q+Nq*(c+Nc*(x+Nx*(t+Nt*m)))))
+  (f+2*Nf*(q+Nq*(x+Nx*(c+Nc*(t+Nt*m)))))
 
 typedef struct paper_gpu_input_block {
   paper_input_header_t header;
