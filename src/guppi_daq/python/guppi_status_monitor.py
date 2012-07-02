@@ -53,7 +53,17 @@ def display_status(stdscr, stat, instance_id):
           keys.remove('INSTANCE')
         except:
           pass
+        prefix = keys[0][0:3]
         for k in keys:
+            if k[0:3] != prefix:
+                prefix = k[0:3]
+                curline += flip
+                col = 2
+                flip = 0
+                #stdscr.addch(curline, 0, curses.ACS_LTEE)
+                #stdscr.hline(curline, 1, curses.ACS_HLINE, xmax-2)
+                #stdscr.addch(curline, xmax-1, curses.ACS_RTEE)
+                curline += 1
 
             v = stat.hdr[k]
             if (curline < ymax-3):
