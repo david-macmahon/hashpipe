@@ -493,8 +493,8 @@ static void *run(void * _args)
 
     /* Main loop */
     int rv;
-    int chan;
-    int i;
+    int casper_chan, gpu_chan;
+    int baseline;
     unsigned int dumps = 0;
     int block_idx = 0;
     struct timespec start, stop;
@@ -539,11 +539,12 @@ static void *run(void * _args)
         float * pf_im  = db->block[block_idx].data + xgpu_info.matLength;
         pktdata_t * p_out = pkt.data;
         uint32_t nbytes = 0;
-        for(chan=0; chan<N_CHAN_PER_X; chan++) {
-          for(i=0; i<CASPER_CHAN_LENGTH; i++) {
-            off_t idx_regtile = idx_map[i];
-            pktdata_t re = CONVERT(pf_re[idx_regtile]);
-            pktdata_t im = CONVERT(pf_im[idx_regtile]);
+        for(casper_chan=0; casper_chan<N_CHAN_PER_X; casper_chan++) {
+          gpu_chan = (casper_chan/Nc) + ((casper_chan%Nc)*Nx);
+          for(baseline=0; baseline<CASPER_CHAN_LENGTH; baseline++) {
+            off_t idx_regtile = idx_map[baseline];
+            pktdata_t re = CONVERT(pf_re[gpu_chan*REGTILE_CHAN_LENGTH+idx_regtile]);
+            pktdata_t im = CONVERT(pf_im[gpu_chan*REGTILE_CHAN_LENGTH+idx_regtile]);
             *p_out++ = re;
             *p_out++ = im;
             nbytes += 2*sizeof(pktdata_t);
@@ -568,8 +569,6 @@ static void *run(void * _args)
               pkt.hdr.offset = OFFSET(nbytes);
             }
           }
-          pf_re += REGTILE_CHAN_LENGTH;
-          pf_im += REGTILE_CHAN_LENGTH;
         }
 
 done_sending:
