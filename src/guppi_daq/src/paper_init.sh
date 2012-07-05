@@ -8,15 +8,15 @@ case ${hostname} in
     instances=(
       #                     GPU     NET FLF GPU OUT
       # mask  bind_host     DEV XID CPU CPU CPU CPU
-      '0x0707 192.168.2.41   0   1   2   8   1   8' # Instance 0, bond0 (eth2+eth3)
-      '0x7070 192.168.2.42   1   5   6  12   5  12' # Instance 1, bond1 (eth4+eth5)
+      '0x0707 192.168.2.41   0   0   2   8   1   8' # Instance 0, bond0 (eth2+eth3)
+      '0x7070 192.168.2.42   1   2   6  12   5  12' # Instance 1, bond1 (eth4+eth5)
     );;
 
   paper5) \
     instances=( 
       #                     GPU     NET FLF GPU OUT
       # mask  bind_host     DEV XID CPU CPU CPU CPU
-      '0x0606 192.168.2.5    0   2   2   4   3   4' # Instance 0, eth2
+      '0x0606 192.168.2.5    0   10  2   4   3   4' # Instance 0, eth2
     );;
 esac
 
