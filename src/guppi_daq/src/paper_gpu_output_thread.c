@@ -90,8 +90,8 @@
 // Notes for the various optval fields (some of the info below is speculative
 // at the time of writing):
 //
-//   INSTIDS.instrument_id must be 0x0003 as this is the only value accepted by
-//   the receive code.
+//   INSTIDS.instrument_id must be 0x0004, which tels the receive code that the
+//   payload data are 32 bit little endian floats in contiguous channel order.
 //
 //   INSTIDS.instance_id is always sent as 0x0000.
 //
@@ -179,7 +179,7 @@ typedef struct pkt {
 
 // Macros for generating values for the pkthdr_t fields
 #define HEADER (htobe64(0x4b52000300000004))
-#define INSTIDS(x)   (htobe64(0x0032000300000000 | ( (uint64_t)(x) &         0xffff       )))
+#define INSTIDS(x)   (htobe64(0x0032000400000000 | ( (uint64_t)(x) &         0xffff       )))
 #define PKTINFO(x)   (htobe64(0x0033000000000000 | (((uint64_t)(x) &       0xffffff) << 24)))
 #define TIMESTAMP(x) (htobe64(0x0003000000000000 | ( (uint64_t)(x) & 0xffffffffffff       )))
 #define OFFSET(x)    (htobe64(0x0005000000000000 | ( (uint64_t)(x) & 0xffffffffffff       )))
