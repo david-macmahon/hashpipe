@@ -535,11 +535,14 @@ static void *run(void * _args)
         pkt.hdr.timestamp = TIMESTAMP(db->block[block_idx].header.mcnt *
             N_TIME_PER_PACKET * 2 * N_CHAN_TOTAL / 128);
 
+        // Init header's offset for this dump
+        uint32_t nbytes = 0;
+        pkt.hdr.offset = OFFSET(nbytes);
+
         // Unpack and convert in packet sized chunks
         float * pf_re  = db->block[block_idx].data;
         float * pf_im  = db->block[block_idx].data + xgpu_info.matLength;
         pktdata_t * p_out = pkt.data;
-        uint32_t nbytes = 0;
         for(casper_chan=0; casper_chan<N_CHAN_PER_X; casper_chan++) {
           gpu_chan = (casper_chan/Nc) + ((casper_chan%Nc)*Nx);
           for(baseline=0; baseline<CASPER_CHAN_LENGTH; baseline++) {
