@@ -178,7 +178,7 @@ typedef struct pkt {
 } pkt_t;
 
 // Macros for generating values for the pkthdr_t fields
-#define HEADER (htobe64(0x4b52000300000004))
+#define HEADER (htobe64(0x4b52000300000005))
 #define INSTIDS(x)   (htobe64(0x0032000400000000 | ( (uint64_t)(x) &         0xffff       )))
 #define PKTINFO(x)   (htobe64(0x0033000000000000 | (((uint64_t)(x) &       0xffffff) << 24)))
 #define TIMESTAMP(x) (htobe64(0x0003000000000000 | ( (uint64_t)(x) & 0xffffffffffff       )))
