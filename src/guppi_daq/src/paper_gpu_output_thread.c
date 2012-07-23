@@ -183,7 +183,7 @@ typedef struct pkt {
 #define PKTINFO(x)   (htobe64(0x0033000000000000 | (((uint64_t)(x) &       0xffffff) << 24)))
 #define TIMESTAMP(x) (htobe64(0x0003000000000000 | ( (uint64_t)(x) & 0xffffffffffff       )))
 #define OFFSET(x)    (htobe64(0x0005000000000000 | ( (uint64_t)(x) & 0xffffffffffff       )))
-#define HEAPLEN(x)   (htobe64(0x0004000000000000 | ( (uint64_t)(x) & 0xffffffffffff       )))
+#define HEAPLEN      (htobe64(0x0004000000000000))
 
 static XGPUInfo xgpu_info;
 
@@ -459,6 +459,7 @@ static void *run(void * _args)
     pkt.hdr.header = HEADER;
     pkt.hdr.instids = INSTIDS(xengine_id);
     pkt.hdr.pktinfo = PKTINFO(BYTES_PER_PACKET);
+    pkt.hdr.heaplen = HEAPLEN;
 
     // TODO Get catcher hostname and port from somewhere
 
