@@ -383,15 +383,21 @@ static off_t *idx_map;
 
 static int init_idx_map()
 {
-  int i, j;
+  int a0, a1, p0, p1, i, j;
   idx_map = malloc(N_CASPER_COMPLEX_PER_CHAN * sizeof(off_t));
   if(!idx_map) {
     return -1;
   }
 
-  for(i=0; i<N_INPUTS; i++) {
-    for(j=i; j<N_INPUTS; j++) {
-      idx_map[casper_index(i,j,N_INPUTS)/2] = regtile_index(i,j);
+  for(a1=0; a1<N_INPUTS/2; a1++) {
+    for(a0=0; a0<=a1; a0++) {
+      for(p0=0; p0<2; p0++) {
+        for(p1=0; p1<2; p1++) {
+          i = 2*a0 + p0;
+          j = 2*a1 + p1;
+          idx_map[casper_index(i,j,N_INPUTS)/2] = regtile_index(i,j);
+        }
+      }
     }
   }
   return 0;
