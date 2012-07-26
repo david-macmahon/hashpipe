@@ -549,6 +549,7 @@ static void *run(void * _args)
         float * pf_im  = db->block[block_idx].data + xgpu_info.matLength;
         pktdata_t * p_out = pkt.data;
         for(casper_chan=0; casper_chan<N_CHAN_PER_X; casper_chan++) {
+          // De-interleave the channels
           gpu_chan = (casper_chan/Nc) + ((casper_chan%Nc)*Nx);
           for(baseline=0; baseline<CASPER_CHAN_LENGTH; baseline++) {
             off_t idx_regtile = idx_map[baseline];
