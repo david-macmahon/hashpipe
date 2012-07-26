@@ -68,6 +68,9 @@ check_guppi_status_SOURCES = check_guppi_status.c $(guppi_base)
 bin_PROGRAMS += clean_guppi_shmem
 clean_guppi_shmem_SOURCES = clean_guppi_shmem.c $(guppi_base)
 
+bin_PROGRAMS += dump_databuf
+dump_databuf_SOURCES = dump_databuf.c $(guppi_base)
+
 bin_PROGRAMS += paper_xgpu
 paper_xgpu_SOURCES = paper_xgpu.c $(paper_threads) $(paper_utils)
 paper_xgpu_LDADD = -lxgpu

@@ -1,0 +1,123 @@
+/* check_guppi_databuf.c
+ *
+ * Basic prog to test dstabuf shared mem routines.
+ */
+#include <stdio.h>
+#include <stdlib.h>
+#include <getopt.h>
+#include <unistd.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+
+#include "guppi_databuf.h"
+#include "guppi_thread_main.h"
+
+void usage() { 
+    fprintf(stderr, 
+            "Usage: dump_databuf [options]\n"
+            "\n"
+            "Options [defaults]:\n"
+            "  -h, --help\n"
+            "  -I N, --instance=N    Instance number           [0]\n"
+            "  -d N, --databuf=N     Databuf ID                [1]\n"
+            "  -b N, --block=N       Block number           [none]\n"
+            "  -s N, --skip=N        Number of bytes to skip   [0]\n"
+            "  -n N, --bytes=N       Number of bytes to dump [all]\n"
+            "\n"
+            "If a block number is given, dump contents of block to stdout,\n"
+            "else just print status of requested instance/databuf.\n"
+            );
+}
+
+int main(int argc, char *argv[]) {
+
+    /* Loop over cmd line to fill in params */
+    static struct option long_opts[] = {
+        {"help",     0, NULL, 'h'},
+        {"instance", 1, NULL, 'I'},
+        {"databuf",  1, NULL, 'd'},
+        {"block",    1, NULL, 'b'},
+        {"skip",     1, NULL, 's'},
+        {"bytes",    1, NULL, 'n'},
+        {0,0,0,0}
+    };
+    int opt;
+    int instance_id=0;
+    int db_id=1;
+    int block = -1;
+    int skip = 0;
+    int num = 0;
+    while ((opt=getopt_long(argc,argv,"hI:d:b:s:n:",long_opts,NULL))!=-1) {
+        switch (opt) {
+            case 'I':
+                instance_id=atoi(optarg);
+                break;
+            case 'd':
+                db_id = atoi(optarg);
+                break;
+            case 'b':
+                block = atoi(optarg);
+                break;
+            case 's':
+                skip = strtol(optarg, NULL, 0);
+                break;
+            case 'n':
+                num = strtol(optarg, NULL, 0);
+                break;
+            case 'h':
+            default:
+                usage();
+                exit(0);
+                break;
+        }
+    }
+
+    /* Create mem if asked, otherwise attach */
+    struct guppi_databuf *db=NULL;
+    db = guppi_databuf_attach(instance_id, db_id);
+    if (db==NULL) { 
+      fprintf(stderr, 
+          "Error attaching to databuf %d (may not exist).\n", db_id);
+      return 1;
+    }
+
+    /* Print basic info and exit if block not given */
+    if(block == -1) {
+      printf("Instance %d databuf %d stats:\n", instance_id, db_id);
+      printf("  shmid=%d\n", db->shmid);
+      printf("  semid=%d\n", db->semid);
+      printf("  n_block=%d\n", db->n_block);
+      printf("  struct_size=%zd (%#zx)\n", db->struct_size, db->struct_size);
+      printf("  header_size=%zd (%#zx)\n", db->header_size, db->header_size);
+      printf("  block_size=%zd (%#zx)\n", db->block_size, db->block_size);
+      return 0;
+    }
+
+    if(block >= db->n_block) {
+      fprintf(stderr, "Requested block does not exist (n_block=%d)\n",
+          db->n_block);
+      return 1;
+    }
+
+    if(skip > db->block_size) {
+      fprintf(stderr, "Cannot skip more than %zd bytes\n", db->block_size);
+      return 1;
+    }
+
+    if(num == 0) {
+      num = db->block_size - skip;
+    } else if(num > db->block_size - skip) {
+      fprintf(stderr, "Cannot dump more than %zd bytes\n", db->block_size - skip);
+      return 1;
+    }
+
+    void *p = ((void *)db) + db->header_size + block*db->block_size + skip;
+
+    // Dump block to stdout
+    if(write(1, p, num) == -1) {
+      perror("write");
+      return 1;
+    }
+
+   return 0;
+}
