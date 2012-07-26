@@ -206,8 +206,8 @@ void set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t
     } 
 }
 
-static inline int calc_block_indexes(block_info_t *binfo, packet_header_t * pkt_header) {
-
+static inline int calc_block_indexes(block_info_t *binfo, packet_header_t * pkt_header)
+{
     if(pkt_header->mcnt < binfo->mcnt_start) {
 	char msg[120];
 	sprintf(msg, "current packet mcnt %012lx less than mcnt start %012lx", pkt_header->mcnt, binfo->mcnt_start);
@@ -224,10 +224,10 @@ static inline int calc_block_indexes(block_info_t *binfo, packet_header_t * pkt_
     binfo->m = (binfo->mcnt_offset) % Nm;
     binfo->x = (pkt_header->xid) % Nx;
     binfo->q = (pkt_header->fid) / 4;
-    binfo->f = (pkt_header->xid) % 4;
+    binfo->f = (pkt_header->fid) % 4;
 
     return 0;
-} 
+}
 
 #define MAX_MCNT_DIFF 64 
 static inline int out_of_seq_mcnt(block_info_t * binfo, uint64_t pkt_mcnt) {
