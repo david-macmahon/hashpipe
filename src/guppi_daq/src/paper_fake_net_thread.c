@@ -40,8 +40,7 @@ static int init(struct guppi_thread_args *args)
     THREAD_INIT_STATUS(args->instance_id, STATUS_KEY);
 
     /* Create paper_input_databuf for output buffer */
-    THREAD_INIT_DATABUF(args->instance_id, paper_input_databuf, 4,
-        N_BYTES_PER_BLOCK,
+    THREAD_INIT_DATABUF(args->instance_id, paper_input_databuf,
         args->output_buffer);
 
     // Success!

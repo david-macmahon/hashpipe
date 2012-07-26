@@ -47,13 +47,11 @@ static int init(struct guppi_thread_args *args)
     xgpuInfo(&xgpu_info);
 
     /* Create paper_gpu_input_databuf */
-    THREAD_INIT_DATABUF(args->instance_id, paper_gpu_input_databuf, N_GPU_INPUT_BLOCKS,
-        xgpu_info.vecLength*sizeof(ComplexInput),
+    THREAD_INIT_DATABUF(args->instance_id, paper_gpu_input_databuf,
         args->input_buffer);
 
     /* Create paper_ouput_databuf */
-    THREAD_INIT_DATABUF(args->instance_id, paper_output_databuf, 2,
-        xgpu_info.matLength*sizeof(Complex),
+    THREAD_INIT_DATABUF(args->instance_id, paper_output_databuf,
         args->output_buffer);
 
     // Success!

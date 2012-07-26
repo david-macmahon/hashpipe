@@ -164,12 +164,14 @@ typedef struct paper_gpu_input_block {
 typedef struct paper_gpu_input_databuf {
   struct guppi_databuf header;
   guppi_databuf_cache_alignment padding; // Maintain cache alignment
-  paper_gpu_input_block_t block[N_INPUT_BLOCKS];
+  paper_gpu_input_block_t block[N_GPU_INPUT_BLOCKS];
 } paper_gpu_input_databuf_t;
 
 /*
  * OUTPUT BUFFER STRUCTURES
  */
+
+#define N_OUTPUT_BLOCKS 2
 
 typedef struct paper_output_header {
   uint64_t mcnt;
@@ -183,15 +185,15 @@ typedef struct paper_output_block {
 
 typedef struct paper_output_databuf {
   struct guppi_databuf header;
-  paper_output_block_t block[];
+  guppi_databuf_cache_alignment padding; // Maintain cache alignment
+  paper_output_block_t block[N_OUTPUT_BLOCKS];
 } paper_output_databuf_t;
 
 /*
  * INPUT BUFFER FUNCTIONS
  */
 
-paper_input_databuf_t *paper_input_databuf_create(int instance_id, int n_block, size_t block_size,
-        int databuf_id);
+paper_input_databuf_t *paper_input_databuf_create(int instance_id, int databuf_id);
 
 static inline paper_input_databuf_t *paper_input_databuf_attach(int instance_id, int databuf_id)
 {
@@ -233,8 +235,7 @@ int paper_input_databuf_set_filled(paper_input_databuf_t *d, int block_id);
  * GPU INPUT BUFFER FUNCTIONS
  */
 
-paper_gpu_input_databuf_t *paper_gpu_input_databuf_create(int instance_id, int n_block, size_t block_size,
-        int databuf_id);
+paper_gpu_input_databuf_t *paper_gpu_input_databuf_create(int instance_id, int databuf_id);
 
 void paper_gpu_input_databuf_clear(paper_gpu_input_databuf_t *d);
 
@@ -293,8 +294,7 @@ static inline int paper_gpu_input_databuf_set_filled(paper_gpu_input_databuf_t *
  * OUTPUT BUFFER FUNCTIONS
  */
 
-paper_output_databuf_t *paper_output_databuf_create(int instance_id, int n_block, size_t block_size,
-        int databuf_id);
+paper_output_databuf_t *paper_output_databuf_create(int instance_id, int databuf_id);
 
 void paper_output_databuf_clear(paper_output_databuf_t *d);
 

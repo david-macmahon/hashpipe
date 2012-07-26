@@ -93,8 +93,7 @@ static struct timespec now;
  * In either case, the memory and semaphores will be cleared, so this method
  * should only be called at startup (e.g. from an initialization function)!
  */
-paper_input_databuf_t *paper_input_databuf_create(int instance_id, int n_block, size_t block_size,
-        int databuf_id)
+paper_input_databuf_t *paper_input_databuf_create(int instance_id, int databuf_id)
 {
     int rv = 0;
     int verify_sizing = 0;
@@ -141,10 +140,10 @@ paper_input_databuf_t *paper_input_databuf_create(int instance_id, int n_block, 
 
     if(verify_sizing) {
         // Make sure existing sizes match expectaions
-        if(d->n_block != n_block || d->block_size != block_size) {
+        if(d->n_block != N_INPUT_BLOCKS || d->block_size != sizeof(paper_input_block_t)) {
             char msg[128];
             sprintf(msg, "existing databuf size mismatch (%d x %lu) != (%d x %lu)",
-                d->n_block, d->block_size, n_block, block_size);
+                d->n_block, d->block_size, N_INPUT_BLOCKS, sizeof(paper_input_block_t));
             guppi_error(__FUNCTION__, msg);
             if(shmdt(d)) {
                 guppi_error(__FUNCTION__, "shmdt error");
@@ -167,11 +166,13 @@ paper_input_databuf_t *paper_input_databuf_create(int instance_id, int n_block, 
     /* Fill params into databuf */
     d->shmid = shmid;
     d->semid = 0;
-    d->n_block = n_block;
-    d->block_size = block_size;
+    d->n_block = N_INPUT_BLOCKS;
+    d->header_size = sizeof(struct guppi_databuf) + sizeof(guppi_databuf_cache_alignment);
+    d->index_size = 0;
+    d->block_size = sizeof(paper_input_block_t);
 
     /* Get semaphores set up */
-    d->semid = semget(key + databuf_id - 1, n_block, 0666 | IPC_CREAT);
+    d->semid = semget(key + databuf_id - 1, d->n_block, 0666 | IPC_CREAT);
     if (d->semid==-1) { 
         guppi_error(__FUNCTION__, "semget error");
         return(NULL);
@@ -179,8 +180,8 @@ paper_input_databuf_t *paper_input_databuf_create(int instance_id, int n_block, 
 
     /* Init semaphores to 0 */
     union semun arg;
-    arg.array = (unsigned short *)malloc(sizeof(unsigned short)*n_block);
-    memset(arg.array, 0, sizeof(unsigned short)*n_block);
+    arg.array = (unsigned short *)malloc(sizeof(unsigned short)*d->n_block);
+    memset(arg.array, 0, sizeof(unsigned short)*d->n_block);
     rv = semctl(d->semid, 0, SETALL, arg);
     if (rv==-1) {
         perror("semctl");
@@ -259,8 +260,7 @@ int paper_input_databuf_set_filled(struct paper_input_databuf *d, int block_id)
     return guppi_databuf_set_filled((struct guppi_databuf *)d, block_id);
 }
 
-paper_gpu_input_databuf_t *paper_gpu_input_databuf_create(int instance_id, int n_block, size_t block_size,
-        int databuf_id)
+paper_gpu_input_databuf_t *paper_gpu_input_databuf_create(int instance_id, int databuf_id)
 {
     int rv = 0;
     int verify_sizing = 0;
@@ -307,10 +307,10 @@ paper_gpu_input_databuf_t *paper_gpu_input_databuf_create(int instance_id, int n
 
     if(verify_sizing) {
         // Make sure existing sizes match expectaions
-        if(d->n_block != n_block || d->block_size != block_size) {
+        if(d->n_block != N_GPU_INPUT_BLOCKS || d->block_size != sizeof(paper_gpu_input_block_t)) {
             char msg[128];
             sprintf(msg, "existing databuf size mismatch (%d x %lu) != (%d x %lu)",
-                d->n_block, d->block_size, n_block, block_size);
+                d->n_block, d->block_size, N_GPU_INPUT_BLOCKS, sizeof(paper_gpu_input_block_t));
             guppi_error(__FUNCTION__, msg);
             if(shmdt(d)) {
                 guppi_error(__FUNCTION__, "shmdt error");
@@ -333,11 +333,13 @@ paper_gpu_input_databuf_t *paper_gpu_input_databuf_create(int instance_id, int n
     /* Fill params into databuf */
     d->shmid = shmid;
     d->semid = 0;
-    d->n_block = n_block;
-    d->block_size = block_size;
+    d->n_block = N_GPU_INPUT_BLOCKS;
+    d->header_size = sizeof(struct guppi_databuf) + sizeof(guppi_databuf_cache_alignment);
+    d->index_size = 0;
+    d->block_size = sizeof(paper_gpu_input_block_t);
 
     /* Get semaphores set up */
-    d->semid = semget(key + databuf_id - 1, n_block, 0666 | IPC_CREAT);
+    d->semid = semget(key + databuf_id - 1, d->n_block, 0666 | IPC_CREAT);
     if (d->semid==-1) { 
         guppi_error(__FUNCTION__, "semget error");
         return(NULL);
@@ -345,8 +347,8 @@ paper_gpu_input_databuf_t *paper_gpu_input_databuf_create(int instance_id, int n
 
     /* Init semaphores to 0 */
     union semun arg;
-    arg.array = (unsigned short *)malloc(sizeof(unsigned short)*n_block);
-    memset(arg.array, 0, sizeof(unsigned short)*n_block);
+    arg.array = (unsigned short *)malloc(sizeof(unsigned short)*d->n_block);
+    memset(arg.array, 0, sizeof(unsigned short)*d->n_block);
     rv = semctl(d->semid, 0, SETALL, arg);
     if (rv==-1) {
         perror("semctl");
@@ -393,27 +395,13 @@ void paper_gpu_input_databuf_clear(struct paper_gpu_input_databuf *d)
  * In either case, the memory and semaphores will be cleared, so this method
  * should only be called at startup (e.g. from an initialization function)!
  */
-struct paper_output_databuf *paper_output_databuf_create(int instance_id, int n_block, size_t block_size,
-        int databuf_id)
+struct paper_output_databuf *paper_output_databuf_create(int instance_id, int databuf_id)
 {
     int rv = 0;
     int verify_sizing = 0;
 
-    if(block_size != N_OUTPUT_MATRIX*sizeof(float)) {
-        char msg[256];
-        sprintf(msg, "block_size %lu != expected block size of %lu",
-                block_size, N_OUTPUT_MATRIX*sizeof(float));
-        guppi_error(__FUNCTION__, msg);
-        return(NULL);
-    }
     /* Calc databuf size */
-    size_t paper_output_block_size = sizeof(paper_output_block_t);
-printf("paper_output_block_size %lu\n", paper_output_block_size);
-    size_t paper_output_databuf_size = sizeof(paper_output_databuf_t);
-printf("paper_output_databuf_size %lu\n", paper_output_databuf_size);
-    size_t databuf_size = paper_output_databuf_size +
-                          paper_output_block_size * n_block;
-printf("databuf_size %lu\n", databuf_size);
+    size_t databuf_size = sizeof(paper_output_databuf_t);
 
     /* Get shared memory block, error if it already exists */
     key_t key = guppi_databuf_key(instance_id);
@@ -445,10 +433,10 @@ printf("databuf_size %lu\n", databuf_size);
 
     if(verify_sizing) {
         // Make sure existing sizes match expectaions
-        if(d->n_block != n_block || d->block_size != block_size) {
+        if(d->n_block != N_OUTPUT_BLOCKS || d->block_size != sizeof(paper_output_block_t)) {
             char msg[128];
             sprintf(msg, "existing databuf size mismatch (%d x %lu) != (%d x %lu)",
-                d->n_block, d->block_size, n_block, block_size);
+                d->n_block, d->block_size, N_OUTPUT_BLOCKS, sizeof(paper_output_block_t));
             guppi_error(__FUNCTION__, msg);
             if(shmdt(d)) {
                 guppi_error(__FUNCTION__, "shmdt error");
@@ -471,11 +459,13 @@ printf("databuf_size %lu\n", databuf_size);
     /* Fill params into databuf */
     d->shmid = shmid;
     d->semid = 0;
-    d->n_block = n_block;
-    d->block_size = block_size;
+    d->n_block = N_OUTPUT_BLOCKS;
+    d->header_size = sizeof(struct guppi_databuf) + sizeof(guppi_databuf_cache_alignment);
+    d->index_size = 0;
+    d->block_size = sizeof(paper_output_block_t);
 
     /* Get semaphores set up */
-    d->semid = semget(key + databuf_id - 1, n_block, 0666 | IPC_CREAT);
+    d->semid = semget(key + databuf_id - 1, d->n_block, 0666 | IPC_CREAT);
     if (d->semid==-1) {
         guppi_error(__FUNCTION__, "semget error");
         return(NULL);
@@ -483,8 +473,8 @@ printf("databuf_size %lu\n", databuf_size);
 
     /* Init semaphores to 0 */
     union semun arg;
-    arg.array = (unsigned short *)malloc(sizeof(unsigned short)*n_block);
-    memset(arg.array, 0, sizeof(unsigned short)*n_block);
+    arg.array = (unsigned short *)malloc(sizeof(unsigned short)*d->n_block);
+    memset(arg.array, 0, sizeof(unsigned short)*d->n_block);
     rv = semctl(d->semid, 0, SETALL, arg);
     if (rv==-1) {
         perror("semctl");

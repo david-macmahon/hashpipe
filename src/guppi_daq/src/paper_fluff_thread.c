@@ -33,13 +33,11 @@ static int init(struct guppi_thread_args *args)
     THREAD_INIT_STATUS(args->instance_id, STATUS_KEY);
 
     /* Create paper_input_databuf */
-    THREAD_INIT_DATABUF(args->instance_id, paper_input_databuf, N_INPUT_BLOCKS,
-        N_BYTES_PER_BLOCK,
+    THREAD_INIT_DATABUF(args->instance_id, paper_input_databuf,
         args->input_buffer);
 
     /* Create paper_gpu_input_databuf */
-    THREAD_INIT_DATABUF(args->instance_id, paper_gpu_input_databuf, N_GPU_INPUT_BLOCKS,
-        2*N_BYTES_PER_BLOCK,
+    THREAD_INIT_DATABUF(args->instance_id, paper_gpu_input_databuf,
         args->output_buffer);
 
     // Success!

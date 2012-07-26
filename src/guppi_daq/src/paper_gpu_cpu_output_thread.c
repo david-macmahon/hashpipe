@@ -35,13 +35,8 @@ static int init(struct guppi_thread_args *args)
 
     THREAD_INIT_DETACH_STATUS(st);
 
-    // Get sizing parameters
-    xgpuInfo(&xgpu_info);
-
     // Create paper_ouput_databuf
-    THREAD_INIT_DATABUF(args->instance_id, paper_output_databuf, 2,
-        xgpu_info.matLength*sizeof(Complex),
-        args->input_buffer);
+    THREAD_INIT_DATABUF(args->instance_id, paper_output_databuf, args->input_buffer);
 
     // Success!
     return 0;

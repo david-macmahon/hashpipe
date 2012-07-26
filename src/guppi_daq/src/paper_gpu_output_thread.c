@@ -411,8 +411,7 @@ static int init(struct guppi_thread_args *args)
     printf("bytes_per_dump = %lu\n", bytes_per_dump);
 
     // Create paper_ouput_databuf
-    THREAD_INIT_DATABUF(args->instance_id, paper_output_databuf, 2,
-        xgpu_info.matLength*sizeof(Complex),
+    THREAD_INIT_DATABUF(args->instance_id, paper_output_databuf,
         args->input_buffer);
 
     if(init_idx_map()) {

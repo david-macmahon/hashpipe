@@ -123,10 +123,10 @@ int set_priority(int priority);
   } while(0)
 
 // Create paper databuf of <type>
-#define THREAD_INIT_DATABUF(instance_id, type, n_block, block_size, block_id) \
+#define THREAD_INIT_DATABUF(instance_id, type, block_id) \
   do {                                                                        \
     struct type *db;                                                          \
-    db = type##_create(instance_id, n_block, block_size, block_id);           \
+    db = type##_create(instance_id, block_id);           \
     if (db==NULL) {                                                           \
         char msg[256];                                                        \
         sprintf(msg, "Error attaching to databuf(%d) shared memory.",         \
