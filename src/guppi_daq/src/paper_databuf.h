@@ -43,7 +43,7 @@
 #define N_OUTPUT_MATRIX (2 * N_CHAN_PER_X * (N_INPUTS/2 + 2) * N_INPUTS)
 
 #define PAGE_SIZE (4096)
-#define CACHE_ALIGNMENT (64)
+#define CACHE_ALIGNMENT (128)
 
 /*
  * INPUT BUFFER STRUCTURES
@@ -178,8 +178,13 @@ typedef struct paper_output_header {
   uint64_t flags[(N_CHAN_PER_X+63)/64];
 } paper_output_header_t;
 
+typedef uint8_t paper_output_header_cache_alignment[
+  CACHE_ALIGNMENT - (sizeof(paper_output_header_t)%CACHE_ALIGNMENT)
+];
+
 typedef struct paper_output_block {
   paper_output_header_t header;
+  paper_output_header_cache_alignment padding; // Maintain cache alignment
   float data[N_OUTPUT_MATRIX];
 } paper_output_block_t;
 
