@@ -50,8 +50,9 @@ int main(int argc, char *argv[]) {
     int skip = 0;
     int num = 0;
     int force = 0;
-    while ((opt=getopt_long(argc,argv,"hI:b:d:fn:s:",long_opts,NULL))!=-1) {
+    while ((opt=getopt_long(argc,argv,"hi:I:b:d:fn:s:",long_opts,NULL))!=-1) {
         switch (opt) {
+            case 'i':
             case 'I':
                 instance_id=atoi(optarg);
                 break;
@@ -83,7 +84,8 @@ int main(int argc, char *argv[]) {
     db = guppi_databuf_attach(instance_id, db_id);
     if (db==NULL) { 
       fprintf(stderr, 
-          "Error attaching to databuf %d (may not exist).\n", db_id);
+          "Error attaching to instance %d databuf %d (may not exist).\n",
+          instance_id, db_id);
       return 1;
     }
 
