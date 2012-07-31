@@ -23,6 +23,7 @@ void usage() {
             "  -b N, --block=N       Block number           [none]\n"
             "  -s N, --skip=N        Number of bytes to skip   [0]\n"
             "  -n N, --bytes=N       Number of bytes to dump [all]\n"
+            "  -f,   --force         Dump data despite errors [no]\n"
             "\n"
             "If a block number is given, dump contents of block to stdout,\n"
             "else just print status of requested instance/databuf.\n"
@@ -39,6 +40,7 @@ int main(int argc, char *argv[]) {
         {"block",    1, NULL, 'b'},
         {"skip",     1, NULL, 's'},
         {"bytes",    1, NULL, 'n'},
+        {"force",    1, NULL, 'f'},
         {0,0,0,0}
     };
     int opt;
@@ -47,7 +49,8 @@ int main(int argc, char *argv[]) {
     int block = -1;
     int skip = 0;
     int num = 0;
-    while ((opt=getopt_long(argc,argv,"hI:d:b:s:n:",long_opts,NULL))!=-1) {
+    int force = 0;
+    while ((opt=getopt_long(argc,argv,"hI:b:d:fn:s:",long_opts,NULL))!=-1) {
         switch (opt) {
             case 'I':
                 instance_id=atoi(optarg);
@@ -57,6 +60,9 @@ int main(int argc, char *argv[]) {
                 break;
             case 'b':
                 block = atoi(optarg);
+                break;
+            case 'f':
+                force = 1;
                 break;
             case 's':
                 skip = strtol(optarg, NULL, 0);
@@ -93,22 +99,29 @@ int main(int argc, char *argv[]) {
       return 0;
     }
 
-    if(block >= db->n_block) {
+    if(block >= db->n_block && !force) {
       fprintf(stderr, "Requested block does not exist (n_block=%d)\n",
           db->n_block);
       return 1;
+    } else if(block >= db->n_block) {
+      fprintf(stderr, "Warning: requested block does not exist (n_block=%d)\n",
+          db->n_block);
     }
 
-    if(skip > db->block_size) {
+    if(skip > db->block_size && !force) {
       fprintf(stderr, "Cannot skip more than %zd bytes\n", db->block_size);
       return 1;
+    } else if(skip > db->block_size) {
+      fprintf(stderr, "Warning: cannot skip more than %zd bytes\n", db->block_size);
     }
 
     if(num == 0) {
       num = db->block_size - skip;
-    } else if(num > db->block_size - skip) {
+    } else if(num > db->block_size - skip && !force) {
       fprintf(stderr, "Cannot dump more than %zd bytes\n", db->block_size - skip);
       return 1;
+    } else if(num > db->block_size - skip) {
+      fprintf(stderr, "Warning: cannot dump more than %zd bytes\n", db->block_size - skip);
     }
 
     void *p = ((void *)db) + db->header_size + block*db->block_size + skip;
