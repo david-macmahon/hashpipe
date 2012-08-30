@@ -29,6 +29,7 @@ possem/possem_wrap.c
 src/check_guppi_databuf
 src/check_guppi_status
 src/clean_guppi_shmem
+src/dump_databuf
 src/fix_psrfits_polyco
 src/fold_psrfits
 src/guppi_daq
