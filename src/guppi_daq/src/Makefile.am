@@ -61,19 +61,23 @@ paper_utils = $(guppi_utils) \
 
 bin_PROGRAMS += check_guppi_databuf
 check_guppi_databuf_SOURCES = check_guppi_databuf.c $(guppi_base)
+check_guppi_databuf_LDADD = -lm
 
 bin_PROGRAMS += check_guppi_status
 check_guppi_status_SOURCES = check_guppi_status.c $(guppi_base)
+check_guppi_status_LDADD = -lm
 
 bin_PROGRAMS += clean_guppi_shmem
 clean_guppi_shmem_SOURCES = clean_guppi_shmem.c $(guppi_base)
+clean_guppi_shmem_LDADD = -lm
 
 bin_PROGRAMS += dump_databuf
 dump_databuf_SOURCES = dump_databuf.c $(guppi_base)
+dump_databuf_LDADD = -lm
 
 bin_PROGRAMS += paper_xgpu
 paper_xgpu_SOURCES = paper_xgpu.c $(paper_threads) $(paper_utils)
-paper_xgpu_LDADD = -lxgpu
+paper_xgpu_LDADD = -lxgpu -lm -lrt
 
 noinst_PROGRAMS += paper_fluff_test
 paper_fluff_test_SOURCES = paper_fluff_test.c paper_fluff.c
