@@ -343,9 +343,9 @@ int guppi_databuf_busywait_free(struct guppi_databuf *d, int block_id) {
     op.sem_num = block_id;
     op.sem_op = 0;
     op.sem_flg = IPC_NOWAIT;
-    struct timespec timeout;
-    timeout.tv_sec = 0;
-    timeout.tv_nsec = 250000000;
+    //struct timespec timeout;
+    //timeout.tv_sec = 0;
+    //timeout.tv_nsec = 250000000;
     do {
       rv = semop(d->semid, &op, 1);
     } while(rv == -1 && errno == EAGAIN && run_threads);
@@ -409,9 +409,9 @@ int guppi_databuf_busywait_filled(struct guppi_databuf *d, int block_id) {
     op[1].sem_flg = IPC_NOWAIT;
     op[0].sem_op = -1;
     op[1].sem_op = 1;
-    struct timespec timeout;
-    timeout.tv_sec = 0;
-    timeout.tv_nsec = 250000000;
+    //struct timespec timeout;
+    //timeout.tv_sec = 0;
+    //timeout.tv_nsec = 250000000;
     do {
       rv = semop(d->semid, op, 2);
     } while(rv == -1 && errno == EAGAIN && run_threads);
