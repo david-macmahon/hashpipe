@@ -108,6 +108,10 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    if(quiet) {
+      return 0;
+    }
+
     /* Print basic info */
     printf("databuf %d stats:\n", db_id);
     printf("  shmid=%d\n", db->shmid);
