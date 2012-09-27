@@ -561,11 +561,20 @@ static void *run(void * _args)
             if(nbytes % BYTES_PER_PACKET == 0) {
               int bytes_sent = send(sockfd, &pkt, sizeof(pkt.hdr)+BYTES_PER_PACKET, 0);
               if(bytes_sent == -1) {
+                // Send all packets even if cactcher is not listening (i.e. we
+                // we get a connection refused error), but abort sending this
+                // dump if we get any other error.
                 if(errno != ECONNREFUSED) {
                   perror("send");
+                  // Update stats
+                  guppi_status_lock_safe(&st);
+                  hputu4(st.buf, "OUTDUMPS", ++dumps);
+                  hputr4(st.buf, "OUTSECS", 0.0);
+                  hputr4(st.buf, "OUTMBPS", 0.0);
+                  guppi_status_unlock_safe(&st);
+                  // Break out of both for loops
+                  goto done_sending;
                 }
-                // Break out of both for loops
-                goto done_sending;
               } else if(bytes_sent != sizeof(pkt.hdr)+BYTES_PER_PACKET) {
                 printf("only sent %d of %lu bytes!!!\n", bytes_sent, sizeof(pkt.hdr)+BYTES_PER_PACKET);
               }
@@ -581,14 +590,6 @@ static void *run(void * _args)
           }
         }
 
-done_sending:
-
-        // Mark block as free
-        paper_output_databuf_set_free(db, block_idx);
-
-        // Setup for next block
-        block_idx = (block_idx + 1) % db->header.n_block;
-
         clock_gettime(CLOCK_MONOTONIC, &stop);
 
         guppi_status_lock_safe(&st);
@@ -596,6 +597,14 @@ done_sending:
         hputr4(st.buf, "OUTSECS", (float)ELAPSED_NS(start,stop)/1e9);
         hputr4(st.buf, "OUTMBPS", (1e3*8*bytes_per_dump)/ELAPSED_NS(start,stop));
         guppi_status_unlock_safe(&st);
+
+done_sending:
+
+        // Mark block as free
+        paper_output_databuf_set_free(db, block_idx);
+
+        // Setup for next block
+        block_idx = (block_idx + 1) % db->header.n_block;
 
         /* Will exit if thread has been cancelled */
         pthread_testcancel();
