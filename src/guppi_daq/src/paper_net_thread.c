@@ -157,10 +157,11 @@ static void die(paper_input_databuf_t *paper_input_databuf_p, block_info_t *binf
     abort(); // End process and generate core file (if ulimit allows)
 }
 
-void set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t *binfo, int block_i) { 
+int set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t *binfo, int block_i)
+{
     static int last_filled = -1;
 
-    uint32_t block_missed_pkt_cnt, block_missed_feng, missed_pkt_cnt=0;
+    uint32_t block_missed_pkt_cnt=0, block_missed_mod_cnt, block_missed_feng, missed_pkt_cnt=0;
 
     if(binfo->block_active[block_i]) {
 
@@ -179,7 +180,7 @@ void set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t
 	    guppi_error(__FUNCTION__, "error waiting for databuf filled call");
 	    run_threads=0;
 	    pthread_exit(NULL);
-	    return;
+	    return 0;
 	}
 
 	block_missed_pkt_cnt = N_PACKETS_PER_BLOCK - binfo->block_active[block_i];
@@ -187,15 +188,15 @@ void set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t
 	// are missing one or more F engines.  Any missed packets beyond an
 	// integer multiple of N_PACKETS_PER_BLOCK_PER_F will be considered
 	// as dropped packets.
-	block_missed_feng = block_missed_pkt_cnt / N_PACKETS_PER_BLOCK_PER_F;
-	block_missed_pkt_cnt %= N_PACKETS_PER_BLOCK_PER_F;
+	block_missed_feng    = block_missed_pkt_cnt / N_PACKETS_PER_BLOCK_PER_F;
+	block_missed_mod_cnt = block_missed_pkt_cnt % N_PACKETS_PER_BLOCK_PER_F;
 	guppi_status_lock_busywait_safe(st_p);
 	hputu4(st_p->buf, "NETBKOUT", block_i);
 	hputu4(st_p->buf, "MISSEDFE", block_missed_feng);
-	if(block_missed_pkt_cnt) {
+	if(block_missed_mod_cnt) {
 	    // Increment MISSEDPK by number of missed packets for this block
 	    hgetu4(st_p->buf, "MISSEDPK", &missed_pkt_cnt);
-	    missed_pkt_cnt += block_missed_pkt_cnt;
+	    missed_pkt_cnt += block_missed_mod_cnt;
 	    hputu4(st_p->buf, "MISSEDPK", missed_pkt_cnt);
 	//  fprintf(stderr, "got %d packets instead of %d\n",
 	//	    binfo->block_active[block_i], N_PACKETS_PER_BLOCK);
@@ -204,6 +205,8 @@ void set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t
 
     	binfo->block_active[block_i] = 0;
     } 
+
+    return block_missed_pkt_cnt;
 }
 
 static inline int calc_block_indexes(block_info_t *binfo, packet_header_t * pkt_header)
