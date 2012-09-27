@@ -31,6 +31,12 @@ function init() {
   gpucpu=$8
   outcpu=$9
 
+  if [ -z "${mask}" ]
+  then
+    echo "Invalid instance number '${instance}' (ignored)"
+    return 1
+  fi
+
   echo taskset $mask \
   ./paper_xgpu -I $instance \
     -o BINDHOST=$bindhost \
@@ -53,6 +59,11 @@ function init() {
     2> out$instance
 }
 
+if [ -z "$1" ]
+then
+  echo "Usage: $(basename $0) INSTANCE_ID [...]"
+  exit 1
+fi
 
 while [ -n "$1" ]
 do
