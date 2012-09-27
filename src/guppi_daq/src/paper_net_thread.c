@@ -100,12 +100,11 @@ void print_ring_mcnts(paper_input_databuf_t *paper_input_databuf_p) {
     }
 }
 
-inline int inc_block_i(block_i) {
-    return((block_i + 1) % N_INPUT_BLOCKS);
-}
-
-inline int dec_block_i(block_i) {
-    return(block_i == 0 ? N_INPUT_BLOCKS - 1 : block_i - 1);
+// Returns (block_i - n) modulo N_INPUT_BLOCKS
+static inline int subtract_block_i(int block_i, int n)
+{
+    int d = block_i - n;
+    return(d < 0 ? d + N_INPUT_BLOCKS : d);
 }
 
 #ifdef LOG_MCNTS
@@ -329,8 +328,8 @@ static inline uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper
 	return rv;
     }
     if(! binfo.block_active[binfo.block_i]) {
-	// new block, pass along the block for two blocks ago
-	i = dec_block_i(dec_block_i(binfo.block_i));
+	// new block, pass along the block for N_INPUT_BLOCKS/2 blocks ago
+	i = subtract_block_i(binfo.block_i, N_INPUT_BLOCKS/2);
 	set_block_filled(paper_input_databuf_p, &binfo, i);
 	netmcnt = paper_input_databuf_p->block[i].header.mcnt;
 	// Wait (hopefully not long!) for free block for this packet
