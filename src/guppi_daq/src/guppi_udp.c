@@ -26,73 +26,50 @@
 
 int guppi_udp_init(struct guppi_udp_params *p) {
 
-    /* Resolve sender hostname */
+    /* Resolve local hostname to which we will bind */
     struct addrinfo hints;
-    //struct addrinfo *result, *rp;
-    struct addrinfo *result;
+    struct addrinfo *result, *rp;
     memset(&hints, 0, sizeof(struct addrinfo));
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_DGRAM;
-    int rv = getaddrinfo(p->sender, NULL, &hints, &result);
+    hints.ai_protocol = 0;
+    int rv = getaddrinfo(p->bindhost, NULL, &hints, &result);
     if (rv!=0) { 
         guppi_error("guppi_udp_init", "getaddrinfo failed");
-        return(GUPPI_ERR_SYS);
-    }
-
-    /* Set up socket */
-    p->sock = socket(PF_INET, SOCK_DGRAM, 0);
-    if (p->sock==-1) { 
-        guppi_error("guppi_udp_init", "socket error");
         freeaddrinfo(result);
         return(GUPPI_ERR_SYS);
     }
 
-    /* bind to local address */
-    struct sockaddr_in local_ip;
-    local_ip.sin_family =  AF_INET;
-    local_ip.sin_port = htons(p->bindport);
-    //local_ip.sin_addr.s_addr = INADDR_ANY;
-#if 1
-    rv = inet_aton(p->bindhost, &local_ip.sin_addr);
-    if (rv==0) {
-        guppi_error("guppi_udp_init", "inet_aton");
-        return(GUPPI_ERR_SYS);
-    }
-#endif
-    rv = bind(p->sock, (struct sockaddr *)&local_ip, sizeof(local_ip));
-    if (rv==-1) {
-        guppi_error("guppi_udp_init", "bind");
-        return(GUPPI_ERR_SYS);
-    }
-#if 0
-    int so_broadcast = 1;
-    rv = setsockopt(p->sock, SOL_SOCKET, SO_BROADCAST, &so_broadcast, sizeof(int));
-    if (rv<0) { 
-        guppi_error("guppi_udp_init", "Error setting so_broadcast.");
-        perror("setsockopt");
-    } 
-    rv = setsockopt(p->sock, SOL_SOCKET, SO_BINDTODEVICE, "eth2", 4);
-    if (rv<0) { 
-        guppi_error("guppi_udp_init", "Error setting so_bindtodevice.");
-        perror("setsockopt");
-    } 
-#endif
+    // getaddrinfo() returns a list of address structures.
+    // Try each address until we successfully bind(2).
+    // If socket(2) (or bind(2)) fails, we (close the socket
+    // and) try the next address.
 
+    for (rp = result; rp != NULL; rp = rp->ai_next) {
 
-    /* Set up socket to recv only from sender */
-#if 0
-    for (rp=result; rp!=NULL; rp=rp->ai_next) {
-        if (connect(p->sock, rp->ai_addr, rp->ai_addrlen)==0) { break; }
+        // Try to create socket, skip to next on failure
+        p->sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+        if (p->sock == -1)
+            continue;
+
+        // Set port here (easier(?) than converting p->bindport to string and
+        // passing it to getaddrinfo).
+        ((struct sockaddr_in *)(rp->ai_addr))->sin_port = htons(p->bindport);
+
+        // Try to bind, break out of loop on success
+        if (bind(p->sock, rp->ai_addr, rp->ai_addrlen) == 0)
+            break;                  /* Success */
+
+        // Close un-bindable socket
+        close(p->sock);
+        p->sock = -1;
     }
-    if (rp==NULL) { 
-        guppi_error("guppi_udp_init", "connect error");
-        close(p->sock); 
+
+    if (rp == NULL) { // No address succeeded
+        guppi_error("guppi_udp_init", "Could not create/bind socket");
         freeaddrinfo(result);
         return(GUPPI_ERR_SYS);
     }
-    memcpy(&p->sender_addr, rp, sizeof(struct addrinfo));
-    freeaddrinfo(result);
-#endif
 
     /* Non-blocking recv */
     fcntl(p->sock, F_SETFL, O_NONBLOCK);
