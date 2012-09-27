@@ -146,6 +146,7 @@ static inline void get_header (struct guppi_udp_packet *p, packet_header_t * pkt
 #endif
 }
 
+#ifdef DIE_ON_OUT_OF_SEQ_FILL
 static void die(paper_input_databuf_t *paper_input_databuf_p, block_info_t *binfo)
 {
     print_block_info(binfo);
@@ -156,6 +157,7 @@ static void die(paper_input_databuf_t *paper_input_databuf_p, block_info_t *binf
 #endif
     abort(); // End process and generate core file (if ulimit allows)
 }
+#endif
 
 int set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t *binfo, int block_i)
 {
@@ -170,10 +172,15 @@ int set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t 
 	    paper_input_databuf_p->block[block_i].header.good_data = 1;
 	}
 
-	last_filled = (last_filled+1) % ((struct guppi_databuf *)paper_input_databuf_p)->n_block;
+	last_filled = (last_filled+1) % N_INPUT_BLOCKS;
 	if(last_filled != block_i) {
 	    printf("block %d being marked filled, but expected block %d!\n", block_i, last_filled);
+#ifdef DIE_ON_OUT_OF_SEQ_FILL
 	    die(paper_input_databuf_p, binfo);
+#else
+	    binfo->initialized = 0;
+	    return 0;
+#endif
 	}
 
 	if(paper_input_databuf_set_filled(paper_input_databuf_p, block_i) != GUPPI_OK) {
