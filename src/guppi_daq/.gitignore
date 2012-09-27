@@ -51,6 +51,8 @@ src/vegas_hpc_lbw
 src/paper_fluff_test
 src/paper_xgpu
 src/*.so
+src/out0
+src/out1
 # Autotools cruft
 .deps/
 Makefile
