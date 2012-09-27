@@ -50,6 +50,9 @@
  */
 
 #define N_INPUT_BLOCKS 4
+#ifndef N_DEBUG_INPUT_BLOCKS
+#define N_DEBUG_INPUT_BLOCKS 0
+#endif
 
 typedef struct paper_input_header {
   int64_t good_data; // functions as a boolean, 64 bit to maintain word alignment
@@ -118,7 +121,7 @@ typedef uint8_t guppi_databuf_cache_alignment[
 typedef struct paper_input_databuf {
   struct guppi_databuf header;
   guppi_databuf_cache_alignment padding; // Maintain cache alignment
-  paper_input_block_t block[N_INPUT_BLOCKS];
+  paper_input_block_t block[N_INPUT_BLOCKS+N_DEBUG_INPUT_BLOCKS];
 } paper_input_databuf_t;
 
 /*

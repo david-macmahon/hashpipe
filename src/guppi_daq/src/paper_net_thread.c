@@ -311,9 +311,26 @@ static inline uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper
     int i;
     uint64_t *dest_p;
     uint64_t netmcnt = -1; // Value to store in status memory
+#if N_DEBUG_INPUT_BLOCKS == 1
+    static uint64_t debug_remaining = -1ULL;
+    static off_t debug_offset = 0;
+    uint64_t * debug_ptr;
+#endif
 
     // housekeeping for each packet
     get_header(p, &pkt_header);
+
+#if N_DEBUG_INPUT_BLOCKS == 1
+    debug_ptr = (uint64_t *)&paper_input_databuf_p->block[N_INPUT_BLOCKS];
+    debug_ptr[debug_offset++] = be64toh(*(uint64_t *)(p->data));
+    if(--debug_remaining == 0) {
+	exit(1);
+    }
+    if(debug_offset >= sizeof(paper_input_block_t)/sizeof(uint64_t)) {
+	debug_offset = 0;
+    }
+#endif
+
     if(! binfo.initialized) {
 	// insist that we start on a multiple of sub_blocks/block
     	if(pkt_header.mcnt % N_SUB_BLOCKS_PER_INPUT_BLOCK != 0) {
@@ -330,7 +347,14 @@ static inline uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper
     if(! binfo.block_active[binfo.block_i]) {
 	// new block, pass along the block for N_INPUT_BLOCKS/2 blocks ago
 	i = subtract_block_i(binfo.block_i, N_INPUT_BLOCKS/2);
+#if N_DEBUG_INPUT_BLOCKS == 1
+#define DEBUG_EXTRA (0x10000)
+	if(set_block_filled(paper_input_databuf_p, &binfo, i) && debug_remaining > DEBUG_EXTRA) {
+	    debug_remaining = DEBUG_EXTRA;
+	}
+#else
 	set_block_filled(paper_input_databuf_p, &binfo, i);
+#endif
 	netmcnt = paper_input_databuf_p->block[i].header.mcnt;
 	// Wait (hopefully not long!) for free block for this packet
 	if((rv = paper_input_databuf_busywait_free(paper_input_databuf_p, binfo.block_i)) != GUPPI_OK) {    
