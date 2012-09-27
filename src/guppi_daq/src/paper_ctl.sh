@@ -47,6 +47,12 @@ then
   shift
 fi
 
+if [ -z "$1" ]
+then
+  help
+  exit 1
+fi
+
 for arg in "${@}"
 do
   case $arg in
