@@ -556,7 +556,7 @@ static void *run(void * _args)
             pktdata_t re = CONVERT(pf_re[gpu_chan*REGTILE_CHAN_LENGTH+idx_regtile]);
             pktdata_t im = CONVERT(pf_im[gpu_chan*REGTILE_CHAN_LENGTH+idx_regtile]);
             *p_out++ = re;
-            *p_out++ = im;
+            *p_out++ = -im; // Conjugate data to match downstream expectations
             nbytes += 2*sizeof(pktdata_t);
             if(nbytes % BYTES_PER_PACKET == 0) {
               int bytes_sent = send(sockfd, &pkt, sizeof(pkt.hdr)+BYTES_PER_PACKET, 0);
