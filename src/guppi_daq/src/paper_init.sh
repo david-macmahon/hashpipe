@@ -2,78 +2,57 @@
 
 hostname=`hostname -s`
 
-# Hostname-to-XID map
-declare -A xid
+function getip() {
+  out=$(host $1) && echo $out | awk '{print $NF}'
+}
 
-# Default XIDs (for development convenience)
-xid[asa1-2]=0
-xid[asa1-4]=1
-xid[asa2-2]=0
-xid[asa2-4]=1
-xid[asa3-2]=0
-xid[asa3-4]=1
-xid[asa4-2]=0
-xid[asa4-4]=1
-xid[asa5-2]=0
-xid[asa5-4]=1
-xid[asa6-2]=0
-xid[asa6-4]=1
-xid[asa7-2]=0
-xid[asa7-4]=1
-xid[asa8-2]=0
-xid[asa8-4]=1
-xid[asa9-2]=0
-xid[asa9-4]=1
-xid[asa10-2]=0
-xid[asa10-4]=1
-xid[asa11-2]=0
-xid[asa11-4]=1
-xid[simech1-2]=0
-xid[simech1-3]=1
-xid[paper5-2]=10
+myip=$(getip $(hostname))
 
-# The "real" XIDs 0 to 15 - Update as needed to reflect local reality
-# These are defined after the defaults to override them!
-xid[asa1-2]=0
-xid[asa1-4]=1
-xid[asa2-2]=2
-xid[asa2-4]=3
-xid[asa3-2]=4
-xid[asa3-4]=5
-xid[asa4-2]=6
-xid[asa4-4]=7
-xid[asa5-2]=8
-xid[asa5-4]=9
-xid[asa6-2]=10
-xid[asa6-4]=11
-xid[asa7-2]=12
-xid[asa7-4]=13
-xid[asa8-2]=14
-xid[asa8-4]=15
+# Determine which, if any, pxN alias maps to IP of current host.
+# If a pxN match is found, mypx gets set to N (i.e. just the numeric part).
+# If no match is found, mypx will be empty.
+mypx=
+for p in {1..8}
+do
+  ip=$(getip px${p}.roach.pvt)
+  [ "${myip}" == "${ip}" ] || continue
+  mypx=$p
+done
+
+# If no pxN alias maps to IP of current host, abort
+if [ -z ${mypx} ]
+then
+  echo "$(hostname) is not aliased to a pxN name"
+  exit 1
+fi
+
+# Calculate XIDs based on mypx
+xid0=$(( 2*(mypx-1)    ))
+xid1=$(( 2*(mypx-1) + 1))
 
 case ${hostname} in
 
   asa*)
     instances=(
-      #                               GPU                       NET FLF GPU OUT
-      # mask  bind_host               DEV   XID                 CPU CPU CPU CPU
-      "0x0707 ${hostname}-2.tenge.pvt  0  ${xid[${hostname}-2]}  2   8   1   8" # Instance 0, eth2
-      "0x7070 ${hostname}-4.tenge.pvt  1  ${xid[${hostname}-4]}  6  12   5  12" # Instance 1, eth4
+      #                               GPU       NET FLF GPU OUT
+      # mask  bind_host               DEV  XID  CPU CPU CPU CPU
+      "0x0707 ${hostname}-2.tenge.pvt  0  $xid0  2   8   1   8" # Instance 0, eth2
+      "0x7070 ${hostname}-4.tenge.pvt  1  $xid1  6  12   5  12" # Instance 1, eth4
     );;
 
   simech1)
     instances=(
-      #                               GPU                       NET FLF GPU OUT
-      # mask  bind_host               DEV   XID                 CPU CPU CPU CPU
-      "0x0707 ${hostname}-2.tenge.pvt  0  ${xid[${hostname}-2]}  2   8   1   8" # Instance 0, eth2
-      "0x7070 ${hostname}-3.tenge.pvt  1  ${xid[${hostname}-2]}  6  12   5  12" # Instance 1, eth3
+      #                               GPU       NET FLF GPU OUT
+      # mask  bind_host               DEV  XID  CPU CPU CPU CPU
+      "0x0707 ${hostname}-2.tenge.pvt  0  $xid0  2   8   1   8" # Instance 0, eth2
+      "0x7070 ${hostname}-3.tenge.pvt  1  $xid1  6  12   5  12" # Instance 1, eth3
     );;
 
   paper5)
     instances=( 
-      #                               GPU                       NET FLF GPU OUT
-      # mask  bind_host               DEV   XID                 CPU CPU CPU CPU
-      "0x0606 ${hostname}-2.tenge.pvt  0  ${xid[${hostname}-2]}  2   4   3   4" # Instance 0, eth2
+      #                               GPU       NET FLF GPU OUT
+      # mask  bind_host               DEV  XID  CPU CPU CPU CPU
+      "0x0606 ${hostname}-2.tenge.pvt  0  $xid0  2   4   3   4" # Instance 0, eth2
     );;
 
   *)
