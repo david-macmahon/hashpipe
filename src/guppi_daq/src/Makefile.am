@@ -83,6 +83,12 @@ noinst_PROGRAMS += paper_fluff_test
 paper_fluff_test_SOURCES = paper_fluff_test.c paper_fluff.c
 paper_fluff_test_LDADD = -lrt
 
+lib_LTLIBRARIES = libhashpipestatus.la
+libhashpipestatus_la_CFLAGS = $(AM_CFLAGS)
+libhashpipestatus_la_SOURCES = guppi_status.c \
+			       guppi_error.c \
+			       guppi_ipckey.c
+
 if COMPILE_VEGAS
 vegas_threads = $(guppi_threads) \
 		vegas_net_thread.c

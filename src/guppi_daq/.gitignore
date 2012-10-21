@@ -53,18 +53,26 @@ src/paper_xgpu
 src/*.so
 src/out0
 src/out1
+src/staging
 # Autotools cruft
+*.la
+*.lo
 .deps/
+.libs/
 Makefile
 Makefile.in
 aclocal.m4
 autom4te.cache/
+config.guess
 config.h
 config.h.in
 config.log
 config.status
+config.sub
 configure
 depcomp
 install-sh
+libtool
+ltmain.sh
 missing
 stamp-h1
