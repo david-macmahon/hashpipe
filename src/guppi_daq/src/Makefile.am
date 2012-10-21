@@ -90,6 +90,9 @@ libhashpipestatus_la_SOURCES = hashpipe_status.c \
 staging:
 	make install DESTDIR=$(abs_builddir)/staging prefix=
 
+clean-local:
+	rm -rf $(abs_builddir)/staging
+
 if COMPILE_VEGAS
 vegas_threads = $(guppi_threads) \
 		vegas_net_thread.c
