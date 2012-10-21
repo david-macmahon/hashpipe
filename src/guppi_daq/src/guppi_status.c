@@ -134,6 +134,7 @@ int guppi_status_unlock(struct guppi_status *s) {
 }
 
 /* Return pointer to END key */
+static
 char *guppi_find_end(char *buf) {
     /* Loop over 80 byte cards */
     int offs;
