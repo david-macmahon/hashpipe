@@ -5,7 +5,7 @@
 tags
 TAGS
 bin/check_guppi_databuf
-bin/check_guppi_status
+bin/check_hashpipe_status
 bin/clean_guppi_shmem
 bin/fix_psrfits_polyco
 bin/fold_psrfits
@@ -27,7 +27,7 @@ build/
 possem/possem.py
 possem/possem_wrap.c
 src/check_guppi_databuf
-src/check_guppi_status
+src/check_hashpipe_status
 src/clean_guppi_shmem
 src/dump_databuf
 src/fix_psrfits_polyco

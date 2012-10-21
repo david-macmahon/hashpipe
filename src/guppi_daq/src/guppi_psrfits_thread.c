@@ -20,7 +20,7 @@
 #include "psrfits.h"
 #include "fold.h"
 #include "guppi_error.h"
-#include "guppi_status.h"
+#include "hashpipe_status.h"
 #include "guppi_databuf.h"
 
 #define STATUS_KEY "DISKSTAT"

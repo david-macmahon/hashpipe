@@ -34,7 +34,7 @@ static struct timespec now;
 
 #include "fitshead.h"
 #include "guppi_ipckey.h"
-#include "guppi_status.h"
+#include "hashpipe_status.h"
 #include "paper_databuf.h"
 #include "guppi_error.h"
 

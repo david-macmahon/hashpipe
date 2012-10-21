@@ -18,7 +18,7 @@
 #include "fitshead.h"
 #include "sdfits.h"
 #include "guppi_error.h"
-#include "guppi_status.h"
+#include "hashpipe_status.h"
 #include "paper_databuf.h"
 #include "paper_fluff.h"
 #include "guppi_params.h"

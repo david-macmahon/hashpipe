@@ -10,7 +10,7 @@ guppi_base = guppi_databuf.c \
 	     hput.c          \
 	     fitshead.h      \
 	     guppi_ipckey.h  \
-	     guppi_status.h  \
+	     hashpipe_status.h  \
 	     guppi_params.h  \
 	     guppi_udp.h     \
 	     guppi_defines.h \
@@ -60,9 +60,9 @@ bin_PROGRAMS += check_guppi_databuf
 check_guppi_databuf_SOURCES = check_guppi_databuf.c $(guppi_base)
 check_guppi_databuf_LDADD = libhashpipestatus.la -lm
 
-bin_PROGRAMS += check_guppi_status
-check_guppi_status_SOURCES = check_guppi_status.c $(guppi_base)
-check_guppi_status_LDADD = libhashpipestatus.la -lm
+bin_PROGRAMS += check_hashpipe_status
+check_hashpipe_status_SOURCES = check_hashpipe_status.c $(guppi_base)
+check_hashpipe_status_LDADD = libhashpipestatus.la -lm
 
 bin_PROGRAMS += clean_guppi_shmem
 clean_guppi_shmem_SOURCES = clean_guppi_shmem.c $(guppi_base)
@@ -81,7 +81,7 @@ paper_fluff_test_SOURCES = paper_fluff_test.c paper_fluff.c
 paper_fluff_test_LDADD = -lrt
 
 lib_LTLIBRARIES = libhashpipestatus.la
-libhashpipestatus_la_SOURCES = guppi_status.c \
+libhashpipestatus_la_SOURCES = hashpipe_status.c \
 			       guppi_error.c \
 			       guppi_ipckey.c
 

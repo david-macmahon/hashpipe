@@ -1,7 +1,7 @@
-/* guppi_status.c
+/* hashpipe_status.c
  *
  * Implementation of the status routines described 
- * in guppi_status.h
+ * in hashpipe_status.h
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,7 +15,7 @@
 #include <errno.h>
 
 #include "guppi_ipckey.h"
-#include "guppi_status.h"
+#include "hashpipe_status.h"
 #include "guppi_error.h"
 #include "fitshead.h"
 

@@ -1,4 +1,4 @@
-/* guppi_status.h
+/* hashpipe_status.h
  *
  * Routines dealing with the guppi status shared memory
  * segment.  Info is passed through this segment using 

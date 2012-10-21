@@ -15,7 +15,7 @@
 #include <errno.h>
 
 #include "guppi_error.h"
-#include "guppi_status.h"
+#include "hashpipe_status.h"
 #include "guppi_databuf.h"
 #include "guppi_params.h"
 #include "guppi_thread_main.h"

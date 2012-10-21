@@ -1,4 +1,4 @@
-/* check_guppi_status.c
+/* check_hashpipe_status.c
  *
  * Basic prog to test status shared mem routines.
  */
@@ -8,7 +8,7 @@
 
 #include "fitshead.h"
 #include "guppi_error.h"
-#include "guppi_status.h"
+#include "hashpipe_status.h"
 #include "guppi_thread_main.h"
 
 static struct guppi_status *get_status_buffer(int instance_id)

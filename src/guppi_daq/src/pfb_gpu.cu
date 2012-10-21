@@ -14,7 +14,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include "guppi_status.h"
+#include "hashpipe_status.h"
 #include "guppi_databuf.h"
 #ifdef __cplusplus
 }
