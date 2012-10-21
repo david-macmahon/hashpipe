@@ -85,6 +85,8 @@ libhashpipestatus_la_SOURCES = hashpipe_status.c \
 			       guppi_error.c \
 			       guppi_ipckey.c
 
+include_HEADERS = hashpipe_status.h
+
 # Staging target to do a local install into $(abs_builddir)/staging/{bin,include,lib}
 .PHONY: staging
 staging:
