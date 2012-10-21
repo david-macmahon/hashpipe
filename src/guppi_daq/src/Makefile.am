@@ -85,10 +85,10 @@ libhashpipestatus_la_SOURCES = hashpipe_status.c \
 			       guppi_error.c \
 			       guppi_ipckey.c
 
-# Staging target to do a local install into `pwd`/staging/{bin,include,lib}
+# Staging target to do a local install into $(abs_builddir)/staging/{bin,include,lib}
 .PHONY: staging
 staging:
-	make install DESTDIR=$(shell pwd)/staging prefix=
+	make install DESTDIR=$(abs_builddir)/staging prefix=
 
 if COMPILE_VEGAS
 vegas_threads = $(guppi_threads) \
