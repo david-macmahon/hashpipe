@@ -6,8 +6,6 @@ bin_PROGRAMS  =
 noinst_PROGRAMS  =
 
 guppi_base = guppi_databuf.c \
-	     hget.c          \
-	     hput.c          \
 	     fitshead.h      \
 	     guppi_ipckey.h  \
 	     hashpipe_status.h  \
@@ -82,10 +80,13 @@ paper_fluff_test_LDADD = -lrt
 
 lib_LTLIBRARIES = libhashpipestatus.la
 libhashpipestatus_la_SOURCES = hashpipe_status.c \
+			       hget.c \
+			       hput.c \
 			       guppi_error.c \
 			       guppi_ipckey.c
 
-include_HEADERS = hashpipe_status.h
+include_HEADERS = fitshead.h \
+		  hashpipe_status.h
 
 # Staging target to do a local install into $(abs_builddir)/staging/{bin,include,lib}
 .PHONY: staging
