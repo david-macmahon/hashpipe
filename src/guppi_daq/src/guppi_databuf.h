@@ -11,6 +11,8 @@
 #include <sys/ipc.h>
 #include <sys/sem.h>
 
+#include "guppi_defines.h"
+
 struct guppi_databuf {
     char data_type[64]; /* Type of data in buffer */
     unsigned int buf_type;  /* GPU_INPUT_BUF or CPU_INPUT_BUF */
