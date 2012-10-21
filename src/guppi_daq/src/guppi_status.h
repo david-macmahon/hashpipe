@@ -7,9 +7,8 @@
 #ifndef _GUPPI_STATUS_H
 #define _GUPPI_STATUS_H
 
+#include <limits.h>
 #include <semaphore.h>
-
-#include "guppi_params.h"
 
 #define GUPPI_STATUS_SIZE (2880*64) // FITS-style buffer
 #define GUPPI_STATUS_CARD 80 // Size of each FITS "card"
