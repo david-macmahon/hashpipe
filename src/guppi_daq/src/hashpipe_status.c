@@ -62,6 +62,20 @@ const char * guppi_status_semname(int instance_id)
     return semid;
 }
 
+int guppi_status_exists(int instance_id)
+{
+    instance_id &= 0x3f;
+
+    /* Compute status buffer key for instance_id */
+    key_t key = guppi_status_key(instance_id);
+    if(key == GUPPI_KEY_ERROR) {
+        guppi_error("guppi_status_attach", "guppi_status_key error");
+        return 0;
+    }
+    int shmid = shmget(key, GUPPI_STATUS_SIZE, 0666);
+    return (shmid==-1) ? 0 : 1;
+}
+
 int guppi_status_attach(int instance_id, struct guppi_status *s)
 {
     instance_id &= 0x3f;

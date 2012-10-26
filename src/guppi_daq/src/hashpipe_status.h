@@ -35,6 +35,11 @@ struct guppi_status {
  */
 const char * guppi_status_semname(int instance_id);
 
+/*
+ * Returns non-zero if the status buffer for instance_id already exists.
+ */
+int guppi_status_exists(int instance_id);
+
 /* Return a pointer to the status shared mem area, 
  * creating it if it doesn't exist.  Attaches/creates 
  * lock semaphore as well.  Returns nonzero on error.
