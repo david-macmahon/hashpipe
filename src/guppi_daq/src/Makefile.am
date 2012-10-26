@@ -84,6 +84,7 @@ libhashpipestatus_la_SOURCES = hashpipe_status.c \
 			       hput.c \
 			       guppi_error.c \
 			       guppi_ipckey.c
+libhashpipestatus_la_LIBADD = -lm
 
 include_HEADERS = fitshead.h \
 		  hashpipe_status.h
