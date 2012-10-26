@@ -59,18 +59,15 @@ static key_t guppi_ipckey(int proj_id)
  */
 key_t guppi_databuf_key(int instance_id)
 {
-    static key_t key = GUPPI_KEY_ERROR;
-    // Lazy init
-    if(key == GUPPI_KEY_ERROR) {
-        char *databuf_key = getenv("GUPPI_DATABUF_KEY");
-        if(databuf_key) {
-            key = strtoul(databuf_key, NULL, 0);
-        } else {
-            // Use instance_id to generate proj_id for guppi_ipckey.
-            // Databuf proj_id is 10XXXXXX (binary) where XXXXXX are the 6 LSbs
-            // of instance_id.
-            key = guppi_ipckey((instance_id&0x3f)|0x80);
-        }
+    key_t key = GUPPI_KEY_ERROR;
+    char *databuf_key = getenv("GUPPI_DATABUF_KEY");
+    if(databuf_key) {
+        key = strtoul(databuf_key, NULL, 0);
+    } else {
+        // Use instance_id to generate proj_id for guppi_ipckey.
+        // Databuf proj_id is 10XXXXXX (binary) where XXXXXX are the 6 LSbs
+        // of instance_id.
+        key = guppi_ipckey((instance_id&0x3f)|0x80);
     }
     return key;
 }
@@ -82,18 +79,15 @@ key_t guppi_databuf_key(int instance_id)
  */
 key_t guppi_status_key(int instance_id)
 {
-    static key_t key = GUPPI_KEY_ERROR;
-    // Lazy init
-    if(key == GUPPI_KEY_ERROR) {
-        char *status_key = getenv("GUPPI_STATUS_KEY");
-        if(status_key) {
-            key = strtoul(status_key, NULL, 0);
-        } else {
-            // Use instance_id to generate proj_id for guppi_ipckey.
-            // Status proj_id is 01XXXXXX (binary) where XXXXXX are the 6 LSbs
-            // of instance_id.
-            key = guppi_ipckey((instance_id&0x3f)|0x40);
-        }
+    key_t key = GUPPI_KEY_ERROR;
+    char *status_key = getenv("GUPPI_STATUS_KEY");
+    if(status_key) {
+        key = strtoul(status_key, NULL, 0);
+    } else {
+        // Use instance_id to generate proj_id for guppi_ipckey.
+        // Status proj_id is 01XXXXXX (binary) where XXXXXX are the 6 LSbs
+        // of instance_id.
+        key = guppi_ipckey((instance_id&0x3f)|0x40);
     }
     return key;
 }
