@@ -46,9 +46,18 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    /* Status shared mem, force unlock first */
     struct guppi_status s;
-    const char *semname = guppi_status_semname(instance_id);
+    char semname[NAME_MAX] = {'\0'};
+
+    /*
+     * Get the semaphore name.  Return error on truncation.
+     */
+    if(guppi_status_semname(instance_id, semname, NAME_MAX)) {
+        fprintf(stderr, "Error: semaphore name truncated.\n");
+        exit(1);
+    }
+
+    /* Status shared mem, force unlock first */
     sem_unlink(semname);
     rv = guppi_status_attach(instance_id, &s);
     if (rv!=GUPPI_OK) {

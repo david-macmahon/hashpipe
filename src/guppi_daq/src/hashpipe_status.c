@@ -22,44 +22,52 @@
 // TODO Do '#include "guppi_threads.h"' instead?
 extern int run_threads;
 
-/* Returns the guppi status (POSIX) semaphore name. */
-const char * guppi_status_semname(int instance_id)
+/*
+ * Stores the guppi status (POSIX) semaphore name in semid buffer of length
+ * size.  Returns 0 (no error) if semaphore name fit in given size, returns 1
+ * if semaphore name is truncated.
+ */
+int guppi_status_semname(int instance_id, char * semid, size_t size)
 {
-    static char semid[NAME_MAX-4] = {'\0'};
-    int length_remaining = NAME_MAX-4;
+    //static char semid[NAME_MAX-4] = {'\0'};
+    size_t length_remaining = size;
+    int bytes_written;
     char *s;
-    // Lazy init
-    if(semid[0] == '\0') {
-        const char * envstr = getenv("GUPPI_STATUS_SEMNAME");
-        if(envstr) {
-            strncpy(semid, envstr, length_remaining);
-            semid[length_remaining-1] = '\0';
-        } else {
-            envstr = getenv("GUPPI_KEYFILE");
+    int rc = 1;
+
+    const char * envstr = getenv("GUPPI_STATUS_SEMNAME");
+    if(envstr) {
+        strncpy(semid, envstr, length_remaining);
+        semid[length_remaining-1] = '\0';
+    } else {
+        envstr = getenv("GUPPI_KEYFILE");
+        if(!envstr) {
+            envstr = getenv("HOME");
             if(!envstr) {
-                envstr = getenv("HOME");
-                if(!envstr) {
-                    envstr = "/tmp";
-                }
-            }
-            strncpy(semid, envstr, length_remaining);
-            semid[length_remaining-1] = '\0';
-            // Convert all but the leading / to _
-            s = semid + 1;
-            while((s = strchr(s, '/'))) {
-              *s = '_';
-            }
-            length_remaining -= strlen(semid);
-            if(length_remaining > 0) {
-                snprintf(semid+strlen(semid), length_remaining,
-                    "_guppi_status_%d", instance_id&0x3f);
+                envstr = "/tmp";
             }
         }
-#ifdef GUPPI_VERBOSE
-        fprintf(stderr, "using guppi status semaphore '%s'\n", semid);
-#endif
+        strncpy(semid, envstr, length_remaining);
+        semid[length_remaining-1] = '\0';
+        // Convert all but the leading / to _
+        s = semid + 1;
+        while((s = strchr(s, '/'))) {
+          *s = '_';
+        }
+        length_remaining -= strlen(semid);
+        if(length_remaining > 0) {
+            bytes_written = snprintf(semid+strlen(semid),
+                length_remaining, "_guppi_status_%d", instance_id&0x3f);
+            if(bytes_written < length_remaining) {
+              // No truncation
+              rc = 0;
+            }
+        }
     }
-    return semid;
+#ifdef GUPPI_VERBOSE
+    fprintf(stderr, "using guppi status semaphore '%s'\n", semid);
+#endif
+    return rc;
 }
 
 int guppi_status_exists(int instance_id)
@@ -78,6 +86,7 @@ int guppi_status_exists(int instance_id)
 
 int guppi_status_attach(int instance_id, struct guppi_status *s)
 {
+    char semid[NAME_MAX] = {'\0'};
     instance_id &= 0x3f;
     s->instance_id = instance_id;
 
@@ -102,11 +111,19 @@ int guppi_status_attach(int instance_id, struct guppi_status *s)
         return(GUPPI_ERR_SYS);
     }
 
+    /*
+     * Get the semaphore name.  Return error on truncation.
+     */
+    if(guppi_status_semname(instance_id, semid, NAME_MAX)) {
+        guppi_error("guppi_status_attach", "semname truncated");
+        return(GUPPI_ERR_SYS);
+    }
+
     /* Get the locking semaphore.
      * Final arg (1) means create in unlocked state (0=locked).
      */
     mode_t old_umask = umask(0);
-    s->lock = sem_open(guppi_status_semname(instance_id), O_CREAT, 0666, 1);
+    s->lock = sem_open(semid, O_CREAT, 0666, 1);
     umask(old_umask);
     if (s->lock==SEM_FAILED) {
         guppi_error("guppi_status_attach", "sem_open");

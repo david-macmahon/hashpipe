@@ -25,7 +25,9 @@ struct guppi_status {
 };
 
 /*
- * Returns the guppi status (POSIX) semaphore name.
+ * Stores the guppi status (POSIX) semaphore name in semid buffer of length
+ * size.  Returns 0 (no error) if semaphore name fit in given size, returns 1
+ * if semaphore name is truncated.
  *
  * The guppi status semaphore name is $GUPPI_STATUS_SEMNAME (if defined in the
  * environment) or ${GUPPI_KEYFILE}_guppi_status (if defined in the environment)
@@ -33,7 +35,7 @@ struct guppi_status {
  * (global fallback).  Any slashes after the leading slash are converted to
  * underscores.
  */
-const char * guppi_status_semname(int instance_id);
+int guppi_status_semname(int instance_id, char * semid, size_t size);
 
 /*
  * Returns non-zero if the status buffer for instance_id already exists.
