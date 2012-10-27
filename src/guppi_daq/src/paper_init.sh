@@ -106,7 +106,8 @@ function init() {
     -c $flfcpu paper_fluff_thread \
     -c $gpucpu paper_gpu_thread \
     -c $outcpu paper_gpu_output_thread \
-    2> out$instance
+    1> px${mypx}.out.$instance \
+    2> px${mypx}.err.$instance
 }
 
 if [ -z "$1" ]
