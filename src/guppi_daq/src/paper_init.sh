@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Add directory containing this script to PATH
+PATH="$(dirname $0):${PATH}"
+
 hostname=`hostname -s`
 
 function getip() {
@@ -85,7 +88,7 @@ function init() {
   fi
 
   echo taskset $mask \
-  ./paper_xgpu -I $instance \
+  paper_xgpu -I $instance \
     -o BINDHOST=$bindhost \
     -o GPUDEV=$gpudev \
     -o XID=$xid \
@@ -95,7 +98,7 @@ function init() {
     -c $outcpu paper_gpu_output_thread
 
   taskset $mask \
-  ./paper_xgpu -I $instance \
+  paper_xgpu -I $instance \
     -o BINDHOST=$bindhost \
     -o GPUDEV=$gpudev \
     -o XID=$xid \
