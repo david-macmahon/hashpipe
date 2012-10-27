@@ -17,7 +17,7 @@ myip=$(getip $(hostname))
 mypx=
 for p in {1..8}
 do
-  ip=$(getip px${p}.roach.pvt)
+  ip=$(getip px${p}.paper.pvt)
   [ "${myip}" == "${ip}" ] || continue
   mypx=$p
 done
