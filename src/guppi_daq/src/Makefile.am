@@ -89,6 +89,10 @@ libhashpipestatus_la_LIBADD = -lm
 include_HEADERS = fitshead.h \
 		  hashpipe_status.h
 
+# Installed scripts
+dist_bin_SCRIPTS = paper_init.sh \
+		   xeng_init.sh
+
 # Staging target to do a local install into $(abs_builddir)/staging/{bin,include,lib}
 .PHONY: staging
 staging:
