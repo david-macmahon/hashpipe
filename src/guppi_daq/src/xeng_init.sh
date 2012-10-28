@@ -19,6 +19,9 @@ function start() {
       $hpr_gateway -g ${x} </dev/null >/dev/null 2>&1 &
     "
   done
+  sleep 1
+  echo 'Clearing MISSEDPK counters'
+  redis-cli -h redishost publish hashpipe:///set MISSEDPK=0 > /dev/null
 }
 
 function stop() {
