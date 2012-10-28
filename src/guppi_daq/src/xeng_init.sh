@@ -2,8 +2,7 @@
 
 # xeng_init.sh - Initialize X engines
 
-#xeng_hosts=$(echo px{1..8})
-xeng_hosts="$(echo px{1..2})"
+xeng_hosts=$(echo px{1..8})
 instances="0 1"
 
 paper_init=/usr/local/bin/paper_init.sh
