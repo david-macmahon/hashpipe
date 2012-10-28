@@ -536,9 +536,13 @@ static void *run(void * _args)
         hputi4(st.buf, "OUTBLKIN", block_idx);
         guppi_status_unlock_safe(&st);
 
-        // Update header's timestamp for this dump
+        // Update header's timestamp for this dump.  For historic/unknown
+        // reasons, the catcher expects timestamps to be in units of PFB
+        // samples (even though its source claims ADC samples!) divided by a
+        // mysterious constant value of 128 that is no doubt related to some
+        // FPGA based X engine from the past.
         pkt.hdr.timestamp = TIMESTAMP(db->block[block_idx].header.mcnt *
-            N_TIME_PER_PACKET * 2 * N_CHAN_TOTAL / 128);
+            N_TIME_PER_PACKET * N_CHAN_TOTAL / 128);
 
         // Init header's offset for this dump
         uint32_t nbytes = 0;
