@@ -282,16 +282,6 @@ static inline off_t tri_index(const int i, const int j)
   return (i * (i+1))/2 + j;
 }
 
-// casper_chan_length is the number of complex cross products per channel for
-// the casper correlator output format with N_INPUTS.
-// NB: N_INPUTS = N_STATION * N_POL
-#define CASPER_CHAN_LENGTH (4 * N_INPUTS/2 * (N_INPUTS/2+1) / 2)
-static inline size_t casper_chan_length()
-{
-  // Four cross products for each combination of input pairs
-  return CASPER_CHAN_LENGTH;
-}
-
 // regtile_chan_length is the number of complex cross products per channel for
 // the xGPU register tile order correlator output format with N_INPUTS.
 // NB: N_INPUTS = N_STATION * N_POL
