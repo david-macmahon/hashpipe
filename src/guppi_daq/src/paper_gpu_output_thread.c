@@ -195,9 +195,12 @@ static XGPUInfo xgpu_info;
 // be a problem.  Note that this accounts only for the packet's payload (i.e.
 // it considers the size of the packet header to be negligible).
 //
-// 1000 megabit per second =  1 nanosecond per bit
-//  100 megabit per second = 10 nanosecond per bit
-#define PACKET_DELAY_NS (4 * 10 * 8 * BYTES_PER_PACKET)
+// 1000 megabit per second =   1 nanosecond per bit
+//  100 megabit per second =  10 nanosecond per bit
+//   10 megabit per second = 100 nanosecond per bit
+//#define PACKET_DELAY_NS (4 * 10 * 8 * BYTES_PER_PACKET)
+// Really trickle it out...
+#define PACKET_DELAY_NS (100 * 8 * BYTES_PER_PACKET)
 
 // bytes_per_dump depends on xgpu_info.triLength
 static uint64_t bytes_per_dump = 0;
