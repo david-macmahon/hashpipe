@@ -558,7 +558,7 @@ static void *run(void * _args)
         for(casper_chan=0; casper_chan<N_CHAN_PER_X; casper_chan++) {
           // De-interleave the channels
           gpu_chan = (casper_chan/Nc) + ((casper_chan%Nc)*Nx);
-          for(baseline=0; baseline<CASPER_CHAN_LENGTH; baseline++) {
+          for(baseline=0; baseline<N_CASPER_COMPLEX_PER_CHAN; baseline++) {
             off_t idx_regtile = idx_map[baseline];
             pktdata_t re = CONVERT(pf_re[gpu_chan*REGTILE_CHAN_LENGTH+idx_regtile]);
             pktdata_t im = CONVERT(pf_im[gpu_chan*REGTILE_CHAN_LENGTH+idx_regtile]);
