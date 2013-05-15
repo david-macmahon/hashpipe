@@ -29,14 +29,40 @@ then
   exit 1
 fi
 
-# Calculate XIDs based on mypx
-xid0=$(( 2*(mypx-1)    ))
-xid1=$(( 2*(mypx-1) + 1))
-
 case ${hostname} in
 
-  asa*)
+  snb*)
+    # Calculate XIDs based on mypx
+    xid0=$(( 4*(mypx-1)    ))
+    xid1=$(( 4*(mypx-1) + 1))
+    xid2=$(( 4*(mypx-1) + 2))
+    xid3=$(( 4*(mypx-1) + 3))
+
     instances=(
+      # Setup parameters for four instances.
+      # Fluff thread and output thread share a core.
+      # Save core  0 for OS.
+      # Save core  7 for eth2 and eth3
+      # Save core  8 for symmetry with core 0
+      # Save core 15 for eth4 and eth5
+      #
+      #                               GPU       NET FLF GPU OUT
+      # mask  bind_host               DEV  XID  CPU CPU CPU CPU
+      "0x007e ${hostname}-2.tenge.pvt  0  $xid0  1   2   3   2" # Instance 0, eth2
+      "0x007e ${hostname}-3.tenge.pvt  1  $xid1  4   5   6   5" # Instance 1, eth3
+      "0x7e00 ${hostname}-4.tenge.pvt  2  $xid2  9  10  11  10" # Instance 2, eth4
+      "0x7e00 ${hostname}-5.tenge.pvt  3  $xid3 12  13  14  13" # Instance 3, eth5
+    );;
+
+  asa*)
+    # Calculate XIDs based on mypx
+    xid0=$(( 2*(mypx-1)    ))
+    xid1=$(( 2*(mypx-1) + 1))
+
+    instances=(
+      # Setup parameters for two instances.
+      # Fluff thread and output thread share a core.
+      #
       #                               GPU       NET FLF GPU OUT
       # mask  bind_host               DEV  XID  CPU CPU CPU CPU
       "0x0707 ${hostname}-2.tenge.pvt  0  $xid0  2   8   1   8" # Instance 0, eth2
@@ -44,6 +70,10 @@ case ${hostname} in
     );;
 
   simech1)
+    # Calculate XIDs based on mypx
+    xid0=$(( 2*(mypx-1)    ))
+    xid1=$(( 2*(mypx-1) + 1))
+
     instances=(
       #                               GPU       NET FLF GPU OUT
       # mask  bind_host               DEV  XID  CPU CPU CPU CPU
@@ -52,6 +82,9 @@ case ${hostname} in
     );;
 
   paper5)
+    # Calculate XIDs based on mypx
+    xid0=$(( 1*(mypx-1)    ))
+
     instances=( 
       #                               GPU       NET FLF GPU OUT
       # mask  bind_host               DEV  XID  CPU CPU CPU CPU
