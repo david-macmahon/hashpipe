@@ -8,6 +8,7 @@ LT_INIT
 AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR([guppi_time.h])
 AC_CONFIG_HEADERS([config.h])
+AC_CONFIG_MACRO_DIR([m4])
 
 AC_ARG_WITH([cuda],
             AC_HELP_STRING([--with-cuda=DIR],

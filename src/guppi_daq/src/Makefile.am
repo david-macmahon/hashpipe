@@ -1,6 +1,8 @@
 AM_CPPFLAGS = -I"@XGPU_INCDIR@"
 AM_CFLAGS = -ggdb -fPIC -O3 -Wall -Werror -fno-strict-aliasing -msse4.1
 AM_LDFLAGS = -L"@XGPU_LIBDIR@" -Wl,-rpath,"@XGPU_LIBDIR@"
+ACLOCAL_AMFLAGS = -I m4
+
 
 bin_PROGRAMS  =
 noinst_PROGRAMS  =
