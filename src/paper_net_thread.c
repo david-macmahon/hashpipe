@@ -421,15 +421,11 @@ static void *run(void * _args)
     /* Attach to paper_input_databuf */
     THREAD_RUN_ATTACH_DATABUF(args->instance_id, paper_input_databuf, db, args->output_buffer);
 
-    /* Read in general parameters */
-    struct guppi_params gp;
-    struct sdfits pf;
+    /* Copy status buffer */
     char status_buf[GUPPI_STATUS_SIZE];
     guppi_status_lock_busywait_safe(st_p);
     memcpy(status_buf, st_p->buf, GUPPI_STATUS_SIZE);
     guppi_status_unlock_safe(st_p);
-    guppi_read_obs_params(status_buf, &gp, &pf);
-    pthread_cleanup_push((void *)guppi_free_sdfits, &pf);
 
     /* Read network params */
     struct guppi_udp_params up;
@@ -555,7 +551,6 @@ static void *run(void * _args)
 #ifndef TIMING_TEST
     pthread_cleanup_pop(0); /* Closes push(guppi_udp_close) */
 #endif
-    pthread_cleanup_pop(0); /* Closes guppi_free_psrfits */
     THREAD_RUN_DETACH_DATAUF;
     THREAD_RUN_DETACH_STATUS;
     THREAD_RUN_END;

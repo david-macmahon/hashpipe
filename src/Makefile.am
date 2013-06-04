@@ -3,7 +3,6 @@ AM_CFLAGS = -ggdb -fPIC -O3 -Wall -Werror -fno-strict-aliasing -msse4.1
 AM_LDFLAGS = -L"@XGPU_LIBDIR@" -Wl,-rpath,"@XGPU_LIBDIR@"
 ACLOCAL_AMFLAGS = -I m4
 
-
 bin_PROGRAMS  =
 noinst_PROGRAMS  =
 
@@ -24,18 +23,8 @@ guppi_base = guppi_databuf.c \
 guppi_net = $(guppi_base) \
 	    guppi_udp.c
 
-guppi_threads = $(guppi_net)            \
-		guppi_accum_thread.c    \
-		guppi_fake_net_thread.c \
-		guppi_null_thread.c     \
-		guppi_sdfits_thread.c   \
-		spead_heap.h            \
-		guppi_time.h
-
 guppi_utils = guppi_params.c      \
-	      guppi_thread_args.c \
-	      guppi_time.c        \
-	      write_sdfits.c
+	      guppi_thread_args.c
 
 paper_net = $(guppi_net) \
 	     paper_databuf.c \
