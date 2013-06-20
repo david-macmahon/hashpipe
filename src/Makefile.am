@@ -10,21 +10,17 @@ guppi_base = guppi_databuf.c \
 	     fitshead.h      \
 	     guppi_ipckey.h  \
 	     hashpipe_status.h  \
-	     guppi_params.h  \
 	     guppi_udp.h     \
-	     guppi_defines.h \
 	     guppi_threads.h     \
 	     guppi_thread_args.h \
 	     guppi_thread_main.h \
-	     sdfits.h        \
 	     guppi_databuf.h \
 	     guppi_error.h
 
 guppi_net = $(guppi_base) \
 	    guppi_udp.c
 
-guppi_utils = guppi_params.c      \
-	      guppi_thread_args.c
+guppi_utils = guppi_thread_args.c
 
 paper_net = $(guppi_net) \
 	     paper_databuf.c \

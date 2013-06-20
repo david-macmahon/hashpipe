@@ -11,11 +11,8 @@
 #include <sys/ipc.h>
 #include <sys/sem.h>
 
-#include "guppi_defines.h"
-
 struct guppi_databuf {
     char data_type[64]; /* Type of data in buffer */
-    unsigned int buf_type;  /* GPU_INPUT_BUF or CPU_INPUT_BUF */
     size_t struct_size; /* Size alloced for this struct (bytes) */
     size_t block_size;  /* Size of each data block (bytes) */
     size_t header_size; /* Size of each block header (bytes) */
@@ -33,51 +30,6 @@ union semun {
     struct seminfo *__buf;
 };
 
-#ifdef NEW_GBT
-
-#define GPU_INPUT_BUF       1
-#define CPU_INPUT_BUF       2
-#define DISK_INPUT_BUF      3
-
-#define MAX_HEAPS_PER_BLK   4096
-
-// Single element of the index for the GPU or CPU input buffer
-struct cpu_gpu_buf_index
-{
-    unsigned int heap_cntr;
-    unsigned int heap_valid;
-    double heap_rcvd_mjd;
-};
-
-// Single element of the index for the disk input buffer
-struct disk_buf_index
-{
-    unsigned int struct_offset;
-    unsigned int array_offset;
-};
-
-// The index that sits at the top of each databuf block
-struct databuf_index
-{
-    union {
-        unsigned int num_heaps;     //Number of actual heaps in block
-        unsigned int num_datasets;  //Number of datasets in block
-    };
-    
-    union {
-        unsigned int heap_size;     //Size of a single heap
-        unsigned int array_size;    //Size of a single data array
-    };
-    
-    // The actual index
-    union {
-        struct cpu_gpu_buf_index cpu_gpu_buf[MAX_HEAPS_PER_BLK];
-        struct disk_buf_index disk_buf[2*MAX_HEAPS_PER_BLK];
-    };
-};
-
-#endif
-
 /*
  * Get the base key to use for *all* guppi databufs.  The base key is obtained
  * by calling the ftok function, using the value of $GUPPI_KEYFILE, if defined,
@@ -94,13 +46,8 @@ key_t guppi_databuf_key();
  * error if an existing shmem area exists with the given shmid (or
  * if other errors occured trying to allocate it).
  */
-#ifndef NEW_GBT
 struct guppi_databuf *guppi_databuf_create(int instance_id, int n_block, size_t block_size,
         int databuf_id);
-#else
-struct guppi_databuf *guppi_databuf_create(int instance_id, int n_block, size_t block_size,
-        int databuf_id, int buf_type);
-#endif
 
 /* Return a pointer to a existing shmem segment with given id.
  * Returns error if segment does not exist 

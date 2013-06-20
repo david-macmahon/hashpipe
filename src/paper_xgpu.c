@@ -22,9 +22,7 @@
 #include "hashpipe_status.h"
 #include "guppi_databuf.h"
 #include "paper_databuf.h"
-#include "guppi_params.h"
 #include "guppi_thread_main.h"
-#include "guppi_defines.h"
 #include "fitshead.h"
 #include "paper_thread.h"
 

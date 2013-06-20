@@ -9,7 +9,6 @@
 #include <sys/types.h>
 #include <netdb.h>
 #include <poll.h>
-#include "guppi_defines.h"
 
 #define GUPPI_MAX_PACKET_SIZE 9600
 
@@ -30,6 +29,14 @@ struct guppi_udp_params {
     struct pollfd pfd;              /* Use to poll for avail data */
 };
 
+/* Use sender and port fields in param struct to init
+ * the other values, bind socket, etc.
+ */
+int guppi_udp_init(struct guppi_udp_params *p);
+
+/* Close out socket, etc */
+int guppi_udp_close(struct guppi_udp_params *p);
+
 /* Basic structure of a packet.  This struct, functions should 
  * be used to get the various components of a data packet.   The
  * internal packet structure is:
@@ -45,52 +52,7 @@ struct guppi_udp_params {
  */
 struct guppi_udp_packet {
     size_t packet_size;  /* packet size, bytes */
-    char data[GUPPI_MAX_PACKET_SIZE] __attribute__ ((aligned(32))); /* packet data */
+    char data[GUPPI_MAX_PACKET_SIZE] __attribute__ ((aligned(128))); /* packet data */
 };
-unsigned long long guppi_udp_packet_seq_num(const struct guppi_udp_packet *p);
-unsigned long long guppi_udp_packet_mcnt(const struct guppi_udp_packet *p);
-char *guppi_udp_packet_data(const struct guppi_udp_packet *p);
-size_t guppi_udp_packet_datasize(size_t packet_size);
-size_t parkes_udp_packet_datasize(size_t packet_size);
-unsigned long long guppi_udp_packet_flags(const struct guppi_udp_packet *p);
-
-/* Use sender and port fields in param struct to init
- * the other values, bind socket, etc.
- */
-int guppi_udp_init(struct guppi_udp_params *p);
-
-/* Wait for available data on the UDP socket */
-int guppi_udp_wait(struct guppi_udp_params *p); 
-
-/* Read a packet */
-int guppi_udp_recv(struct guppi_udp_params *p, struct guppi_udp_packet *b);
-
-/* Convert a Parkes-style packet to a GUPPI-style packet */
-void parkes_to_guppi(struct guppi_udp_packet *b, const int acc_len, 
-        const int npol, const int nchan);
-
-/* Copy a guppi packet to the specified location in memory, 
- * expanding out missing channels for 1SFA packets.
- */
-void guppi_udp_packet_data_copy(char *out, const struct guppi_udp_packet *p);
-
-/* Copy and corner turn for baseband multichannel modes */
-void guppi_udp_packet_data_copy_transpose(char *databuf, int nchan,
-        unsigned block_pkt_idx, unsigned packets_per_block,
-        const struct guppi_udp_packet *p);
-
-/* Check that the size of the received SPEAD packet is correct */
-int guppi_chk_spead_pkt_size(const struct guppi_udp_packet *p);
-
-unsigned int guppi_spead_packet_heap_cntr(const struct guppi_udp_packet *p);
-unsigned int guppi_spead_packet_heap_offset(const struct guppi_udp_packet *p);
-unsigned int guppi_spead_packet_seq_num(int heap_cntr, int heap_offset, int packets_per_heap);
-char* guppi_spead_packet_data(const struct guppi_udp_packet *p);
-unsigned int guppi_spead_packet_datasize(const struct guppi_udp_packet *p);
-int guppi_spead_packet_copy(struct guppi_udp_packet *p, char *header_addr,
-                            char *payload_addr, char bw_mode[]);
-
-/* Close out socket, etc */
-int guppi_udp_close(struct guppi_udp_params *p);
 
 #endif

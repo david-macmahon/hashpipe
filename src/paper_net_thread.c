@@ -22,16 +22,13 @@
 #include <xgpu.h>
 
 #include "fitshead.h"
-#include "guppi_params.h"
 #include "guppi_error.h"
 #include "hashpipe_status.h"
 #include "paper_databuf.h"
 #include "guppi_udp.h"
-#include "guppi_time.h"
 
 #define STATUS_KEY "NETSTAT"  /* Define before guppi_threads.h */
 #include "guppi_threads.h"
-#include "guppi_defines.h"
 #include "paper_thread.h"
 
 #define DEBUG_NET
@@ -424,11 +421,15 @@ static void *run(void * _args)
     guppi_status_unlock_safe(st_p);
 
     /* Read network params */
-    struct guppi_udp_params up;
-    //guppi_read_net_params(status_buf, &up);
-    paper_read_net_params(status_buf, &up);
-    // Store bind host/port info etc in status buffer
+    struct guppi_udp_params up = {
+	.bindhost = "0.0.0.0",
+	.bindport = 8511
+    };
     guppi_status_lock_busywait_safe(&st);
+    // Get info from status buffer if present (no change if not present)
+    hgets(st.buf, "BINDHOST", 80, up.bindhost);
+    hgeti4(st.buf, "BINDPORT", &up.bindport);
+    // Store bind host/port info etc in status buffer
     hputs(st.buf, "BINDHOST", up.bindhost);
     hputi4(st.buf, "BINDPORT", up.bindport);
     hputu4(st.buf, "MISSEDFE", 0);

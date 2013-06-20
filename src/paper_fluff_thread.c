@@ -16,12 +16,10 @@
 #include <sys/types.h>
 
 #include "fitshead.h"
-#include "sdfits.h"
 #include "guppi_error.h"
 #include "hashpipe_status.h"
 #include "paper_databuf.h"
 #include "paper_fluff.h"
-#include "guppi_params.h"
 
 #define STATUS_KEY "FLUFSTAT"
 #include "guppi_threads.h"

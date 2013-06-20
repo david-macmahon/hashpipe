@@ -21,17 +21,13 @@
 #include <xgpu.h>
 
 #include "fitshead.h"
-#include "guppi_params.h"
 #include "guppi_error.h"
 #include "hashpipe_status.h"
 #include "paper_databuf.h"
 #include "guppi_udp.h"
-#include "guppi_time.h"
-#include "spead_heap.h"
 
 #define STATUS_KEY "NETSTAT"  /* Define before guppi_threads.h */
 #include "guppi_threads.h"
-#include "guppi_defines.h"
 #include "paper_thread.h"
 
 static int init(struct guppi_thread_args *args)

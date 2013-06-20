@@ -23,10 +23,8 @@
 // TODO Do '#include "guppi_threads.h"' instead?
 extern int run_threads;
 
-#ifndef NEW_GBT
-
 struct guppi_databuf *guppi_databuf_create(int instance_id, int n_block, size_t block_size,
-        int databuf_id, int instance_id) {
+        int databuf_id) {
 
     /* Calc databuf size */
     const size_t header_size = GUPPI_STATUS_SIZE;
@@ -98,88 +96,6 @@ struct guppi_databuf *guppi_databuf_create(int instance_id, int n_block, size_t 
 
     return(d);
 }
-
-#else
-
-struct guppi_databuf *guppi_databuf_create(int instance_id, int n_block, size_t block_size,
-        int databuf_id, int buf_type) {
-
-    /* Calc databuf size */
-    const size_t header_size = GUPPI_STATUS_SIZE;
-    size_t struct_size = sizeof(struct guppi_databuf);
-    struct_size = 8192 * (1 + struct_size/8192); /* round up */
-    size_t index_size = sizeof(struct databuf_index);
-    size_t databuf_size = (block_size+header_size+index_size) * n_block + struct_size;
-
-    /* Get shared memory block, error if it already exists */
-    key_t key = guppi_databuf_key(instance_id);
-    if(key == GUPPI_KEY_ERROR) {
-        guppi_error("guppi_databuf_create", "guppi_databuf_key error");
-        return(NULL);
-    }
-    int shmid;
-    shmid = shmget(key + databuf_id - 1, databuf_size, 0666 | IPC_CREAT | IPC_EXCL);
-    if (shmid==-1) {
-        guppi_error("guppi_databuf_create", "shmget error");
-        return(NULL);
-    }
-
-    /* Attach */
-    struct guppi_databuf *d;
-    d = shmat(shmid, NULL, 0);
-    if (d==(void *)-1) {
-        guppi_error("guppi_databuf_create", "shmat error");
-        return(NULL);
-    }
-
-    /* Try to lock in memory */
-    int rv = shmctl(shmid, SHM_LOCK, NULL);
-    if (rv==-1) {
-        guppi_error("guppi_databuf_create", "Error locking shared memory.");
-        perror("shmctl");
-    }
-
-    /* Zero out memory */
-    memset(d, 0, databuf_size);
-
-    /* Fill params into databuf */
-    int i;
-    char end_key[81];
-    memset(end_key, ' ', 80);
-    strncpy(end_key, "END", 3);
-    end_key[80]='\0';
-    d->shmid = shmid;
-    d->semid = 0;
-    d->n_block = n_block;
-    d->struct_size = struct_size;
-    d->block_size = block_size;
-    d->header_size = header_size;
-    d->index_size = index_size;
-    sprintf(d->data_type, "unknown");
-    d->buf_type = buf_type;
-
-    for (i=0; i<n_block; i++) { 
-        memcpy(guppi_databuf_header(d,i), end_key, 80); 
-    }
-
-    /* Get semaphores set up */
-    d->semid = semget(key + databuf_id - 1, n_block, 0666 | IPC_CREAT);
-    if (d->semid==-1) { 
-        guppi_error("guppi_databuf_create", "semget error");
-        return(NULL);
-    }
-
-    /* Init semaphores to 0 */
-    union semun arg;
-    arg.array = (unsigned short *)malloc(sizeof(unsigned short)*n_block);
-    memset(arg.array, 0, sizeof(unsigned short)*n_block);
-    rv = semctl(d->semid, 0, SETALL, arg);
-    free(arg.array);
-
-    return(d);
-}
-
-#endif
 
 int guppi_databuf_detach(struct guppi_databuf *d) {
     int rv = shmdt(d);

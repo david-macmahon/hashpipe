@@ -27,11 +27,9 @@
 #endif
 
 #include "fitshead.h"
-#include "sdfits.h"
 #include "guppi_error.h"
 #include "hashpipe_status.h"
 #include "paper_databuf.h"
-#include "guppi_params.h"
 
 #define STATUS_KEY "GPUSTAT"
 #include "guppi_threads.h"
