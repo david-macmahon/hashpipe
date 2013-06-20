@@ -53,11 +53,9 @@ typedef struct {
     uint64_t mcnt_prior;
     int out_of_seq_cnt;
     int block_i;
-    // The m,x,q,f fields hold four of the six dimensional indices for
+    // The m,x,f fields hold three of the five dimensional indices for
     // the first data word of the current packet (i.e. t=0 and c=0).
     int m; // formerly known as sub_block_i
-    int x;
-    int q;
     int f;
     int block_active[N_INPUT_BLOCKS];
 } block_info_t;
@@ -75,8 +73,8 @@ void print_pkt_header(packet_header_t * pkt_header) {
 }
 
 void print_block_info(block_info_t * binfo) {
-    printf("binfo : mcnt_start %012lx mcnt_offset %012lx block_i %d m=%02d x=%d q=%d f=%d\n",
-           binfo->mcnt_start, binfo->mcnt_offset, binfo->block_i, binfo->m, binfo->x, binfo->q, binfo->f);
+    printf("binfo : mcnt_start %012lx mcnt_offset %012lx block_i %d m=%02d f=%d\n",
+           binfo->mcnt_start, binfo->mcnt_offset, binfo->block_i, binfo->m, binfo->f);
 }
 
 void print_block_active(block_info_t * binfo) {
@@ -231,9 +229,7 @@ static inline int calc_block_indexes(block_info_t *binfo, packet_header_t * pkt_
 
     binfo->block_i     = (binfo->mcnt_offset) / N_SUB_BLOCKS_PER_INPUT_BLOCK % N_INPUT_BLOCKS; 
     binfo->m = (binfo->mcnt_offset) % Nm;
-    binfo->x = (pkt_header->xid) % Nx;
-    binfo->q = (pkt_header->fid) / 4;
-    binfo->f = (pkt_header->fid) % 4;
+    binfo->f = pkt_header->fid;
 
     return 0;
 }
@@ -376,7 +372,7 @@ static inline uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper
 
     // Calculate starting points for unpacking this packet into block's data buffer.
     dest_p = paper_input_databuf_p->block[binfo.block_i].data
-	+ paper_input_databuf_data_idx(binfo.m, binfo.x, binfo.q, binfo.f, 0, 0);
+	+ paper_input_databuf_data_idx(binfo.m, binfo.f, 0, 0);
     payload_p        = (uint64_t *)(p->data+8);
 
     // Copy data into buffer

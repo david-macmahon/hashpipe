@@ -497,6 +497,7 @@ static void *run(void * _args)
     unsigned int dumps = 0;
     int block_idx = 0;
     struct timespec start, stop;
+    struct timespec pkt_start, pkt_stop;
     signal(SIGINT,cc);
     signal(SIGTERM,cc);
     while (run_threads) {
@@ -545,9 +546,12 @@ static void *run(void * _args)
         float * pf_re  = db->block[block_idx].data;
         float * pf_im  = db->block[block_idx].data + xgpu_info.matLength;
         pktdata_t * p_out = pkt.data;
+        clock_gettime(CLOCK_MONOTONIC, &pkt_start);
         for(casper_chan=0; casper_chan<N_CHAN_PER_X; casper_chan++) {
-          // De-interleave the channels
-          gpu_chan = (casper_chan/Nc) + ((casper_chan%Nc)*Nx);
+          // This used to de-interleave channels.  De-interleaving is no longer
+          // needed, but we choose to continue maintaining the distinction
+          // between casper_chan and gpu_chan.
+          gpu_chan = casper_chan;
           for(baseline=0; baseline<N_CASPER_COMPLEX_PER_CHAN; baseline++) {
             off_t idx_regtile = idx_map[baseline];
             pktdata_t re = CONVERT(pf_re[gpu_chan*REGTILE_CHAN_LENGTH+idx_regtile]);
@@ -577,10 +581,15 @@ static void *run(void * _args)
               }
 
               // Delay to prevent overflowing network TX queue
-              nanosleep(&packet_delay, NULL);
+              clock_gettime(CLOCK_MONOTONIC, &pkt_stop);
+              packet_delay.tv_nsec = PACKET_DELAY_NS - ELAPSED_NS(pkt_start, pkt_stop);
+              if(packet_delay.tv_nsec > 0 && packet_delay.tv_nsec < 1000*1000*1000) {
+                nanosleep(&packet_delay, NULL);
+              }
 
               // Setup for next packet
               p_out = pkt.data;
+              pkt_start = pkt_stop;
               // Update header's byte_offset for this chunk
               pkt.hdr.offset = OFFSET(nbytes);
             }

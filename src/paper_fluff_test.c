@@ -26,8 +26,37 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  printf("in  = %p\n", in);
-  printf("out = %p\n", out);
+  //printf("in  = %p\n", in);
+  //printf("out = %p\n", out);
+
+#if 0
+  in[0] = htobe64(0x0123456789abcdef);
+  in[1] = htobe64(0xfedcba9876543210);
+
+  uint8_t * cin = (uint8_t *)in;
+  for(i=0; i<2; i++) {
+    for(j=0; j<8; j++) {
+      printf("%02x ", cin[8*i+j]);
+    }
+    printf("\n");
+  }
+  printf("\n");
+
+  paper_fluff(in, out);
+
+  uint8_t * cout = (uint8_t *)out;
+  for(i=0; i<4; i++) {
+    for(j=0; j<8; j++) {
+      printf("%02x ", cout[8*i+j]);
+    }
+    printf("\n");
+  }
+
+  return 0;
+}
+#else
+
+
 
   printf("N_CHAN_PER_PACKET=%u\n", N_CHAN_PER_PACKET);
   printf("N_TIME_PER_PACKET=%u\n", N_TIME_PER_PACKET);
@@ -38,17 +67,19 @@ int main(int argc, char *argv[])
 #ifdef DEBUG_FLUFF
   fluffed = paper_fluff(in, out);
 #else
-  for(j=0; j<8; j++) {
+  for(j=0; j<4; j++) {
     clock_gettime(CLOCK_MONOTONIC, &start);
     for(i=0; i<TEST_ITERATIONS; i++) {
       fluffed = paper_fluff(in, out);
     }
     clock_gettime(CLOCK_MONOTONIC, &stop);
-    printf("fluffed %d words in %.6f ms (%.3f us per packet)\n",
+    printf("fluffed %d words in %.6f ms (%.3f us per packet, %.3f Gbps)\n",
         fluffed, ELAPSED_NS(start, stop)/1e6/TEST_ITERATIONS,
-        ELAPSED_NS(start, stop)/1e3/TEST_ITERATIONS/N_WORDS_PER_PACKET);
+        ELAPSED_NS(start, stop)/1e3/TEST_ITERATIONS/N_PACKETS_PER_BLOCK,
+        (float)(fluffed*TEST_ITERATIONS*8*sizeof(uint64_t))/ELAPSED_NS(start, stop));
   }
 #endif // DEBUG_FLUFF_GEN
 
   return 0;
 }
+#endif // 1

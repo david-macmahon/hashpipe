@@ -66,9 +66,9 @@ static void *run(void * _args)
     int i, rv;
     uint64_t mcnt = 0;
     uint64_t *data;
-    int m,x,q,f,t,c;
+    int m,f,t,c;
 #ifdef FAKE_TEST_INPUT1
-    int q1, f1;
+    int f1;
 #endif
     int block_idx = 0;
     signal(SIGINT,cc);
@@ -133,21 +133,18 @@ static void *run(void * _args)
         data = db->block[block_idx].data;
         memset(data, 0, N_BYTES_PER_BLOCK);
 
-        x = FAKE_TEST_CHAN/N_CHAN_PER_X;
-        c = FAKE_TEST_CHAN%N_CHAN_PER_X;
-        q = FAKE_TEST_FID/4;
-        f = FAKE_TEST_FID%4;
+        c = FAKE_TEST_CHAN;
+        f = FAKE_TEST_FID;
 #ifdef FAKE_TEST_INPUT1
 #define FAKE_TEST_FID1 (FAKE_TEST_INPUT1/N_INPUTS_PER_PACKET)
-        q1 = FAKE_TEST_FID1/4;
-        f1 = FAKE_TEST_FID1%4;
+        f1 = FAKE_TEST_FID1;
 #endif
         for(m=0; m<Nm; m++) {
           for(t=0; t<Nt; t++) {
-            data[paper_input_databuf_data_idx(m,x,q,f,t,c)] =
+            data[paper_input_databuf_data_idx(m,f,t,c)] =
               ((uint64_t)0xf0) << (8*(7-(FAKE_TEST_INPUT%N_INPUTS_PER_PACKET)));
 #ifdef FAKE_TEST_INPUT1
-            data[paper_input_databuf_data_idx(m,x,q1,f1,t,c)] =
+            data[paper_input_databuf_data_idx(m,f1,t,c)] =
               ((uint64_t)0xf0) << (8*(7-(FAKE_TEST_INPUT1%N_INPUTS_PER_PACKET)));
 #endif
           }

@@ -80,6 +80,7 @@ static void *run(void * _args)
     int rv;
     int curblock_in=0;
     int curblock_out=0;
+    float gbps, min_gbps;
 
     struct timespec start, finish;
 
@@ -141,7 +142,12 @@ static void *run(void * _args)
         // Note processing time
         guppi_status_lock_safe(&st);
         // Bits per fluff / ns per fluff = Gbps
-        hputr4(st.buf, "FLUFGBPS", (float)(8*N_BYTES_PER_BLOCK)/ELAPSED_NS(start,finish));
+        hgetr4(st.buf, "FLUFMING", &min_gbps);
+        gbps = (float)(8*N_BYTES_PER_BLOCK)/ELAPSED_NS(start,finish);
+        hputr4(st.buf, "FLUFGBPS", gbps);
+        if(min_gbps == 0 || gbps < min_gbps) {
+          hputr4(st.buf, "FLUFMING", gbps);
+        }
         guppi_status_unlock_safe(&st);
 
         // Mark input block as free and advance
