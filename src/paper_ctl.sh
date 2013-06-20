@@ -6,13 +6,13 @@ PATH="$(dirname $0):${PATH}"
 instance_id=0
 
 # Set default intcount
-intcount=1024
+intcount=4096
 
 # Set intsync to empty value
 intsync=
 
 function get_sync_mcnt() {
-  echo $(( $(check_hashpipe_status -I $instance_id -Q GPUMCNT 2>/dev/null) + 2048 ))
+  echo $(( $(check_hashpipe_status -I $instance_id -Q GPUMCNT 2>/dev/null) + 8192 ))
 }
 
 function start() {
