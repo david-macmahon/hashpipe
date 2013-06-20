@@ -6,7 +6,6 @@
 
 #define _GNU_SOURCE 1
 #include <stdio.h>
-#include <signal.h>
 #include <time.h>
 
 #include <xgpu.h>
@@ -65,8 +64,6 @@ static void *run(void * _args)
     int error_count, max_error_count = 0;
     float *gpu_data, *cpu_data;
     float error, max_error = 0.0;
-    signal(SIGINT,cc);
-    signal(SIGTERM,cc);
     while (run_threads) {
 
         guppi_status_lock_safe(&st);

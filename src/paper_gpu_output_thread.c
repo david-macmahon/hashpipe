@@ -5,7 +5,6 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <signal.h>
 #include <time.h>
 #include <errno.h>
 #include <unistd.h>
@@ -498,8 +497,6 @@ static void *run(void * _args)
     int block_idx = 0;
     struct timespec start, stop;
     struct timespec pkt_start, pkt_stop;
-    signal(SIGINT,cc);
-    signal(SIGTERM,cc);
     while (run_threads) {
 
         guppi_status_lock_safe(&st);

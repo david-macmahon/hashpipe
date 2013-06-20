@@ -7,7 +7,6 @@
 
 #define _GNU_SOURCE 1
 #include <stdio.h>
-#include <signal.h>
 #include <time.h>
 
 #include "guppi_error.h"
@@ -64,8 +63,6 @@ static void *run(void * _args)
     /* Main loop */
     int rv;
     int block_idx = 0;
-    signal(SIGINT,cc);
-    signal(SIGTERM,cc);
     while (run_threads) {
 
         guppi_status_lock_safe(&st);

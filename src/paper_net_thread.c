@@ -12,7 +12,6 @@
 #include <stdint.h>
 #include <string.h>
 #include <pthread.h>
-#include <signal.h>
 #include <sched.h>
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -464,7 +463,6 @@ static void *run(void * _args)
     float ns_per_proc = 0.0;
     struct timespec start, stop;
     struct timespec recv_start, recv_stop;
-    signal(SIGINT,cc);
     while (run_threads) {
 
 #ifndef TIMING_TEST

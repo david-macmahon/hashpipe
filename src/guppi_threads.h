@@ -12,7 +12,6 @@
 
 /* SIGINT handling capability */
 extern int run_threads;
-extern void cc(int sig);
 
 /* Safe lock/unlock functions for status shared mem. */
 #define guppi_status_lock_safe(s) \

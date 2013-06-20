@@ -12,7 +12,6 @@
 #include <unistd.h>
 #include <string.h>
 #include <pthread.h>
-#include <signal.h>
 #include <sched.h>
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -67,8 +66,6 @@ static void *run(void * _args)
     int f1;
 #endif
     int block_idx = 0;
-    signal(SIGINT,cc);
-    signal(SIGTERM,cc);
     while (run_threads) {
 
         guppi_status_lock_safe(&st);
