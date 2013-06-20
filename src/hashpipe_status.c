@@ -19,9 +19,6 @@
 #include "guppi_error.h"
 #include "fitshead.h"
 
-// TODO Do '#include "guppi_threads.h"' instead?
-extern int run_threads;
-
 /*
  * Stores the guppi status (POSIX) semaphore name in semid buffer of length
  * size.  Returns 0 (no error) if semaphore name fit in given size, returns 1
@@ -156,7 +153,7 @@ int guppi_status_lock_busywait(struct guppi_status *s) {
     int rv;
     do {
       rv = sem_trywait(s->lock);
-    } while (rv == -1 && errno == EAGAIN && run_threads);
+    } while (rv == -1 && errno == EAGAIN);
     return rv;
 }
 

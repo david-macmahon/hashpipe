@@ -20,9 +20,6 @@
 #include "guppi_databuf.h"
 #include "guppi_error.h"
 
-// TODO Do '#include "guppi_threads.h"' instead?
-extern int run_threads;
-
 struct guppi_databuf *guppi_databuf_create(int instance_id, int n_block, size_t block_size,
         int databuf_id) {
 
@@ -245,6 +242,7 @@ int guppi_databuf_wait_free(struct guppi_databuf *d, int block_id) {
 #endif
             return(GUPPI_TIMEOUT);
         }
+        // Don't complain on a signal interruption
         if (errno==EINTR) return(GUPPI_ERR_SYS);
         guppi_error("guppi_databuf_wait_free", "semop error");
         perror("semop");
@@ -264,15 +262,9 @@ int guppi_databuf_busywait_free(struct guppi_databuf *d, int block_id) {
     //timeout.tv_nsec = 250000000;
     do {
       rv = semop(d->semid, &op, 1);
-    } while(rv == -1 && errno == EAGAIN && run_threads);
+    } while(rv == -1 && errno == EAGAIN);
     if (rv==-1) { 
-        if (errno==EAGAIN) {
-#ifdef GUPPI_TRACE
-            printf("%s(%p, %d) timeout (%016lx)\n",
-                __FUNCTION__, d, block_id, guppi_databuf_total_mask(d));
-#endif
-            return(GUPPI_TIMEOUT);
-        }
+        // Don't complain on a signal interruption
         if (errno==EINTR) return(GUPPI_ERR_SYS);
         guppi_error("guppi_databuf_busywait_free", "semop error");
         perror("semop");
@@ -330,9 +322,8 @@ int guppi_databuf_busywait_filled(struct guppi_databuf *d, int block_id) {
     //timeout.tv_nsec = 250000000;
     do {
       rv = semop(d->semid, op, 2);
-    } while(rv == -1 && errno == EAGAIN && run_threads);
+    } while(rv == -1 && errno == EAGAIN);
     if (rv==-1) { 
-        if (errno==EAGAIN) return(GUPPI_TIMEOUT);
         // Don't complain on a signal interruption
         if (errno==EINTR) return(GUPPI_ERR_SYS);
         guppi_error("guppi_databuf_busywait_filled", "semop error");
