@@ -22,10 +22,12 @@ static struct timespec now;
 
 #define SEMLOG(pd, msg)                                        \
   do {                                                         \
+    int orig_errno = errno;                                    \
     clock_gettime(CLOCK_MONOTONIC, &now);                      \
     fprintf(stderr, "%13ld tid %lu " msg " %d (%lx)\n",        \
         ELAPSED_NS(now), pthread_self(), block_id,             \
         guppi_databuf_total_mask((struct guppi_databuf *)pd)); \
+    errno = orig_errno;                                        \
   } while(0)
 
 #else

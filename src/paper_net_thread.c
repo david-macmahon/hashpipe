@@ -350,12 +350,8 @@ static inline uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper
 	netmcnt = paper_input_databuf_p->block[i].header.mcnt;
 	// Wait (hopefully not long!) for free block for this packet
 	if((rv = paper_input_databuf_busywait_free(paper_input_databuf_p, binfo.block_i)) != GUPPI_OK) {    
-	    if (rv==GUPPI_TIMEOUT) {
-		// run_threads() is 0 (i.e. shutting down)
-		// Actually, we no longer check run_threads() when waiting for
-		// databuf, so we never get GUPPI_TIMEOUT now.  Those wait
-		// functions should really return some other value to indicate
-		// they were interrupted! TODO
+	    if (errno == EINTR) {
+		// Interrupted by signal, return -1
 	        return -1;
 	    } else {
 	        guppi_error(__FUNCTION__, "error waiting for free databuf");
