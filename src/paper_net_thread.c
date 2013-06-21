@@ -178,7 +178,7 @@ int set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t 
 
 	if(paper_input_databuf_set_filled(paper_input_databuf_p, block_i) != GUPPI_OK) {
 	    guppi_error(__FUNCTION__, "error waiting for databuf filled call");
-	    run_threads=0;
+	    clear_run_threads();
 	    pthread_exit(NULL);
 	    return 0;
 	}
@@ -216,7 +216,7 @@ static inline int calc_block_indexes(block_info_t *binfo, packet_header_t * pkt_
 	sprintf(msg, "current packet mcnt %012lx less than mcnt start %012lx", pkt_header->mcnt, binfo->mcnt_start);
 	    guppi_error(__FUNCTION__, msg);
 	    //guppi_error(__FUNCTION__, "current packet mcnt less than mcnt start");
-	    //run_threads=0;
+	    //clear_run_threads();
 	    //pthread_exit(NULL);
 	    return -1;
     } else {
@@ -351,11 +351,15 @@ static inline uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper
 	// Wait (hopefully not long!) for free block for this packet
 	if((rv = paper_input_databuf_busywait_free(paper_input_databuf_p, binfo.block_i)) != GUPPI_OK) {    
 	    if (rv==GUPPI_TIMEOUT) {
-		// run_threads is 0 (i.e. shutting down)
+		// run_threads() is 0 (i.e. shutting down)
+		// Actually, we no longer check run_threads() when waiting for
+		// databuf, so we never get GUPPI_TIMEOUT now.  Those wait
+		// functions should really return some other value to indicate
+		// they were interrupted! TODO
 	        return -1;
 	    } else {
 	        guppi_error(__FUNCTION__, "error waiting for free databuf");
-	        run_threads=0;
+	        clear_run_threads();
 	        pthread_exit(NULL);
 	        return -1;
 	    }
@@ -463,7 +467,7 @@ static void *run(void * _args)
     float ns_per_proc = 0.0;
     struct timespec start, stop;
     struct timespec recv_start, recv_stop;
-    while (run_threads) {
+    while (run_threads()) {
 
 #ifndef TIMING_TEST
         /* Read packet */
@@ -472,8 +476,8 @@ static void *run(void * _args)
 	    clock_gettime(CLOCK_MONOTONIC, &start);
 	    p.packet_size = recv(up.sock, p.data, GUPPI_MAX_PACKET_SIZE, 0);
 	    clock_gettime(CLOCK_MONOTONIC, &recv_stop);
-	} while (p.packet_size == -1 && (errno == EAGAIN || errno == EWOULDBLOCK) && run_threads);
-	if(!run_threads) break;
+	} while (p.packet_size == -1 && (errno == EAGAIN || errno == EWOULDBLOCK) && run_threads());
+	if(!run_threads()) break;
         if (up.packet_size != p.packet_size) {
             if (p.packet_size != -1) {
                 #ifdef DEBUG_NET
@@ -527,7 +531,7 @@ static void *run(void * _args)
 	if(loop_count == 0) {
 	    clock_gettime(CLOCK_MONOTONIC, &tt_start);
 	}
-	//if(loop_count == 1000000) run_threads = 0; 
+	//if(loop_count == 1000000) clear_run_threads();
 	if(loop_count == END_LOOP_COUNT) {
 	    clock_gettime(CLOCK_MONOTONIC, &tt_stop);
 	    int64_t elapsed = ELAPSED_NS(tt_start, tt_stop);

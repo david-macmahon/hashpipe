@@ -66,7 +66,7 @@ static void *run(void * _args)
     int f1;
 #endif
     int block_idx = 0;
-    while (run_threads) {
+    while (run_threads()) {
 
         guppi_status_lock_safe(&st);
         hputs(st.buf, STATUS_KEY, "waiting");
@@ -93,7 +93,7 @@ static void *run(void * _args)
                 continue;
             } else {
                 guppi_error(__FUNCTION__, "error waiting for free databuf");
-                run_threads=0;
+                clear_run_threads();
                 pthread_exit(NULL);
                 break;
             }

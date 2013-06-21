@@ -10,8 +10,10 @@
 #include "hashpipe_status.h"
 #include "guppi_thread_args.h"
 
-/* SIGINT handling capability */
-extern int run_threads;
+/* Functions to query, set, and clear the "run_threads" flag. */
+int run_threads();
+void set_run_threads();
+void clear_run_threads();
 
 /* Safe lock/unlock functions for status shared mem. */
 #define guppi_status_lock_safe(s) \
@@ -26,19 +28,13 @@ extern int run_threads;
     guppi_status_unlock(s); \
     pthread_cleanup_pop(0);
 
+#ifdef STATUS_KEY
 /* Exit handler that updates status buffer */
-#ifndef STATUS_KEY
-#  define STATUS_KEY "XXXSTAT"
-#  define TMP_STATUS_KEY 1
-#endif
 static void set_exit_status(struct guppi_status *s) {
     guppi_status_lock(s);
     hputs(s->buf, STATUS_KEY, "exiting");
     guppi_status_unlock(s);
 }
-#if TMP_STATUS_KEY
-#  undef STATUS_KEY
-#  undef TMP_STATUS_KEY
-#endif
+#endif // STATUS_KEY
 
-#endif
+#endif // _GUPPI_THREADS_H

@@ -124,7 +124,7 @@ static void *run(void * _args, int doCPU)
         return THREAD_ERROR;
     }
 
-    while (run_threads) {
+    while (run_threads()) {
 
         // Note waiting status,
         // query integrating status
@@ -144,7 +144,7 @@ static void *run(void * _args, int doCPU)
                 continue;
             } else {
                 guppi_error(__FUNCTION__, "error waiting for filled databuf");
-                run_threads=0;
+                clear_run_threads();
                 pthread_exit(NULL);
                 break;
             }
@@ -223,7 +223,7 @@ static void *run(void * _args, int doCPU)
                   continue;
               } else {
                   guppi_error(__FUNCTION__, "error waiting for free databuf");
-                  run_threads=0;
+                  clear_run_threads();
                   pthread_exit(NULL);
                   break;
               }
@@ -297,7 +297,7 @@ static void *run(void * _args, int doCPU)
                     continue;
                 } else {
                     guppi_error(__FUNCTION__, "error waiting for free databuf");
-                    run_threads=0;
+                    clear_run_threads();
                     pthread_exit(NULL);
                     break;
                 }
@@ -326,7 +326,7 @@ static void *run(void * _args, int doCPU)
         /* Check for cancel */
         pthread_testcancel();
     }
-    run_threads=0;
+    clear_run_threads();
 
     xgpuFree(&context);
 

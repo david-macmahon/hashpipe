@@ -470,7 +470,7 @@ static void *run(void * _args)
     sockfd = open_udp_socket("catcher", stringify(CATCHER_PORT));
     if(sockfd == -1) {
         guppi_error(__FUNCTION__, "error opening socket");
-        run_threads=0;
+        clear_run_threads();
         pthread_exit(NULL);
     }
 
@@ -486,7 +486,7 @@ static void *run(void * _args)
         casper_index(2*i, 2*j);
       }
     }
-    run_threads=0;
+    clear_run_threads();
 #endif
 
     /* Main loop */
@@ -497,7 +497,7 @@ static void *run(void * _args)
     int block_idx = 0;
     struct timespec start, stop;
     struct timespec pkt_start, pkt_stop;
-    while (run_threads) {
+    while (run_threads()) {
 
         guppi_status_lock_safe(&st);
         hputs(st.buf, STATUS_KEY, "waiting");
@@ -513,7 +513,7 @@ static void *run(void * _args)
                 continue;
             } else {
                 guppi_error(__FUNCTION__, "error waiting for filled databuf");
-                run_threads=0;
+                clear_run_threads();
                 pthread_exit(NULL);
                 break;
             }

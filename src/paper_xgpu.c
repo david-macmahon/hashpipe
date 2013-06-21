@@ -22,8 +22,8 @@
 #include "hashpipe_status.h"
 #include "guppi_databuf.h"
 #include "paper_databuf.h"
-#include "guppi_thread_main.h"
 #include "fitshead.h"
+#include "guppi_threads.h"
 #include "paper_thread.h"
 
 #define MAX_THREADS (1024)
@@ -42,6 +42,11 @@ void usage(const char *argv0) {
 //    "  -b N, --size=N        Jump to input buffer B, output buffer B+1\n"
       , argv0
     );
+}
+
+static void cc(int sig)
+{
+    clear_run_threads();
 }
 
 int main(int argc, char *argv[])
@@ -227,6 +232,7 @@ int main(int argc, char *argv[])
     // Catch INT and TERM signals
     signal(SIGINT, cc);
     signal(SIGTERM, cc);
+    set_run_threads();
 
     // Start threads in reverse order
     for(i=num_threads-1; i >= 0; i--) {
@@ -247,8 +253,7 @@ int main(int argc, char *argv[])
     }
 
     /* Wait for SIGINT (i.e. control-c) or SIGTERM (aka "kill <pid>") */
-    run_threads=1;
-    while (run_threads) {
+    while (run_threads()) {
         sleep(1);
     }
 

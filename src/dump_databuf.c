@@ -10,7 +10,6 @@
 #include <sys/shm.h>
 
 #include "guppi_databuf.h"
-#include "guppi_thread_main.h"
 
 void usage() { 
     fprintf(stderr, 
