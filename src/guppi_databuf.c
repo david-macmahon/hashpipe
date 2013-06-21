@@ -130,7 +130,6 @@ void guppi_fitsbuf_clear(char *buf) {
     strncpy(buf, "END", 3);
 }
 
-#ifndef NEW_GBT
 char *guppi_databuf_header(struct guppi_databuf *d, int block_id) {
     return((char *)d + d->struct_size + block_id*d->header_size);
 }
@@ -139,23 +138,6 @@ char *guppi_databuf_data(struct guppi_databuf *d, int block_id) {
     return((char *)d + d->struct_size + d->n_block*d->header_size
             + block_id*d->block_size);
 }
-
-#else
-
-char *guppi_databuf_header(struct guppi_databuf *d, int block_id) {
-    return((char *)d + d->struct_size + block_id*d->header_size);
-}
-
-char *guppi_databuf_index(struct guppi_databuf *d, int block_id) {
-    return((char *)d + d->struct_size + d->n_block*d->header_size
-            + block_id*d->index_size);
-}
-
-char *guppi_databuf_data(struct guppi_databuf *d, int block_id) {
-    return((char *)d + d->struct_size + d->n_block*d->header_size
-            + d->n_block*d->index_size + block_id*d->block_size);
-}
-#endif
 
 struct guppi_databuf *guppi_databuf_attach(int instance_id, int databuf_id) {
 

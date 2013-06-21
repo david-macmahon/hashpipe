@@ -69,9 +69,6 @@ void guppi_fitsbuf_clear(char *buf);
  */
 char *guppi_databuf_header(struct guppi_databuf *d, int block_id);
 char *guppi_databuf_data(struct guppi_databuf *d, int block_id);
-#ifdef NEW_GBT
-char *guppi_databuf_index(struct guppi_databuf *d, int block_id);
-#endif
 
 /* Returns lock status for given block_id, or total for
  * whole array.
