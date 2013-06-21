@@ -51,7 +51,7 @@ static struct timespec now;
  * specializations).
  *
  * Many of the functions in guppi_databuf.c accept a pointer to a struct
- * guppi_databuf, but unfortunately some of them have VEGAS-specific code or
+ * guppi_databuf, but unfortunately some of them have non-generic code or
  * parameters which render them unsuitable for general use.
  *
  * For guppi_databuf.c function...
@@ -82,7 +82,7 @@ static struct timespec now;
 /*
  * guppi_databuf_create is non-general.  Instead of n_block and block_size, it
  * should take a single overall size since in the general case it cannot know
- * what size to allocate.  It also performs some VEGAS specific initialization
+ * what size to allocate.  It also performs some non-generic initialization
  * which we do not replicate here.
  *
  * paper_input_databuf_create has different behavior if the databuf to be
@@ -197,8 +197,8 @@ paper_input_databuf_t *paper_input_databuf_create(int instance_id, int databuf_i
 }
 
 /*
- * guppi_databuf_clear() does some VEGAS specific stuff so we have to duplicate
- * its non-VEGAS functionality here.
+ * guppi_databuf_clear() does some non-generic stuff so we have to duplicate
+ * its generic functionality here.
  */
 void paper_input_databuf_clear(struct paper_input_databuf *d)
 {
@@ -364,8 +364,8 @@ paper_gpu_input_databuf_t *paper_gpu_input_databuf_create(int instance_id, int d
 }
 
 /*
- * guppi_databuf_clear() does some VEGAS specific stuff so we have to duplicate
- * its non-VEGAS functionality here.
+ * guppi_databuf_clear() does some non-generic stuff so we have to duplicate
+ * its generic functionality here.
  */
 void paper_gpu_input_databuf_clear(struct paper_gpu_input_databuf *d)
 {
@@ -384,7 +384,7 @@ void paper_gpu_input_databuf_clear(struct paper_gpu_input_databuf *d)
 /*
  * guppi_databuf_create is non-general.  Instead of n_block and block_size, it
  * should take a single overall size since in the general case it cannot know
- * what size to allocate.  It also performs some VEGAS specific initialization
+ * what size to allocate.  It also performs some non-generic initialization
  * which we do not replicate here.
  *
  * paper_output_databuf_create has different behavior if the databuf to be
@@ -490,8 +490,8 @@ struct paper_output_databuf *paper_output_databuf_create(int instance_id, int da
 }
 
 /*
- * guppi_databuf_clear() does some VEGAS specific stuff so we have to duplicate
- * its non-VEGAS functionality here.
+ * guppi_databuf_clear() does some non-generic stuff so we have to duplicate
+ * its generic functionality here.
  */
 void paper_output_databuf_clear(paper_output_databuf_t *d)
 {

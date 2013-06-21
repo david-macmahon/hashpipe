@@ -22,15 +22,6 @@ AC_ARG_WITH([xgpu],
             [XGPUDIR="$withval"],
             [XGPUDIR=/usr/local])
 
-AC_ARG_ENABLE([vegas],
-            AC_HELP_STRING([--enable-vegas],
-                           [Enable compiltion of VEGAS programs (no)]),
-            [COMPILE_VEGAS="yes"
-             AC_SUBST(gnumake_endif,endif)],
-            [COMPILE_VEGAS="no"])
-
-AM_CONDITIONAL(COMPILE_VEGAS, [test "$COMPILE_VEGAS" = "yes"])
-
 # Set CFLAGS to nothing if it is not set by the user.  This prevents AC_PROG_CC
 # from setting the (supposedly reserved-for-the-user!) variable CFLAGS in
 # Makefile, which prevents AM_CFLAGS in Makefile.am from setting an
@@ -47,25 +38,6 @@ AC_PROG_CC
 orig_LDFLAGS="${LDFLAGS}"
 
 AC_CHECK_LIB([cfitsio], [ffclos])
-
-AS_IF([test "$COMPILE_VEGAS" = "yes"],[
-# Try CUDADIR/lib first
-AC_MSG_NOTICE([checking for libcufft in ${CUDADIR}/lib])
-LDFLAGS="${LDFLAGS} -L${CUDADIR}/lib"
-AC_CHECK_LIB([cufft], [cufftDestroy],
-             # Found
-             AC_SUBST(CUDALIBDIR,${CUDADIR}/lib),
-             # Not found there, check CUDADIR/lib64
-             AC_MSG_NOTICE([checking for libcufft in ${CUDADIR}/lib64])
-             AS_UNSET(ac_cv_lib_cufft_cufftDestroy)
-             LDFLAGS="${orig_LDFLAGS} -L${CUDADIR}/lib64"
-             AC_CHECK_LIB([cufft], [cufftDestroy],
-                          # Found
-                          AC_SUBST(CUDALIBDIR,${CUDADIR}/lib64),
-                          # Not found there, error
-                          AC_MSG_ERROR([VEGAS needs libcufft])))
-LDFLAGS="${orig_LDFLAGS}"
-],[]) # end AS_IF
 
 LDFLAGS="${orig_LDFLAGS} -L${XGPUDIR}/lib"
 AC_CHECK_LIB([xgpu], [xgpuInit],

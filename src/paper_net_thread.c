@@ -1,4 +1,4 @@
-/* vegas_net_thread.c
+/* paper_net_thread.c
  *
  * Routine to read packets from network and put them
  * into shared memory blocks.
