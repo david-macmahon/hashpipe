@@ -19,11 +19,11 @@
 #include <xgpu.h>
 
 #include "hashpipe_error.h"
+#include "fitshead.h"
 #include "hashpipe_status.h"
 #include "hashpipe_databuf.h"
+#include "hashpipe_thread.h"
 #include "paper_databuf.h"
-#include "fitshead.h"
-#include "paper_thread.h"
 
 #define MAX_THREADS (1024)
 

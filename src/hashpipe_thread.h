@@ -1,5 +1,5 @@
-#ifndef _PAPER_THREAD_H
-#define _PAPER_THREAD_H
+#ifndef _HASHPIPE_THREAD_H
+#define _HASHPIPE_THREAD_H
 
 #include <stdio.h>
 #include "fitshead.h"
@@ -129,7 +129,7 @@ int set_priority(int priority);
     THREAD_INIT_DETACH_STATUS(st);     \
   } while(0)
 
-// Create paper databuf of <type>
+// Create databuf of <type>
 #define THREAD_INIT_DATABUF(instance_id, type, block_id)     \
   do {                                                       \
     struct type *db;                                         \
@@ -140,7 +140,7 @@ int set_priority(int priority);
             block_id);                                       \
         return 1;                                            \
     }                                                        \
-    /* Detach from paper_databuf */                          \
+    /* Detach from databuf */                                \
     type##_detach(db);                                       \
   } while(0)
 
@@ -191,7 +191,7 @@ int set_priority(int priority);
     pthread_cleanup_pop(0);      \
     pthread_cleanup_pop(0);
 
-// Attaches to paper databuf of <type> identified by databuf_id
+// Attaches to databuf of <type> identified by databuf_id
 // and creates variable db for it.
 // Does 1 pthread_cleanup_push
 // Use THREAD_RUN_DETACH_DATAUF to pop it.
@@ -231,4 +231,4 @@ static inline void set_exit_status(struct hashpipe_status *s) {
 }
 #endif // STATUS_KEY
 
-#endif // _PAPER_THREAD_H
+#endif // _HASHPIPE_THREAD_H

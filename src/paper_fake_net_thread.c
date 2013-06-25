@@ -24,8 +24,8 @@
 #include "hashpipe_status.h"
 #include "paper_databuf.h"
 
-#define STATUS_KEY "NETSTAT"  /* Define before paper_thread.h */
-#include "paper_thread.h"
+#define STATUS_KEY "NETSTAT"  /* Define before hashpipe_thread.h */
+#include "hashpipe_thread.h"
 
 static int init(struct hashpipe_thread_args *args)
 {

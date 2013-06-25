@@ -21,8 +21,8 @@
 #include "paper_databuf.h"
 #include "paper_fluff.h"
 
-#define STATUS_KEY "FLUFSTAT"  /* Define before paper_thread.h */
-#include "paper_thread.h"
+#define STATUS_KEY "FLUFSTAT"  /* Define before hashpipe_thread.h */
+#include "hashpipe_thread.h"
 
 static int init(struct hashpipe_thread_args *args)
 {

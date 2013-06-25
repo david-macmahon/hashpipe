@@ -13,8 +13,8 @@
 #include "hashpipe_error.h"
 #include "paper_databuf.h"
 
-#define STATUS_KEY "CGOUT"  /* Define before paper_thread.h */
-#include "paper_thread.h"
+#define STATUS_KEY "CGOUT"  /* Define before hashpipe_thread.h */
+#include "hashpipe_thread.h"
 
 #define TOL (1e-5)
 

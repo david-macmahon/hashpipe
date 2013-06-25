@@ -12,8 +12,8 @@
 #include "hashpipe_error.h"
 #include "hashpipe_databuf.h"
 
-#define STATUS_KEY "NULLOUT"  /* Define before paper_thread.h */
-#include "paper_thread.h"
+#define STATUS_KEY "NULLOUT"  /* Define before hashpipe_thread.h */
+#include "hashpipe_thread.h"
 
 static int init(struct hashpipe_thread_args *args)
 {

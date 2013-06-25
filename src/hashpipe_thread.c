@@ -5,7 +5,7 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include "hashpipe_error.h"
-#include "paper_thread.h"
+#include "hashpipe_thread.h"
 
 #define MAX_MODULES 1024
 static pipeline_thread_module_t *module_list[MAX_MODULES];

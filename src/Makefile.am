@@ -35,8 +35,8 @@ paper_threads = $(paper_net)                  \
 
 paper_utils = $(guppi_utils) \
 	      paper_fluff.c  \
-	      paper_thread.c \
-	      paper_thread.h
+	      hashpipe_thread.c \
+	      hashpipe_thread.h
 
 bin_PROGRAMS += check_hashpipe_databuf
 check_hashpipe_databuf_SOURCES = check_hashpipe_databuf.c $(guppi_base)

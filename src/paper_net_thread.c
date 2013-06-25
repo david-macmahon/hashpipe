@@ -26,8 +26,8 @@
 #include "paper_databuf.h"
 #include "hashpipe_udp.h"
 
-#define STATUS_KEY "NETSTAT"  /* Define before paper_thread.h */
-#include "paper_thread.h"
+#define STATUS_KEY "NETSTAT"  /* Define before hashpipe_thread.h */
+#include "hashpipe_thread.h"
 
 #define DEBUG_NET
 
