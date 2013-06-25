@@ -1,0 +1,13 @@
+To build HASHPIPE from a freshly cloned repository you need to have autoconf
+anf automake and libtool installed.  Once those are in place, your can run the
+following commands to build HASHPIPE:
+
+$ cd src
+$ autoreconf -is
+$ ./configure
+$ make
+$ sudo make install
+
+Instead of "sudo make install", you can also run "make staging", which will
+perform a local install to a directory named "staging" under the "src"
+subdirectory.
