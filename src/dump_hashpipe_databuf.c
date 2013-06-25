@@ -9,7 +9,7 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
-#include "guppi_databuf.h"
+#include "hashpipe_databuf.h"
 
 void usage() { 
     fprintf(stderr, 
@@ -79,8 +79,8 @@ int main(int argc, char *argv[]) {
     }
 
     /* Create mem if asked, otherwise attach */
-    struct guppi_databuf *db=NULL;
-    db = guppi_databuf_attach(instance_id, db_id);
+    struct hashpipe_databuf *db=NULL;
+    db = hashpipe_databuf_attach(instance_id, db_id);
     if (db==NULL) { 
       fprintf(stderr, 
           "Error attaching to instance %d databuf %d (may not exist).\n",

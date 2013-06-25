@@ -1,4 +1,4 @@
-/* guppi_databuf.c
+/* hashpipe_databuf.c
  *
  * Routines for creating and accessing main data transfer
  * buffer in shared memory.
@@ -17,19 +17,19 @@
 #include "fitshead.h"
 #include "hashpipe_ipckey.h"
 #include "hashpipe_status.h"
-#include "guppi_databuf.h"
+#include "hashpipe_databuf.h"
 #include "hashpipe_error.h"
 
-struct guppi_databuf *guppi_databuf_create(int instance_id,
+struct hashpipe_databuf *hashpipe_databuf_create(int instance_id,
         int databuf_id, size_t header_size, size_t block_size, int n_block)
 {
     int rv = 0;
     int verify_sizing = 0;
     size_t total_size = header_size + block_size*n_block;
 
-    if(header_size < sizeof(struct guppi_databuf)) {
+    if(header_size < sizeof(struct hashpipe_databuf)) {
         hashpipe_error(__FUNCTION__, "header size must be larger than %lu",
-            sizeof(struct guppi_databuf));
+            sizeof(struct hashpipe_databuf));
         return NULL;
     }
 
@@ -54,7 +54,7 @@ struct guppi_databuf *guppi_databuf_create(int instance_id,
     }
 
     /* Attach */
-    struct guppi_databuf *d;
+    struct hashpipe_databuf *d;
     d = shmat(shmid, NULL, 0);
     if (d==(void *)-1) {
         hashpipe_error(__FUNCTION__, "shmat error");
@@ -121,7 +121,7 @@ struct guppi_databuf *guppi_databuf_create(int instance_id,
     return d;
 }
 
-int guppi_databuf_detach(struct guppi_databuf *d)
+int hashpipe_databuf_detach(struct hashpipe_databuf *d)
 {
     int rv = shmdt(d);
     if (rv!=0) {
@@ -131,7 +131,7 @@ int guppi_databuf_detach(struct guppi_databuf *d)
     return HASHPIPE_OK;
 }
 
-void guppi_databuf_clear(struct guppi_databuf *d)
+void hashpipe_databuf_clear(struct hashpipe_databuf *d)
 {
     /* Zero out semaphores */
     union semun arg;
@@ -143,12 +143,12 @@ void guppi_databuf_clear(struct guppi_databuf *d)
     // TODO memset to 0?
 }
 
-char *guppi_databuf_data(struct guppi_databuf *d, int block_id)
+char *hashpipe_databuf_data(struct hashpipe_databuf *d, int block_id)
 {
     return (char *)d + d->header_size + d->block_size*block_id;
 }
 
-struct guppi_databuf *guppi_databuf_attach(int instance_id, int databuf_id)
+struct hashpipe_databuf *hashpipe_databuf_attach(int instance_id, int databuf_id)
 {
 
     /* Get shmid */
@@ -167,7 +167,7 @@ struct guppi_databuf *guppi_databuf_attach(int instance_id, int databuf_id)
     }
 
     /* Attach */
-    struct guppi_databuf *d;
+    struct hashpipe_databuf *d;
     d = shmat(shmid, NULL, 0);
     if (d==(void *)-1) {
         hashpipe_error(__FUNCTION__, "shmat error");
@@ -178,12 +178,12 @@ struct guppi_databuf *guppi_databuf_attach(int instance_id, int databuf_id)
 
 }
 
-int guppi_databuf_block_status(struct guppi_databuf *d, int block_id)
+int hashpipe_databuf_block_status(struct hashpipe_databuf *d, int block_id)
 {
     return semctl(d->semid, block_id, GETVAL);
 }
 
-int guppi_databuf_total_status(struct guppi_databuf *d)
+int hashpipe_databuf_total_status(struct hashpipe_databuf *d)
 {
 
     /* Get all values at once */
@@ -198,7 +198,7 @@ int guppi_databuf_total_status(struct guppi_databuf *d)
 
 }
 
-uint64_t guppi_databuf_total_mask(struct guppi_databuf *d)
+uint64_t hashpipe_databuf_total_mask(struct hashpipe_databuf *d)
 {
 
     /* Get all values at once */
@@ -219,7 +219,7 @@ uint64_t guppi_databuf_total_mask(struct guppi_databuf *d)
     return tot;
 }
 
-int guppi_databuf_wait_free(struct guppi_databuf *d, int block_id)
+int hashpipe_databuf_wait_free(struct hashpipe_databuf *d, int block_id)
 {
     int rv;
     struct sembuf op;
@@ -232,9 +232,9 @@ int guppi_databuf_wait_free(struct guppi_databuf *d, int block_id)
     rv = semtimedop(d->semid, &op, 1, &timeout);
     if (rv==-1) {
         if (errno==EAGAIN) {
-#ifdef GUPPI_TRACE
+#ifdef HASHPIPE_TRACE
             printf("%s(%p, %d) timeout (%016lx)\n",
-                __FUNCTION__, d, block_id, guppi_databuf_total_mask(d));
+                __FUNCTION__, d, block_id, hashpipe_databuf_total_mask(d));
 #endif
             return HASHPIPE_TIMEOUT;
         }
@@ -247,7 +247,7 @@ int guppi_databuf_wait_free(struct guppi_databuf *d, int block_id)
     return 0;
 }
 
-int guppi_databuf_busywait_free(struct guppi_databuf *d, int block_id)
+int hashpipe_databuf_busywait_free(struct hashpipe_databuf *d, int block_id)
 {
     int rv;
     struct sembuf op;
@@ -270,7 +270,7 @@ int guppi_databuf_busywait_free(struct guppi_databuf *d, int block_id)
     return 0;
 }
 
-int guppi_databuf_wait_filled(struct guppi_databuf *d, int block_id)
+int hashpipe_databuf_wait_filled(struct hashpipe_databuf *d, int block_id)
 {
     /* This needs to wait for the semval of the given block
      * to become > 0, but NOT immediately decrement it to 0.
@@ -300,7 +300,7 @@ int guppi_databuf_wait_filled(struct guppi_databuf *d, int block_id)
     return 0;
 }
 
-int guppi_databuf_busywait_filled(struct guppi_databuf *d, int block_id)
+int hashpipe_databuf_busywait_filled(struct hashpipe_databuf *d, int block_id)
 {
     /* This needs to wait for the semval of the given block
      * to become > 0, but NOT immediately decrement it to 0.
@@ -332,7 +332,7 @@ int guppi_databuf_busywait_filled(struct guppi_databuf *d, int block_id)
     return 0;
 }
 
-int guppi_databuf_set_free(struct guppi_databuf *d, int block_id)
+int hashpipe_databuf_set_free(struct hashpipe_databuf *d, int block_id)
 {
     /* This function should always succeed regardless of the current
      * state of the specified databuf.  So we use semctl (not semop) to set
@@ -342,9 +342,9 @@ int guppi_databuf_set_free(struct guppi_databuf *d, int block_id)
     union semun arg;
     arg.val = 0;
     rv = semctl(d->semid, block_id, SETVAL, arg);
-#ifdef GUPPI_TRACE
+#ifdef HASHPIPE_TRACE
     printf("after %s(%p, %d) %016lx\n",
-        __FUNCTION__, d, block_id, guppi_databuf_total_mask(d));
+        __FUNCTION__, d, block_id, hashpipe_databuf_total_mask(d));
 #endif
     if (rv==-1) { 
         hashpipe_error(__FUNCTION__, "semctl error");
@@ -353,7 +353,7 @@ int guppi_databuf_set_free(struct guppi_databuf *d, int block_id)
     return 0;
 }
 
-int guppi_databuf_set_filled(struct guppi_databuf *d, int block_id)
+int hashpipe_databuf_set_filled(struct hashpipe_databuf *d, int block_id)
 {
     /* This function should always succeed regardless of the current
      * state of the specified databuf.  So we use semctl (not semop) to set
@@ -363,9 +363,9 @@ int guppi_databuf_set_filled(struct guppi_databuf *d, int block_id)
     union semun arg;
     arg.val = 1;
     rv = semctl(d->semid, block_id, SETVAL, arg);
-#ifdef GUPPI_TRACE
+#ifdef HASHPIPE_TRACE
     printf("after %s(%p, %d) %016lx\n",
-        __FUNCTION__, d, block_id, guppi_databuf_total_mask(d));
+        __FUNCTION__, d, block_id, hashpipe_databuf_total_mask(d));
 #endif
     if (rv==-1) { 
         hashpipe_error(__FUNCTION__, "semctl error");

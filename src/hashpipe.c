@@ -20,7 +20,7 @@
 
 #include "hashpipe_error.h"
 #include "hashpipe_status.h"
-#include "guppi_databuf.h"
+#include "hashpipe_databuf.h"
 #include "paper_databuf.h"
 #include "fitshead.h"
 #include "paper_thread.h"

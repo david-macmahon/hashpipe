@@ -9,7 +9,7 @@
 
 #include "fitshead.h"
 #include "hashpipe_status.h"
-#include "guppi_databuf.h"
+#include "hashpipe_databuf.h"
 
 void usage() { 
     fprintf(stderr, 
@@ -22,7 +22,7 @@ void usage() {
             "  -i n, --id=n (1)\n"
             "  -s MB, --blksize=MB (32)\n"
             "  -n n, --nblock=n (24)\n"
-            "  -H n, --hdrsize=n (sizeof(guppi_databuf))\n"
+            "  -H n, --hdrsize=n (sizeof(hashpipe_databuf))\n"
             );
 }
 
@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
     int db_id=1;
     int blocksize = 32;
     int nblock = 24;
-    size_t header_size = sizeof(struct guppi_databuf);
+    size_t header_size = sizeof(struct hashpipe_databuf);
     while ((opt=getopt_long(argc,argv,"hqI:ci:s:n:t:H:",long_opts,&opti))!=-1) {
         switch (opt) {
             case 'I':
@@ -80,16 +80,16 @@ int main(int argc, char *argv[]) {
     }
 
     /* Create mem if asked, otherwise attach */
-    struct guppi_databuf *db=NULL;
+    struct hashpipe_databuf *db=NULL;
     if (create) { 
-        db = guppi_databuf_create(instance_id, header_size, nblock, blocksize*1024*1024, db_id);
+        db = hashpipe_databuf_create(instance_id, header_size, nblock, blocksize*1024*1024, db_id);
         if (db==NULL) {
             fprintf(stderr, "Error creating databuf %d (may already exist).\n",
                     db_id);
             exit(1);
         }
     } else {
-        db = guppi_databuf_attach(instance_id, db_id);
+        db = hashpipe_databuf_attach(instance_id, db_id);
         if (db==NULL) { 
             fprintf(stderr, 
                     "Error attaching to databuf %d (may not exist).\n",

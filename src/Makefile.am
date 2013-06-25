@@ -6,13 +6,13 @@ ACLOCAL_AMFLAGS = -I m4
 bin_PROGRAMS  =
 noinst_PROGRAMS  =
 
-guppi_base = guppi_databuf.c \
+guppi_base = hashpipe_databuf.c \
 	     fitshead.h      \
 	     hashpipe_ipckey.h  \
 	     hashpipe_status.h  \
 	     guppi_udp.h     \
 	     guppi_thread_args.h \
-	     guppi_databuf.h \
+	     hashpipe_databuf.h \
 	     hashpipe_error.h
 
 guppi_net = $(guppi_base) \

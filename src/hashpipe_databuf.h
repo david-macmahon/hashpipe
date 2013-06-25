@@ -1,17 +1,17 @@
-/* guppi_databuf.h
+/* hashpipe_databuf.h
  *
  * Defines shared mem structure for data passing.
  * Includes routines to allocate / attach to shared
  * memory.
  */
-#ifndef _GUPPI_DATABUF_H
-#define _GUPPI_DATABUF_H
+#ifndef _HASHPIPE_DATABUF_H
+#define _HASHPIPE_DATABUF_H
 
 #include <stdint.h>
 #include <sys/ipc.h>
 #include <sys/sem.h>
 
-struct guppi_databuf {
+struct hashpipe_databuf {
     char data_type[64]; /* Type of data in buffer */
     size_t header_size; /* Size of each block header (bytes) */
     size_t block_size;  /* Size of each data block (bytes) */
@@ -30,45 +30,45 @@ union semun {
 
 /*
  * Get the base key to use for *all* guppi databufs.  The base key is obtained
- * by calling the ftok function, using the value of $GUPPI_KEYFILE, if defined,
- * or $HOME from the environment or, if $HOME is not defined, by using "/tmp".
- * By default (i.e. no GUPPI_KEYFILE in the environment), this will create and
- * connect to a user specific set of shared memory buffers (provided $HOME
- * exists in the environment), but if desired users can connect to any other
- * set of memory buffers by setting GUPPI_KEYFILE appropraitely.
+ * by calling the ftok function, using the value of $HASHPIPE_KEYFILE, if
+ * defined, or $HOME from the environment or, if $HOME is not defined, by using
+ * "/tmp".  By default (i.e. no HASHPIPE_KEYFILE in the environment), this will
+ * create and connect to a user specific set of shared memory buffers (provided
+ * $HOME exists in the environment), but if desired users can connect to any
+ * other set of memory buffers by setting HASHPIPE_KEYFILE appropraitely.
  */
-key_t guppi_databuf_key();
+key_t hashpipe_databuf_key();
 
 /* Create a new shared mem area with given params.  Returns pointer to the new
  * area on success, or NULL on error.  Returns error if an existing shmem area
  * exists with the given shmid and different sizing parameters.
  */
-struct guppi_databuf *guppi_databuf_create(int instance_id,
+struct hashpipe_databuf *hashpipe_databuf_create(int instance_id,
         int databuf_id, size_t header_size, size_t block_size, int n_block);
 
 /* Return a pointer to a existing shmem segment with given id.
  * Returns error if segment does not exist 
  */
-struct guppi_databuf *guppi_databuf_attach(int instance_id, int databuf_id);
+struct hashpipe_databuf *hashpipe_databuf_attach(int instance_id, int databuf_id);
 
 /* Detach from shared mem segment */
-int guppi_databuf_detach(struct guppi_databuf *d);
+int hashpipe_databuf_detach(struct hashpipe_databuf *d);
 
 /* Set all semaphores to 0, 
  * TODO: memset to 0 as well?
  */
-void guppi_databuf_clear(struct guppi_databuf *d);
+void hashpipe_databuf_clear(struct hashpipe_databuf *d);
 
 /* Returns pointer to the beginning of the given data block.
  */
-char *guppi_databuf_data(struct guppi_databuf *d, int block_id);
+char *hashpipe_databuf_data(struct hashpipe_databuf *d, int block_id);
 
 /* Returns lock status for given block_id, or total for
  * whole array.
  */
-int guppi_databuf_block_status(struct guppi_databuf *d, int block_id);
-int guppi_databuf_total_status(struct guppi_databuf *d);
-uint64_t guppi_databuf_total_mask(struct guppi_databuf *d);
+int hashpipe_databuf_block_status(struct hashpipe_databuf *d, int block_id);
+int hashpipe_databuf_total_status(struct hashpipe_databuf *d);
+uint64_t hashpipe_databuf_total_mask(struct hashpipe_databuf *d);
 
 /* Databuf locking functions.  Each block in the buffer
  * can be marked as free or filled.  The "wait" functions
@@ -78,12 +78,12 @@ uint64_t guppi_databuf_total_mask(struct guppi_databuf *d);
  * put the buffer in the specified state, returning error if
  * it is already in that state.
  */
-int guppi_databuf_wait_filled(struct guppi_databuf *d, int block_id);
-int guppi_databuf_busywait_filled(struct guppi_databuf *d, int block_id);
-int guppi_databuf_set_filled(struct guppi_databuf *d, int block_id);
-int guppi_databuf_wait_free(struct guppi_databuf *d, int block_id);
-int guppi_databuf_busywait_free(struct guppi_databuf *d, int block_id);
-int guppi_databuf_set_free(struct guppi_databuf *d, int block_id);
+int hashpipe_databuf_wait_filled(struct hashpipe_databuf *d, int block_id);
+int hashpipe_databuf_busywait_filled(struct hashpipe_databuf *d, int block_id);
+int hashpipe_databuf_set_filled(struct hashpipe_databuf *d, int block_id);
+int hashpipe_databuf_wait_free(struct hashpipe_databuf *d, int block_id);
+int hashpipe_databuf_busywait_free(struct hashpipe_databuf *d, int block_id);
+int hashpipe_databuf_set_free(struct hashpipe_databuf *d, int block_id);
 
 
-#endif
+#endif // _HASHPIPE_DATABUF_H

@@ -2,7 +2,7 @@
 #define _PAPER_DATABUF_H
 
 #include <stdint.h>
-#include "guppi_databuf.h"
+#include "hashpipe_databuf.h"
 #include "config.h"
 
 // Determined by F engine ADCs
@@ -108,14 +108,14 @@ typedef struct paper_input_block {
   uint64_t data[N_BYTES_PER_BLOCK/sizeof(uint64_t)];
 } paper_input_block_t;
 
-// Used to pad after guppi_databuf to maintain cache alignment
-typedef uint8_t guppi_databuf_cache_alignment[
-  CACHE_ALIGNMENT - (sizeof(struct guppi_databuf)%CACHE_ALIGNMENT)
+// Used to pad after hashpipe_databuf to maintain cache alignment
+typedef uint8_t hashpipe_databuf_cache_alignment[
+  CACHE_ALIGNMENT - (sizeof(struct hashpipe_databuf)%CACHE_ALIGNMENT)
 ];
 
 typedef struct paper_input_databuf {
-  struct guppi_databuf header;
-  guppi_databuf_cache_alignment padding; // Maintain cache alignment
+  struct hashpipe_databuf header;
+  hashpipe_databuf_cache_alignment padding; // Maintain cache alignment
   paper_input_block_t block[N_INPUT_BLOCKS+N_DEBUG_INPUT_BLOCKS];
 } paper_input_databuf_t;
 
@@ -160,8 +160,8 @@ typedef struct paper_gpu_input_block {
 } paper_gpu_input_block_t;
 
 typedef struct paper_gpu_input_databuf {
-  struct guppi_databuf header;
-  guppi_databuf_cache_alignment padding; // Maintain cache alignment
+  struct hashpipe_databuf header;
+  hashpipe_databuf_cache_alignment padding; // Maintain cache alignment
   paper_gpu_input_block_t block[N_GPU_INPUT_BLOCKS];
 } paper_gpu_input_databuf_t;
 
@@ -187,8 +187,8 @@ typedef struct paper_output_block {
 } paper_output_block_t;
 
 typedef struct paper_output_databuf {
-  struct guppi_databuf header;
-  guppi_databuf_cache_alignment padding; // Maintain cache alignment
+  struct hashpipe_databuf header;
+  hashpipe_databuf_cache_alignment padding; // Maintain cache alignment
   paper_output_block_t block[N_OUTPUT_BLOCKS];
 } paper_output_databuf_t;
 
@@ -200,27 +200,27 @@ paper_input_databuf_t *paper_input_databuf_create(int instance_id, int databuf_i
 
 static inline paper_input_databuf_t *paper_input_databuf_attach(int instance_id, int databuf_id)
 {
-    return (paper_input_databuf_t *)guppi_databuf_attach(instance_id, databuf_id);
+    return (paper_input_databuf_t *)hashpipe_databuf_attach(instance_id, databuf_id);
 }
 
 static inline int paper_input_databuf_detach(paper_input_databuf_t *d)
 {
-    return guppi_databuf_detach((struct guppi_databuf *)d);
+    return hashpipe_databuf_detach((struct hashpipe_databuf *)d);
 }
 
 static inline void paper_input_databuf_clear(paper_input_databuf_t *d)
 {
-    guppi_databuf_clear((struct guppi_databuf *)d);
+    hashpipe_databuf_clear((struct hashpipe_databuf *)d);
 }
 
 static inline int paper_input_databuf_block_status(paper_input_databuf_t *d, int block_id)
 {
-    return guppi_databuf_block_status((struct guppi_databuf *)d, block_id);
+    return hashpipe_databuf_block_status((struct hashpipe_databuf *)d, block_id);
 }
 
 static inline int paper_input_databuf_total_status(paper_input_databuf_t *d)
 {
-    return guppi_databuf_total_status((struct guppi_databuf *)d);
+    return hashpipe_databuf_total_status((struct hashpipe_databuf *)d);
 }
 
 
@@ -244,57 +244,57 @@ paper_gpu_input_databuf_t *paper_gpu_input_databuf_create(int instance_id, int d
 
 static inline void paper_gpu_input_databuf_clear(paper_gpu_input_databuf_t *d)
 {
-    guppi_databuf_clear((struct guppi_databuf *)d);
+    hashpipe_databuf_clear((struct hashpipe_databuf *)d);
 }
 
 static inline paper_gpu_input_databuf_t *paper_gpu_input_databuf_attach(int instance_id, int databuf_id)
 {
-    return (paper_gpu_input_databuf_t *)guppi_databuf_attach(instance_id, databuf_id);
+    return (paper_gpu_input_databuf_t *)hashpipe_databuf_attach(instance_id, databuf_id);
 }
 
 static inline int paper_gpu_input_databuf_detach(paper_gpu_input_databuf_t *d)
 {
-    return guppi_databuf_detach((struct guppi_databuf *)d);
+    return hashpipe_databuf_detach((struct hashpipe_databuf *)d);
 }
 
 static inline int paper_gpu_input_databuf_block_status(paper_gpu_input_databuf_t *d, int block_id)
 {
-    return guppi_databuf_block_status((struct guppi_databuf *)d, block_id);
+    return hashpipe_databuf_block_status((struct hashpipe_databuf *)d, block_id);
 }
 
 static inline int paper_gpu_input_databuf_total_status(paper_gpu_input_databuf_t *d)
 {
-    return guppi_databuf_total_status((struct guppi_databuf *)d);
+    return hashpipe_databuf_total_status((struct hashpipe_databuf *)d);
 }
 
 static inline int paper_gpu_input_databuf_wait_free(paper_gpu_input_databuf_t *d, int block_id)
 {
-    return guppi_databuf_wait_free((struct guppi_databuf *)d, block_id);
+    return hashpipe_databuf_wait_free((struct hashpipe_databuf *)d, block_id);
 }
 
 static inline int paper_gpu_input_databuf_busywait_free(paper_gpu_input_databuf_t *d, int block_id)
 {
-    return guppi_databuf_busywait_free((struct guppi_databuf *)d, block_id);
+    return hashpipe_databuf_busywait_free((struct hashpipe_databuf *)d, block_id);
 }
 
 static inline int paper_gpu_input_databuf_wait_filled(paper_gpu_input_databuf_t *d, int block_id)
 {
-    return guppi_databuf_wait_filled((struct guppi_databuf *)d, block_id);
+    return hashpipe_databuf_wait_filled((struct hashpipe_databuf *)d, block_id);
 }
 
 static inline int paper_gpu_input_databuf_busywait_filled(paper_gpu_input_databuf_t *d, int block_id)
 {
-    return guppi_databuf_busywait_filled((struct guppi_databuf *)d, block_id);
+    return hashpipe_databuf_busywait_filled((struct hashpipe_databuf *)d, block_id);
 }
 
 static inline int paper_gpu_input_databuf_set_free(paper_gpu_input_databuf_t *d, int block_id)
 {
-    return guppi_databuf_set_free((struct guppi_databuf *)d, block_id);
+    return hashpipe_databuf_set_free((struct hashpipe_databuf *)d, block_id);
 }
 
 static inline int paper_gpu_input_databuf_set_filled(paper_gpu_input_databuf_t *d, int block_id)
 {
-    return guppi_databuf_set_filled((struct guppi_databuf *)d, block_id);
+    return hashpipe_databuf_set_filled((struct hashpipe_databuf *)d, block_id);
 }
 
 /*
@@ -305,57 +305,57 @@ paper_output_databuf_t *paper_output_databuf_create(int instance_id, int databuf
 
 static inline void paper_output_databuf_clear(paper_output_databuf_t *d)
 {
-    guppi_databuf_clear((struct guppi_databuf *)d);
+    hashpipe_databuf_clear((struct hashpipe_databuf *)d);
 }
 
 static inline paper_output_databuf_t *paper_output_databuf_attach(int instance_id, int databuf_id)
 {
-    return (paper_output_databuf_t *)guppi_databuf_attach(instance_id, databuf_id);
+    return (paper_output_databuf_t *)hashpipe_databuf_attach(instance_id, databuf_id);
 }
 
 static inline int paper_output_databuf_detach(paper_output_databuf_t *d)
 {
-    return guppi_databuf_detach((struct guppi_databuf *)d);
+    return hashpipe_databuf_detach((struct hashpipe_databuf *)d);
 }
 
 static inline int paper_output_databuf_block_status(paper_output_databuf_t *d, int block_id)
 {
-    return guppi_databuf_block_status((struct guppi_databuf *)d, block_id);
+    return hashpipe_databuf_block_status((struct hashpipe_databuf *)d, block_id);
 }
 
 static inline int paper_output_databuf_total_status(paper_output_databuf_t *d)
 {
-    return guppi_databuf_total_status((struct guppi_databuf *)d);
+    return hashpipe_databuf_total_status((struct hashpipe_databuf *)d);
 }
 
 static inline int paper_output_databuf_wait_free(paper_output_databuf_t *d, int block_id)
 {
-    return guppi_databuf_wait_free((struct guppi_databuf *)d, block_id);
+    return hashpipe_databuf_wait_free((struct hashpipe_databuf *)d, block_id);
 }
 
 static inline int paper_output_databuf_busywait_free(paper_output_databuf_t *d, int block_id)
 {
-    return guppi_databuf_busywait_free((struct guppi_databuf *)d, block_id);
+    return hashpipe_databuf_busywait_free((struct hashpipe_databuf *)d, block_id);
 }
 
 static inline int paper_output_databuf_wait_filled(paper_output_databuf_t *d, int block_id)
 {
-    return guppi_databuf_wait_filled((struct guppi_databuf *)d, block_id);
+    return hashpipe_databuf_wait_filled((struct hashpipe_databuf *)d, block_id);
 }
 
 static inline int paper_output_databuf_busywait_filled(paper_output_databuf_t *d, int block_id)
 {
-    return guppi_databuf_busywait_filled((struct guppi_databuf *)d, block_id);
+    return hashpipe_databuf_busywait_filled((struct hashpipe_databuf *)d, block_id);
 }
 
 static inline int paper_output_databuf_set_free(paper_output_databuf_t *d, int block_id)
 {
-    return guppi_databuf_set_free((struct guppi_databuf *)d, block_id);
+    return hashpipe_databuf_set_free((struct hashpipe_databuf *)d, block_id);
 }
 
 static inline int paper_output_databuf_set_filled(paper_output_databuf_t *d, int block_id)
 {
-    return guppi_databuf_set_filled((struct guppi_databuf *)d, block_id);
+    return hashpipe_databuf_set_filled((struct hashpipe_databuf *)d, block_id);
 }
 
 #endif // _PAPER_DATABUF_H

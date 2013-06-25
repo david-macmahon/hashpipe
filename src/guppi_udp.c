@@ -16,7 +16,7 @@
 #include <endian.h>
 
 #include "guppi_udp.h"
-#include "guppi_databuf.h"
+#include "hashpipe_databuf.h"
 #include "hashpipe_error.h"
 
 int guppi_udp_init(struct guppi_udp_params *p) {
