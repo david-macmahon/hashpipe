@@ -13,13 +13,11 @@
 
 struct guppi_databuf {
     char data_type[64]; /* Type of data in buffer */
-    size_t struct_size; /* Size alloced for this struct (bytes) */
-    size_t block_size;  /* Size of each data block (bytes) */
     size_t header_size; /* Size of each block header (bytes) */
-    size_t index_size;  /* Size of each block's index (bytes) */
+    size_t block_size;  /* Size of each data block (bytes) */
+    int n_block;        /* Number of data blocks in buffer */
     int shmid;          /* ID of this shared mem segment */
     int semid;          /* ID of locking semaphore set */
-    int n_block;        /* Number of data blocks in buffer */
 };
 
 /* union for semaphore ops.  Is this really needed? */
@@ -41,13 +39,12 @@ union semun {
  */
 key_t guppi_databuf_key();
 
-/* Create a new shared mem area with given params.  Returns 
- * pointer to the new area on success, or NULL on error.  Returns
- * error if an existing shmem area exists with the given shmid (or
- * if other errors occured trying to allocate it).
+/* Create a new shared mem area with given params.  Returns pointer to the new
+ * area on success, or NULL on error.  Returns error if an existing shmem area
+ * exists with the given shmid and different sizing parameters.
  */
-struct guppi_databuf *guppi_databuf_create(int instance_id, int n_block, size_t block_size,
-        int databuf_id);
+struct guppi_databuf *guppi_databuf_create(int instance_id,
+        int databuf_id, size_t header_size, size_t block_size, int n_block);
 
 /* Return a pointer to a existing shmem segment with given id.
  * Returns error if segment does not exist 
@@ -57,12 +54,10 @@ struct guppi_databuf *guppi_databuf_attach(int instance_id, int databuf_id);
 /* Detach from shared mem segment */
 int guppi_databuf_detach(struct guppi_databuf *d);
 
-/* Clear out either the whole databuf (set all sems to 0, 
- * clear all header blocks) or a single FITS-style
- * header block.
+/* Set all semaphores to 0, 
+ * TODO: memset to 0 as well?
  */
 void guppi_databuf_clear(struct guppi_databuf *d);
-void guppi_fitsbuf_clear(char *buf);
 
 /* Returns pointer to the beginning of the given data block.
  */

@@ -20,23 +20,33 @@
 #include "guppi_databuf.h"
 #include "guppi_error.h"
 
-struct guppi_databuf *guppi_databuf_create(int instance_id, int n_block, size_t block_size,
-        int databuf_id) {
+struct guppi_databuf *guppi_databuf_create(int instance_id,
+        int databuf_id, size_t header_size, size_t block_size, int n_block)
+{
+    int rv = 0;
+    int verify_sizing = 0;
+    size_t total_size = header_size + block_size*n_block;
 
-    /* Calc databuf size */
-    const size_t header_size = GUPPI_STATUS_SIZE;
-    size_t struct_size = sizeof(struct guppi_databuf);
-    struct_size = 8192 * (1 + struct_size/8192); /* round up */
-    size_t databuf_size = (block_size+header_size) * n_block + struct_size;
+    if(header_size < sizeof(struct guppi_databuf)) {
+        guppi_error(__FUNCTION__, "header size must be larger than %lu",
+            sizeof(struct guppi_databuf));
+        return NULL;
+    }
 
-    /* Get shared memory block, error if it already exists */
+    /* Get shared memory block */
     key_t key = guppi_databuf_key(instance_id);
     if(key == GUPPI_KEY_ERROR) {
         guppi_error(__FUNCTION__, "guppi_databuf_key error");
         return NULL;
     }
     int shmid;
-    shmid = shmget(key + databuf_id - 1, databuf_size, 0666 | IPC_CREAT | IPC_EXCL);
+    shmid = shmget(key + databuf_id - 1, total_size, 0666 | IPC_CREAT | IPC_EXCL);
+    if (shmid==-1 && errno == EEXIST) {
+        // Already exists, call shmget again without IPC_CREAT
+        shmid = shmget(key + databuf_id - 1, total_size, 0666);
+        // Verify buffer sizing
+        verify_sizing = 1;
+    }
     if (shmid==-1) {
         perror("shmget");
         guppi_error(__FUNCTION__, "shmget error");
@@ -51,8 +61,26 @@ struct guppi_databuf *guppi_databuf_create(int instance_id, int n_block, size_t 
         return NULL;
     }
 
+    if(verify_sizing) {
+        // Make sure existing sizes match expectaions
+        if(d->header_size != header_size
+        || d->block_size != block_size
+        || d->n_block != n_block) {
+            char msg[256];
+            sprintf(msg, "existing databuf size mismatch "
+                "(%lu + %lu x %d) != (%lu + %ld x %d)",
+                d->header_size, d->block_size, d->n_block,
+                header_size, block_size, n_block);
+            guppi_error(__FUNCTION__, msg);
+            if(shmdt(d)) {
+                guppi_error(__FUNCTION__, "shmdt error");
+            }
+            return NULL;
+        }
+    }
+
     /* Try to lock in memory */
-    int rv = shmctl(shmid, SHM_LOCK, NULL);
+    rv = shmctl(shmid, SHM_LOCK, NULL);
     if (rv==-1) {
         perror("shmctl");
         guppi_error(__FUNCTION__, "Error locking shared memory.");
@@ -60,24 +88,15 @@ struct guppi_databuf *guppi_databuf_create(int instance_id, int n_block, size_t 
     }
 
     /* Zero out memory */
-    memset(d, 0, databuf_size);
+    memset(d, 0, total_size);
 
     /* Fill params into databuf */
-    int i;
-    char end_key[81];
-    memset(end_key, ' ', 80);
-    strncpy(end_key, "END", 3);
-    end_key[80]='\0';
     d->shmid = shmid;
     d->semid = 0;
-    d->n_block = n_block;
-    d->struct_size = struct_size;
-    d->block_size = block_size;
     d->header_size = header_size;
+    d->n_block = n_block;
+    d->block_size = block_size;
     sprintf(d->data_type, "unknown");
-    for (i=0; i<n_block; i++) { 
-        memcpy(guppi_databuf_header(d,i), end_key, 80); 
-    }
 
     /* Get semaphores set up */
     d->semid = semget(key + databuf_id - 1, n_block, 0666 | IPC_CREAT);
@@ -91,6 +110,12 @@ struct guppi_databuf *guppi_databuf_create(int instance_id, int n_block, size_t 
     arg.array = (unsigned short *)malloc(sizeof(unsigned short)*n_block);
     memset(arg.array, 0, sizeof(unsigned short)*n_block);
     rv = semctl(d->semid, 0, SETALL, arg);
+    if (rv==-1) {
+        perror("semctl");
+        guppi_error(__FUNCTION__, "Error clearing semaphores.");
+        free(arg.array);
+        return NULL;
+    }
     free(arg.array);
 
     return d;
@@ -115,23 +140,7 @@ void guppi_databuf_clear(struct guppi_databuf *d)
     semctl(d->semid, 0, SETALL, arg);
     free(arg.array);
 
-    /* Clear all headers */
-    int i;
-    for (i=0; i<d->n_block; i++) {
-        guppi_fitsbuf_clear(guppi_databuf_header(d, i));
-    }
-
-}
-
-void guppi_fitsbuf_clear(char *buf)
-{
-    char *end, *ptr;
-    end = ksearch(buf, "END");
-    if (end!=NULL) {
-        for (ptr=buf; ptr<=end; ptr+=80) memset(ptr, ' ', 80);
-    }
-    memset(buf, ' ' , 80);
-    strncpy(buf, "END", 3);
+    // TODO memset to 0?
 }
 
 char *guppi_databuf_data(struct guppi_databuf *d, int block_id)

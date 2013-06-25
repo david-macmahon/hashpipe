@@ -91,12 +91,11 @@ int main(int argc, char *argv[]) {
     /* Print basic info and exit if block not given */
     if(block == -1) {
       printf("Instance %d databuf %d stats:\n", instance_id, db_id);
-      printf("  shmid=%d\n", db->shmid);
-      printf("  semid=%d\n", db->semid);
-      printf("  n_block=%d\n", db->n_block);
-      printf("  struct_size=%zd (%#zx)\n", db->struct_size, db->struct_size);
       printf("  header_size=%zd (%#zx)\n", db->header_size, db->header_size);
       printf("  block_size=%zd (%#zx)\n", db->block_size, db->block_size);
+      printf("  n_block=%d\n", db->n_block);
+      printf("  shmid=%d\n", db->shmid);
+      printf("  semid=%d\n", db->semid);
       return 0;
     }
 

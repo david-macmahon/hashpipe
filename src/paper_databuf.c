@@ -80,26 +80,10 @@ static struct timespec now;
  */
 
 /*
- * guppi_databuf_create is non-general.  Instead of n_block and block_size, it
- * should take a single overall size since in the general case it cannot know
- * what size to allocate.  It also performs some non-generic initialization
- * which we do not replicate here.
- *
- * paper_input_databuf_create has different behavior if the databuf to be
- * created already exists.  Instead of erroring out immediately, it will attach
- * to the existing buffer and chek the sizes of the buffer with the sizes
- * passed in.  If they match, a pointer to the existing databuf is returned.
- * It the sizes do not match, NULL is returned (i.e. it is an error if the
- * databuf exists but the sizes do not match).
- *
- * In either case, the memory and semaphores will be cleared, so this method
- * should only be called at startup (e.g. from an initialization function)!
+ * Create, if needed, and attach to paper_input_databuf shared memory.
  */
 paper_input_databuf_t *paper_input_databuf_create(int instance_id, int databuf_id)
 {
-    int rv = 0;
-    int verify_sizing = 0;
-
 #ifdef DEBUG_SEMS
     // Init clock variables
     if(databuf_id==1) {
@@ -109,109 +93,14 @@ paper_input_databuf_t *paper_input_databuf_create(int instance_id, int databuf_i
     }
 #endif
 
-    /* Calc databuf size */
-    size_t paper_input_databuf_size = sizeof(paper_input_databuf_t);
+    /* Calc databuf sizes */
+    size_t header_size = sizeof(struct guppi_databuf)
+                       + sizeof(guppi_databuf_cache_alignment);
+    size_t block_size  = sizeof(paper_input_block_t);
+    int    n_block = N_INPUT_BLOCKS + N_DEBUG_INPUT_BLOCKS;
 
-    /* Get shared memory block */
-    key_t key = guppi_databuf_key(instance_id);
-    if(key == GUPPI_KEY_ERROR) {
-        guppi_error(__FUNCTION__, "guppi_databuf_key error");
-        return(NULL);
-    }
-    int shmid;
-    shmid = shmget(key + databuf_id - 1, paper_input_databuf_size, 0666 | IPC_CREAT | IPC_EXCL);
-    if (shmid==-1 && errno == EEXIST) {
-        // Already exists, call shmget again without IPC_CREAT
-        shmid = shmget(key + databuf_id - 1, paper_input_databuf_size, 0666);
-        // Verify buffer sizing
-        verify_sizing = 1;
-    }
-    if (shmid==-1) {
-        perror("shmget");
-        guppi_error(__FUNCTION__, "shmget error");
-        return(NULL);
-    }
-
-    /* Attach */
-    struct guppi_databuf *d;
-    d = shmat(shmid, NULL, 0);
-    if (d==(void *)-1) {
-        guppi_error(__FUNCTION__, "shmat error");
-        return(NULL);
-    }
-
-    if(verify_sizing) {
-        // Make sure existing sizes match expectaions
-        if(d->n_block != N_INPUT_BLOCKS || d->block_size != sizeof(paper_input_block_t)) {
-            char msg[128];
-            sprintf(msg, "existing databuf size mismatch (%d x %lu) != (%d x %lu)",
-                d->n_block, d->block_size, N_INPUT_BLOCKS, sizeof(paper_input_block_t));
-            guppi_error(__FUNCTION__, msg);
-            if(shmdt(d)) {
-                guppi_error(__FUNCTION__, "shmdt error");
-            }
-            return(NULL);
-        }
-    }
-
-    /* Try to lock in memory */
-    rv = shmctl(shmid, SHM_LOCK, NULL);
-    if (rv==-1) {
-        perror("shmctl");
-        guppi_error(__FUNCTION__, "Error locking shared memory.");
-        return NULL;
-    }
-
-    /* Zero out memory */
-    memset(d, 0, paper_input_databuf_size);
-
-    /* Fill params into databuf */
-    d->shmid = shmid;
-    d->semid = 0;
-    d->n_block = N_INPUT_BLOCKS;
-    d->header_size = sizeof(struct guppi_databuf) + sizeof(guppi_databuf_cache_alignment);
-    d->index_size = 0;
-    d->block_size = sizeof(paper_input_block_t);
-
-    /* Get semaphores set up */
-    d->semid = semget(key + databuf_id - 1, d->n_block, 0666 | IPC_CREAT);
-    if (d->semid==-1) { 
-        guppi_error(__FUNCTION__, "semget error");
-        return(NULL);
-    }
-
-    /* Init semaphores to 0 */
-    union semun arg;
-    arg.array = (unsigned short *)malloc(sizeof(unsigned short)*d->n_block);
-    memset(arg.array, 0, sizeof(unsigned short)*d->n_block);
-    rv = semctl(d->semid, 0, SETALL, arg);
-    if (rv==-1) {
-        perror("semctl");
-        guppi_error(__FUNCTION__, "Error clearing semaphores.");
-        free(arg.array);
-        return NULL;
-    }
-    free(arg.array);
-
-    return (struct paper_input_databuf *)d;
-}
-
-/*
- * guppi_databuf_clear() does some non-generic stuff so we have to duplicate
- * its generic functionality here.
- */
-void paper_input_databuf_clear(struct paper_input_databuf *d)
-{
-    struct guppi_databuf *g = (struct guppi_databuf *)d;
-
-    /* Zero out semaphores */
-    union semun arg;
-    arg.array = (unsigned short *)malloc(sizeof(unsigned short)*g->n_block);
-    memset(arg.array, 0, sizeof(unsigned short)*g->n_block);
-    semctl(g->semid, 0, SETALL, arg);
-    free(arg.array);
-
-    // TODO memset to 0?
+    return (paper_input_databuf_t *)guppi_databuf_create(
+        instance_id, databuf_id, header_size, block_size, n_block);
 }
 
 int paper_input_databuf_wait_free(struct paper_input_databuf *d, int block_id)
@@ -264,9 +153,6 @@ int paper_input_databuf_set_filled(struct paper_input_databuf *d, int block_id)
 
 paper_gpu_input_databuf_t *paper_gpu_input_databuf_create(int instance_id, int databuf_id)
 {
-    int rv = 0;
-    int verify_sizing = 0;
-
 #ifdef DEBUG_SEMS
     // Init clock variables
     if(databuf_id==1) {
@@ -276,233 +162,24 @@ paper_gpu_input_databuf_t *paper_gpu_input_databuf_create(int instance_id, int d
     }
 #endif
 
-    /* Calc databuf size */
-    size_t paper_gpu_input_databuf_size = sizeof(paper_gpu_input_databuf_t);
+    /* Calc databuf sizes */
+    size_t header_size = sizeof(struct guppi_databuf)
+                       + sizeof(guppi_databuf_cache_alignment);
+    size_t block_size  = sizeof(paper_gpu_input_block_t);
+    int    n_block = N_GPU_INPUT_BLOCKS;
 
-    /* Get shared memory block */
-    key_t key = guppi_databuf_key(instance_id);
-    if(key == GUPPI_KEY_ERROR) {
-        guppi_error(__FUNCTION__, "guppi_databuf_key error");
-        return(NULL);
-    }
-    int shmid;
-    shmid = shmget(key + databuf_id - 1, paper_gpu_input_databuf_size, 0666 | IPC_CREAT | IPC_EXCL);
-    if (shmid==-1 && errno == EEXIST) {
-        // Already exists, call shmget again without IPC_CREAT
-        shmid = shmget(key + databuf_id - 1, paper_gpu_input_databuf_size, 0666);
-        // Verify buffer sizing
-        verify_sizing = 1;
-    }
-    if (shmid==-1) {
-        perror("shmget");
-        guppi_error(__FUNCTION__, "shmget error");
-        return(NULL);
-    }
-
-    /* Attach */
-    struct guppi_databuf *d;
-    d = shmat(shmid, NULL, 0);
-    if (d==(void *)-1) {
-        guppi_error(__FUNCTION__, "shmat error");
-        return(NULL);
-    }
-
-    if(verify_sizing) {
-        // Make sure existing sizes match expectaions
-        if(d->n_block != N_GPU_INPUT_BLOCKS || d->block_size != sizeof(paper_gpu_input_block_t)) {
-            char msg[128];
-            sprintf(msg, "existing databuf size mismatch (%d x %lu) != (%d x %lu)",
-                d->n_block, d->block_size, N_GPU_INPUT_BLOCKS, sizeof(paper_gpu_input_block_t));
-            guppi_error(__FUNCTION__, msg);
-            if(shmdt(d)) {
-                guppi_error(__FUNCTION__, "shmdt error");
-            }
-            return(NULL);
-        }
-    }
-
-    /* Try to lock in memory */
-    rv = shmctl(shmid, SHM_LOCK, NULL);
-    if (rv==-1) {
-        perror("shmctl");
-        guppi_error(__FUNCTION__, "Error locking shared memory.");
-        return NULL;
-    }
-
-    /* Zero out memory */
-    memset(d, 0, paper_gpu_input_databuf_size);
-
-    /* Fill params into databuf */
-    d->shmid = shmid;
-    d->semid = 0;
-    d->n_block = N_GPU_INPUT_BLOCKS;
-    d->header_size = sizeof(struct guppi_databuf) + sizeof(guppi_databuf_cache_alignment);
-    d->index_size = 0;
-    d->block_size = sizeof(paper_gpu_input_block_t);
-
-    /* Get semaphores set up */
-    d->semid = semget(key + databuf_id - 1, d->n_block, 0666 | IPC_CREAT);
-    if (d->semid==-1) { 
-        guppi_error(__FUNCTION__, "semget error");
-        return(NULL);
-    }
-
-    /* Init semaphores to 0 */
-    union semun arg;
-    arg.array = (unsigned short *)malloc(sizeof(unsigned short)*d->n_block);
-    memset(arg.array, 0, sizeof(unsigned short)*d->n_block);
-    rv = semctl(d->semid, 0, SETALL, arg);
-    if (rv==-1) {
-        perror("semctl");
-        guppi_error(__FUNCTION__, "Error clearing semaphores.");
-        free(arg.array);
-        return NULL;
-    }
-    free(arg.array);
-
-    return (struct paper_gpu_input_databuf *)d;
+    return (paper_gpu_input_databuf_t *)guppi_databuf_create(
+        instance_id, databuf_id, header_size, block_size, n_block);
 }
 
-/*
- * guppi_databuf_clear() does some non-generic stuff so we have to duplicate
- * its generic functionality here.
- */
-void paper_gpu_input_databuf_clear(struct paper_gpu_input_databuf *d)
-{
-    struct guppi_databuf *g = (struct guppi_databuf *)d;
-
-    /* Zero out semaphores */
-    union semun arg;
-    arg.array = (unsigned short *)malloc(sizeof(unsigned short)*g->n_block);
-    memset(arg.array, 0, sizeof(unsigned short)*g->n_block);
-    semctl(g->semid, 0, SETALL, arg);
-    free(arg.array);
-
-    // TODO memset to 0?
-}
-
-/*
- * guppi_databuf_create is non-general.  Instead of n_block and block_size, it
- * should take a single overall size since in the general case it cannot know
- * what size to allocate.  It also performs some non-generic initialization
- * which we do not replicate here.
- *
- * paper_output_databuf_create has different behavior if the databuf to be
- * created already exists.  Instead of erroring out immediately, it will attach
- * to the existing buffer and chek the sizes of the buffer with the sizes
- * passed in.  If they match, a pointer to the existing databuf is returned.
- * It the sizes do not match, NULL is returned (i.e. it is an error if the
- * databuf exists but the sizes do not match).
- *
- * In either case, the memory and semaphores will be cleared, so this method
- * should only be called at startup (e.g. from an initialization function)!
- */
 struct paper_output_databuf *paper_output_databuf_create(int instance_id, int databuf_id)
 {
-    int rv = 0;
-    int verify_sizing = 0;
+    /* Calc databuf sizes */
+    size_t header_size = sizeof(struct guppi_databuf)
+                       + sizeof(guppi_databuf_cache_alignment);
+    size_t block_size  = sizeof(paper_output_block_t);
+    int    n_block = N_OUTPUT_BLOCKS;
 
-    /* Calc databuf size */
-    size_t databuf_size = sizeof(paper_output_databuf_t);
-
-    /* Get shared memory block, error if it already exists */
-    key_t key = guppi_databuf_key(instance_id);
-    if(key == GUPPI_KEY_ERROR) {
-        guppi_error(__FUNCTION__, "guppi_databuf_key error");
-        return(NULL);
-    }
-    int shmid;
-    shmid = shmget(key + databuf_id - 1, databuf_size, 0666 | IPC_CREAT | IPC_EXCL);
-    if (shmid==-1 && errno == EEXIST) {
-        // Already exists, call shmget again without IPC_CREAT
-        shmid = shmget(key + databuf_id - 1, databuf_size, 0666);
-        // Verify buffer sizing
-        verify_sizing = 1;
-    }
-    if (shmid==-1) {
-        perror("shmget");
-        guppi_error(__FUNCTION__, "shmget error");
-        return(NULL);
-    }
-
-    /* Attach */
-    struct guppi_databuf *d;
-    d = shmat(shmid, NULL, 0);
-    if (d==(void *)-1) {
-        guppi_error(__FUNCTION__, "shmat error");
-        return(NULL);
-    }
-
-    if(verify_sizing) {
-        // Make sure existing sizes match expectaions
-        if(d->n_block != N_OUTPUT_BLOCKS || d->block_size != sizeof(paper_output_block_t)) {
-            char msg[128];
-            sprintf(msg, "existing databuf size mismatch (%d x %lu) != (%d x %lu)",
-                d->n_block, d->block_size, N_OUTPUT_BLOCKS, sizeof(paper_output_block_t));
-            guppi_error(__FUNCTION__, msg);
-            if(shmdt(d)) {
-                guppi_error(__FUNCTION__, "shmdt error");
-            }
-            return(NULL);
-        }
-    }
-
-    /* Try to lock in memory */
-    rv = shmctl(shmid, SHM_LOCK, NULL);
-    if (rv==-1) {
-        perror("shmctl");
-        guppi_error(__FUNCTION__, "Error locking shared memory.");
-        return NULL;
-    }
-
-    /* Zero out memory */
-    memset(d, 0, databuf_size);
-
-    /* Fill params into databuf */
-    d->shmid = shmid;
-    d->semid = 0;
-    d->n_block = N_OUTPUT_BLOCKS;
-    d->header_size = sizeof(struct guppi_databuf) + sizeof(guppi_databuf_cache_alignment);
-    d->index_size = 0;
-    d->block_size = sizeof(paper_output_block_t);
-
-    /* Get semaphores set up */
-    d->semid = semget(key + databuf_id - 1, d->n_block, 0666 | IPC_CREAT);
-    if (d->semid==-1) {
-        guppi_error(__FUNCTION__, "semget error");
-        return(NULL);
-    }
-
-    /* Init semaphores to 0 */
-    union semun arg;
-    arg.array = (unsigned short *)malloc(sizeof(unsigned short)*d->n_block);
-    memset(arg.array, 0, sizeof(unsigned short)*d->n_block);
-    rv = semctl(d->semid, 0, SETALL, arg);
-    if (rv==-1) {
-        perror("semctl");
-        guppi_error(__FUNCTION__, "Error clearing semaphores.");
-        free(arg.array);
-        return NULL;
-    }
-    free(arg.array);
-
-    return (struct paper_output_databuf *)d;
-}
-
-/*
- * guppi_databuf_clear() does some non-generic stuff so we have to duplicate
- * its generic functionality here.
- */
-void paper_output_databuf_clear(paper_output_databuf_t *d)
-{
-    struct guppi_databuf *g = (struct guppi_databuf *)d;
-
-    /* Zero out semaphores */
-    union semun arg;
-    arg.array = (unsigned short *)malloc(sizeof(unsigned short)*g->n_block);
-    memset(arg.array, 0, sizeof(unsigned short)*g->n_block);
-    semctl(g->semid, 0, SETALL, arg);
-    free(arg.array);
-
-    // TODO memset to 0?
+    return (paper_output_databuf_t *)guppi_databuf_create(
+        instance_id, databuf_id, header_size, block_size, n_block);
 }

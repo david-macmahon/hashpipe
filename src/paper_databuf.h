@@ -209,7 +209,10 @@ static inline int paper_input_databuf_detach(paper_input_databuf_t *d)
     return guppi_databuf_detach((struct guppi_databuf *)d);
 }
 
-void paper_input_databuf_clear(paper_input_databuf_t *d);
+static inline void paper_input_databuf_clear(paper_input_databuf_t *d)
+{
+    guppi_databuf_clear((struct guppi_databuf *)d);
+}
 
 static inline int paper_input_databuf_block_status(paper_input_databuf_t *d, int block_id)
 {
@@ -240,7 +243,10 @@ int paper_input_databuf_set_filled(paper_input_databuf_t *d, int block_id);
 
 paper_gpu_input_databuf_t *paper_gpu_input_databuf_create(int instance_id, int databuf_id);
 
-void paper_gpu_input_databuf_clear(paper_gpu_input_databuf_t *d);
+static inline void paper_gpu_input_databuf_clear(paper_gpu_input_databuf_t *d)
+{
+    guppi_databuf_clear((struct guppi_databuf *)d);
+}
 
 static inline paper_gpu_input_databuf_t *paper_gpu_input_databuf_attach(int instance_id, int databuf_id)
 {
@@ -299,7 +305,10 @@ static inline int paper_gpu_input_databuf_set_filled(paper_gpu_input_databuf_t *
 
 paper_output_databuf_t *paper_output_databuf_create(int instance_id, int databuf_id);
 
-void paper_output_databuf_clear(paper_output_databuf_t *d);
+static inline void paper_output_databuf_clear(paper_output_databuf_t *d)
+{
+    guppi_databuf_clear((struct guppi_databuf *)d);
+}
 
 static inline paper_output_databuf_t *paper_output_databuf_attach(int instance_id, int databuf_id)
 {

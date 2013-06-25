@@ -30,7 +30,7 @@ void clear_run_threads();
 
 #ifdef STATUS_KEY
 /* Exit handler that updates status buffer */
-static void set_exit_status(struct guppi_status *s) {
+static inline void set_exit_status(struct guppi_status *s) {
     guppi_status_lock(s);
     hputs(s->buf, STATUS_KEY, "exiting");
     guppi_status_unlock(s);

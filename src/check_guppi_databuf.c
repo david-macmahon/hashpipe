@@ -20,9 +20,10 @@ void usage() {
             "  -q, --quiet\n"
             "  -I n, --instance=n (0)\n"
             "  -c, --create\n"
-            "  -i n, --id=n  (1)\n"
-            "  -s n, --size=n (32M)\n"
+            "  -i n, --id=n (1)\n"
+            "  -s MB, --blksize=MB (32)\n"
             "  -n n, --nblock=n (24)\n"
+            "  -H n, --hdrsize=n (sizeof(guppi_databuf))\n"
             );
 }
 
@@ -35,8 +36,9 @@ int main(int argc, char *argv[]) {
         {"instance", 1, NULL, 'I'},
         {"create", 0, NULL, 'c'},
         {"id",     1, NULL, 'i'},
-        {"size",   1, NULL, 's'},
+        {"blksize",   1, NULL, 's'},
         {"nblock", 1, NULL, 'n'},
+        {"hdrsize", 1, NULL, 'H'},
         {0,0,0,0}
     };
     int opt,opti;
@@ -46,7 +48,8 @@ int main(int argc, char *argv[]) {
     int db_id=1;
     int blocksize = 32;
     int nblock = 24;
-    while ((opt=getopt_long(argc,argv,"hqI:ci:s:n:t:",long_opts,&opti))!=-1) {
+    size_t header_size = sizeof(struct guppi_databuf);
+    while ((opt=getopt_long(argc,argv,"hqI:ci:s:n:t:H:",long_opts,&opti))!=-1) {
         switch (opt) {
             case 'I':
                 instance_id=atoi(optarg);
@@ -66,6 +69,9 @@ int main(int argc, char *argv[]) {
             case 'n':
                 nblock = atoi(optarg);
                 break;
+            case 'H':
+                header_size = atoi(optarg);
+                break;
             case 'h':
             default:
                 usage();
@@ -77,7 +83,7 @@ int main(int argc, char *argv[]) {
     /* Create mem if asked, otherwise attach */
     struct guppi_databuf *db=NULL;
     if (create) { 
-        db = guppi_databuf_create(instance_id, nblock, blocksize*1024*1024, db_id);
+        db = guppi_databuf_create(instance_id, header_size, nblock, blocksize*1024*1024, db_id);
         if (db==NULL) {
             fprintf(stderr, "Error creating databuf %d (may already exist).\n",
                     db_id);
@@ -99,35 +105,11 @@ int main(int argc, char *argv[]) {
 
     /* Print basic info */
     printf("databuf %d stats:\n", db_id);
+    printf("  header_size=%zd\n\n", db->header_size);
+    printf("  block_size=%zd\n", db->block_size);
+    printf("  n_block=%d\n", db->n_block);
     printf("  shmid=%d\n", db->shmid);
     printf("  semid=%d\n", db->semid);
-    printf("  n_block=%d\n", db->n_block);
-    printf("  struct_size=%zd\n", db->struct_size);
-    printf("  block_size=%zd\n", db->block_size);
-    printf("  header_size=%zd\n\n", db->header_size);
-
-    /* loop over blocks */
-    int i;
-    char buf[81];
-    char *hdr, *ptr, *hend;
-    for (i=0; i<db->n_block; i++) {
-        printf("block %d status=%d\n", i, 
-                guppi_databuf_block_status(db, i));
-        hdr = guppi_databuf_header(db, i);
-        hend = ksearch(hdr, "END");
-        if (hend==NULL) {
-            printf("header not initialized\n");
-        } else {
-            hend += 80;
-            printf("header:\n");
-            for (ptr=hdr; ptr<hend; ptr+=80) {
-                strncpy(buf, ptr, 80);
-                buf[79]='\0';
-                printf("%s\n", buf);
-            }
-        }
-
-    }
 
     exit(0);
 }
