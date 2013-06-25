@@ -17,9 +17,9 @@
 #define DEBUGOUT 0 
 
 /* Call this to log an error message */
-void guppi_error(const char *name, const char *msg);
+void guppi_error(const char *name, const char *msg, ...);
 
 /* Call this to log an warning message */
-void guppi_warn(const char *name, const char *msg);
+void guppi_warn(const char *name, const char *msg, ...);
 
 #endif

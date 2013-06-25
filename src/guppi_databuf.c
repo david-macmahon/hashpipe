@@ -134,13 +134,9 @@ void guppi_fitsbuf_clear(char *buf)
     strncpy(buf, "END", 3);
 }
 
-char *guppi_databuf_header(struct guppi_databuf *d, int block_id) {
-    return((char *)d + d->struct_size + block_id*d->header_size);
-}
-
-char *guppi_databuf_data(struct guppi_databuf *d, int block_id) {
-    return((char *)d + d->struct_size + d->n_block*d->header_size
-            + block_id*d->block_size);
+char *guppi_databuf_data(struct guppi_databuf *d, int block_id)
+{
+    return (char *)d + d->header_size + d->block_size*block_id;
 }
 
 struct guppi_databuf *guppi_databuf_attach(int instance_id, int databuf_id)

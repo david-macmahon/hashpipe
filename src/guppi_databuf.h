@@ -64,10 +64,8 @@ int guppi_databuf_detach(struct guppi_databuf *d);
 void guppi_databuf_clear(struct guppi_databuf *d);
 void guppi_fitsbuf_clear(char *buf);
 
-/* These return pointers to the header, the index or the data area for 
- * the given block_id.
+/* Returns pointer to the beginning of the given data block.
  */
-char *guppi_databuf_header(struct guppi_databuf *d, int block_id);
 char *guppi_databuf_data(struct guppi_databuf *d, int block_id);
 
 /* Returns lock status for given block_id, or total for
