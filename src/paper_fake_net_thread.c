@@ -23,7 +23,6 @@
 #include "hashpipe_error.h"
 #include "hashpipe_status.h"
 #include "paper_databuf.h"
-#include "guppi_udp.h"
 
 #define STATUS_KEY "NETSTAT"  /* Define before paper_thread.h */
 #include "paper_thread.h"

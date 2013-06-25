@@ -10,13 +10,13 @@ guppi_base = hashpipe_databuf.c \
 	     fitshead.h      \
 	     hashpipe_ipckey.h  \
 	     hashpipe_status.h  \
-	     guppi_udp.h     \
+	     hashpipe_udp.h     \
 	     hashpipe_thread_args.h \
 	     hashpipe_databuf.h \
 	     hashpipe_error.h
 
 guppi_net = $(guppi_base) \
-	    guppi_udp.c
+	    hashpipe_udp.c
 
 guppi_utils = hashpipe_thread_args.c
 

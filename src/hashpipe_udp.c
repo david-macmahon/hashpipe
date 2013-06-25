@@ -1,4 +1,4 @@
-/* guppi_udp.c
+/* hashpipe_udp.c
  *
  * UDP implementations.
  */
@@ -15,11 +15,11 @@
 #include <poll.h>
 #include <endian.h>
 
-#include "guppi_udp.h"
+#include "hashpipe_udp.h"
 #include "hashpipe_databuf.h"
 #include "hashpipe_error.h"
 
-int guppi_udp_init(struct guppi_udp_params *p) {
+int hashpipe_udp_init(struct hashpipe_udp_params *p) {
 
     /* Resolve local hostname to which we will bind */
     struct addrinfo hints;
@@ -30,9 +30,9 @@ int guppi_udp_init(struct guppi_udp_params *p) {
     hints.ai_protocol = 0;
     int rv = getaddrinfo(p->bindhost, NULL, &hints, &result);
     if (rv!=0) { 
-        hashpipe_error("guppi_udp_init", "getaddrinfo failed");
+        hashpipe_error("hashpipe_udp_init", "getaddrinfo failed");
         freeaddrinfo(result);
-        return(HASHPIPE_ERR_SYS);
+        return HASHPIPE_ERR_SYS;
     }
 
     // getaddrinfo() returns a list of address structures.
@@ -61,9 +61,9 @@ int guppi_udp_init(struct guppi_udp_params *p) {
     }
 
     if (rp == NULL) { // No address succeeded
-        hashpipe_error("guppi_udp_init", "Could not create/bind socket");
+        hashpipe_error("hashpipe_udp_init", "Could not create/bind socket");
         freeaddrinfo(result);
-        return(HASHPIPE_ERR_SYS);
+        return HASHPIPE_ERR_SYS;
     }
 
     /* Non-blocking recv */
@@ -74,22 +74,22 @@ int guppi_udp_init(struct guppi_udp_params *p) {
     socklen_t ss = sizeof(int);
     rv = setsockopt(p->sock, SOL_SOCKET, SO_RCVBUF, &bufsize, sizeof(int));
     if (rv<0) { 
-        hashpipe_error("guppi_udp_init", "Error setting rcvbuf size.");
+        hashpipe_error("hashpipe_udp_init", "Error setting rcvbuf size.");
         perror("setsockopt");
     } 
     rv = getsockopt(p->sock, SOL_SOCKET, SO_RCVBUF, &bufsize, &ss); 
     if (0 && rv==0) { 
-        printf("guppi_udp_init: SO_RCVBUF=%d\n", bufsize);
+        printf("hashpipe_udp_init: SO_RCVBUF=%d\n", bufsize);
     }
 
     /* Poll command */
     p->pfd.fd = p->sock;
     p->pfd.events = POLLIN;
 
-    return(HASHPIPE_OK);
+    return HASHPIPE_OK;
 }
 
-int guppi_udp_close(struct guppi_udp_params *p) {
+int hashpipe_udp_close(struct hashpipe_udp_params *p) {
     close(p->sock);
-    return(HASHPIPE_OK);
+    return HASHPIPE_OK;
 }

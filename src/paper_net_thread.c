@@ -24,7 +24,7 @@
 #include "hashpipe_error.h"
 #include "hashpipe_status.h"
 #include "paper_databuf.h"
-#include "guppi_udp.h"
+#include "hashpipe_udp.h"
 
 #define STATUS_KEY "NETSTAT"  /* Define before paper_thread.h */
 #include "paper_thread.h"
@@ -117,7 +117,7 @@ void dump_mcnt_log()
 }
 #endif
 
-static inline void get_header (struct guppi_udp_packet *p, packet_header_t * pkt_header)
+static inline void get_header (struct hashpipe_udp_packet *p, packet_header_t * pkt_header)
 {
 #ifdef TIMING_TEST
     static int pkt_counter=0;
@@ -293,7 +293,7 @@ static inline void initialize_block_info(paper_input_databuf_t *paper_input_data
 // Any return value other than -1 will be stored in the status memory as
 // NETMCNT, so it is important that values other than -1 are returned rarely
 // (i.e. when marking a block as filled)!!!
-static inline uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, struct guppi_udp_packet *p) {
+static inline uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper_input_databuf_p, struct hashpipe_udp_packet *p) {
 
     static block_info_t binfo;
     packet_header_t pkt_header;
@@ -419,7 +419,7 @@ static void *run(void * _args)
     hashpipe_status_unlock_safe(st_p);
 
     /* Read network params */
-    struct guppi_udp_params up = {
+    struct hashpipe_udp_params up = {
 	.bindhost = "0.0.0.0",
 	.bindport = 8511
     };
@@ -435,7 +435,7 @@ static void *run(void * _args)
     hputs(st.buf, STATUS_KEY, "running");
     hashpipe_status_unlock_safe(&st);
 
-    struct guppi_udp_packet p;
+    struct hashpipe_udp_packet p;
 
     /* Give all the threads a chance to start before opening network socket */
     sleep(1);
@@ -443,13 +443,13 @@ static void *run(void * _args)
 
 #ifndef TIMING_TEST
     /* Set up UDP socket */
-    int rv = guppi_udp_init(&up);
+    int rv = hashpipe_udp_init(&up);
     if (rv!=HASHPIPE_OK) {
         hashpipe_error("guppi_net_thread",
                 "Error opening UDP socket.");
         pthread_exit(NULL);
     }
-    pthread_cleanup_push((void *)guppi_udp_close, &up);
+    pthread_cleanup_push((void *)hashpipe_udp_close, &up);
 #endif
 
     /* Main loop */
@@ -469,7 +469,7 @@ static void *run(void * _args)
 	clock_gettime(CLOCK_MONOTONIC, &recv_start);
 	do {
 	    clock_gettime(CLOCK_MONOTONIC, &start);
-	    p.packet_size = recv(up.sock, p.data, GUPPI_MAX_PACKET_SIZE, 0);
+	    p.packet_size = recv(up.sock, p.data, HASHPIPE_MAX_PACKET_SIZE, 0);
 	    clock_gettime(CLOCK_MONOTONIC, &recv_stop);
 	} while (p.packet_size == -1 && (errno == EAGAIN || errno == EWOULDBLOCK) && run_threads());
 	if(!run_threads()) break;
@@ -481,8 +481,8 @@ static void *run(void * _args)
                 continue; 
             } else {
                 hashpipe_error("guppi_net_thread", 
-                        "guppi_udp_recv returned error");
-                perror("guppi_udp_recv");
+                        "hashpipe_udp_recv returned error");
+                perror("hashpipe_udp_recv");
                 pthread_exit(NULL);
             }
         }
@@ -543,7 +543,7 @@ static void *run(void * _args)
 
     /* Have to close all push's */
 #ifndef TIMING_TEST
-    pthread_cleanup_pop(0); /* Closes push(guppi_udp_close) */
+    pthread_cleanup_pop(0); /* Closes push(hashpipe_udp_close) */
 #endif
     THREAD_RUN_DETACH_DATAUF;
     THREAD_RUN_DETACH_STATUS;
