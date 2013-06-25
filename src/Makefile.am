@@ -56,9 +56,9 @@ bin_PROGRAMS += dump_databuf
 dump_databuf_SOURCES = dump_databuf.c $(guppi_base)
 dump_databuf_LDADD = libhashpipestatus.la -lm
 
-bin_PROGRAMS += paper_xgpu
-paper_xgpu_SOURCES = paper_xgpu.c $(paper_threads) $(paper_utils)
-paper_xgpu_LDADD = libhashpipestatus.la -lxgpu -lm -lrt
+bin_PROGRAMS += hashpipe
+hashpipe_SOURCES = hashpipe.c $(paper_threads) $(paper_utils)
+hashpipe_LDADD = libhashpipestatus.la -lxgpu -lm -lrt
 
 noinst_PROGRAMS += paper_fluff_test
 paper_fluff_test_SOURCES = paper_fluff_test.c paper_fluff.c

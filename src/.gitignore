@@ -7,8 +7,8 @@ check_guppi_databuf
 check_hashpipe_status
 clean_guppi_shmem
 dump_databuf
+hashpipe
 paper_fluff_test
-paper_xgpu
 *.so
 out0
 out1

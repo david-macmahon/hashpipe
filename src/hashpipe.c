@@ -1,7 +1,7 @@
 /*
- * paper_xgpu.c
+ * hashpipe.c
  *
- * The main PAPER xGPU program
+ * The main HASHPIPE program
  */
 #include <stdio.h>
 #include <stdlib.h>
