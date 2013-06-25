@@ -12,8 +12,7 @@
 #include "hashpipe_error.h"
 #include "guppi_databuf.h"
 
-#define STATUS_KEY "NULLOUT"  /* Define before guppi_threads.h */
-#include "guppi_threads.h"
+#define STATUS_KEY "NULLOUT"  /* Define before paper_thread.h */
 #include "paper_thread.h"
 
 static int init(struct guppi_thread_args *args)

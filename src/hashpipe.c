@@ -23,7 +23,6 @@
 #include "guppi_databuf.h"
 #include "paper_databuf.h"
 #include "fitshead.h"
-#include "guppi_threads.h"
 #include "paper_thread.h"
 
 #define MAX_THREADS (1024)

@@ -11,6 +11,23 @@
 static pipeline_thread_module_t *module_list[MAX_MODULES];
 static int num_modules = 0;
 
+static int run_threads_flag = 1;
+
+int run_threads()
+{
+  return run_threads_flag;
+}
+
+void set_run_threads()
+{
+  run_threads_flag = 1;
+}
+
+void clear_run_threads()
+{
+  run_threads_flag = 0;
+}
+
 int
 register_pipeline_thread_module(pipeline_thread_module_t * ptm)
 {

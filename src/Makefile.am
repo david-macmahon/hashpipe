@@ -11,8 +11,6 @@ guppi_base = guppi_databuf.c \
 	     hashpipe_ipckey.h  \
 	     hashpipe_status.h  \
 	     guppi_udp.h     \
-	     guppi_threads.h     \
-	     guppi_threads.c     \
 	     guppi_thread_args.h \
 	     guppi_databuf.h \
 	     hashpipe_error.h

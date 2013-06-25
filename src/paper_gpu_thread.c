@@ -31,8 +31,7 @@
 #include "hashpipe_status.h"
 #include "paper_databuf.h"
 
-#define STATUS_KEY "GPUSTAT"
-#include "guppi_threads.h"
+#define STATUS_KEY "GPUSTAT"  /* Define before paper_thread.h */
 #include "paper_thread.h"
 
 static int init(struct guppi_thread_args *args)

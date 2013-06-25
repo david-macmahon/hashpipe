@@ -21,8 +21,7 @@
 #include "paper_databuf.h"
 #include "paper_fluff.h"
 
-#define STATUS_KEY "FLUFSTAT"
-#include "guppi_threads.h"
+#define STATUS_KEY "FLUFSTAT"  /* Define before paper_thread.h */
 #include "paper_thread.h"
 
 static int init(struct guppi_thread_args *args)

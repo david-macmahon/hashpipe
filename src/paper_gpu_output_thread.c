@@ -19,8 +19,7 @@
 #include "hashpipe_error.h"
 #include "paper_databuf.h"
 
-#define STATUS_KEY "OUTSTAT"  /* Define before guppi_threads.h */
-#include "guppi_threads.h"
+#define STATUS_KEY "OUTSTAT"  /* Define before paper_thread.h */
 #include "paper_thread.h"
 
 // The PAPER cn_rx.py script receives UDP packets from multiple X engines and
