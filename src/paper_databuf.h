@@ -203,7 +203,6 @@ static inline paper_input_databuf_t *paper_input_databuf_attach(int instance_id,
     return (paper_input_databuf_t *)guppi_databuf_attach(instance_id, databuf_id);
 }
 
-/* Mimicking guppi_databuf's "detach" mispelling. */
 static inline int paper_input_databuf_detach(paper_input_databuf_t *d)
 {
     return guppi_databuf_detach((struct guppi_databuf *)d);
@@ -253,7 +252,6 @@ static inline paper_gpu_input_databuf_t *paper_gpu_input_databuf_attach(int inst
     return (paper_gpu_input_databuf_t *)guppi_databuf_attach(instance_id, databuf_id);
 }
 
-/* Mimicking guppi_databuf's "detach" mispelling. */
 static inline int paper_gpu_input_databuf_detach(paper_gpu_input_databuf_t *d)
 {
     return guppi_databuf_detach((struct guppi_databuf *)d);
@@ -315,7 +313,6 @@ static inline paper_output_databuf_t *paper_output_databuf_attach(int instance_i
     return (paper_output_databuf_t *)guppi_databuf_attach(instance_id, databuf_id);
 }
 
-/* Mimicking guppi_databuf's "detach" mispelling. */
 static inline int paper_output_databuf_detach(paper_output_databuf_t *d)
 {
     return guppi_databuf_detach((struct guppi_databuf *)d);
