@@ -29,7 +29,7 @@ function stop() {
   do
     echo "${2:-Stopping} X engines on ${x}"
     ssh obs@$x "
-      pkill $1 paper_xgpu
+      pkill $1 hashpipe
       pkill $1 -f hashpipe_redis_gateway.rb
     "
   done

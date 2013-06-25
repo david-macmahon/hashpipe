@@ -139,7 +139,7 @@ function init() {
   fi
 
   echo taskset $mask \
-  paper_xgpu -I $instance \
+  hashpipe -I $instance \
     -o BINDHOST=$bindhost \
     -o GPUDEV=$gpudev \
     -o XID=$xid \
@@ -149,7 +149,7 @@ function init() {
     -c $outcpu paper_gpu_output_thread
 
   taskset $mask \
-  paper_xgpu -I $instance \
+  hashpipe -I $instance \
     -o BINDHOST=$bindhost \
     -o GPUDEV=$gpudev \
     -o XID=$xid \
