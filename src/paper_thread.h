@@ -87,18 +87,18 @@ int set_priority(int priority);
 // Returns 1 from current function on error.
 #define THREAD_INIT_ATTACH_STATUS(instance_id, st, status_key) \
   /* Attach to status shared mem area */                       \
-  struct guppi_status st;                                      \
+  struct hashpipe_status st;                                   \
   do {                                                         \
-    int rv = guppi_status_attach(instance_id, &st);            \
-    if (rv!=GUPPI_OK) {                                        \
-        guppi_error(__FUNCTION__,                              \
+    int rv = hashpipe_status_attach(instance_id, &st);         \
+    if (rv!=HASHPIPE_OK) {                                     \
+        hashpipe_error(__FUNCTION__,                           \
                 "Error attaching to status shared memory.");   \
         return 1;                                              \
     }                                                          \
     /* Init status */                                          \
-    guppi_status_lock_safe(&st);                               \
+    hashpipe_status_lock_safe(&st);                            \
     hputs(st.buf, STATUS_KEY, "init");                         \
-    guppi_status_unlock_safe(&st);                             \
+    hashpipe_status_unlock_safe(&st);                          \
   } while(0)
 
 // Detach from guppi status shared memory.
@@ -106,9 +106,9 @@ int set_priority(int priority);
 #define THREAD_INIT_DETACH_STATUS(st)                          \
   do {                                                         \
     /* Detach from status shared mem area */                   \
-    int rv = guppi_status_detach(&st);                         \
-    if (rv!=GUPPI_OK) {                                        \
-        guppi_error(__FUNCTION__,                              \
+    int rv = hashpipe_status_detach(&st);                      \
+    if (rv!=HASHPIPE_OK) {                                     \
+        hashpipe_error(__FUNCTION__,                           \
                 "Error detaching from status shared memory."); \
         return 1;                                              \
     }                                                          \
@@ -123,19 +123,18 @@ int set_priority(int priority);
   } while(0)
 
 // Create paper databuf of <type>
-#define THREAD_INIT_DATABUF(instance_id, type, block_id) \
-  do {                                                                        \
-    struct type *db;                                                          \
-    db = type##_create(instance_id, block_id);           \
-    if (db==NULL) {                                                           \
-        char msg[256];                                                        \
-        sprintf(msg, "Error attaching to databuf(%d) shared memory.",         \
-                block_id);                                                    \
-        guppi_error(__FUNCTION__, msg);                                       \
-        return 1;                                                             \
-    }                                                                         \
-    /* Detach from paper_databuf */                                           \
-    type##_detach(db);                                                        \
+#define THREAD_INIT_DATABUF(instance_id, type, block_id)     \
+  do {                                                       \
+    struct type *db;                                         \
+    db = type##_create(instance_id, block_id);               \
+    if (db==NULL) {                                          \
+        hashpipe_error(__FUNCTION__,                         \
+            "Error attaching to databuf(%d) shared memory.", \
+            block_id);                                       \
+        return 1;                                            \
+    }                                                        \
+    /* Detach from paper_databuf */                          \
+    type##_detach(db);                                       \
   } while(0)
 
 // Macros for the run function
@@ -168,16 +167,16 @@ int set_priority(int priority);
 // Does 3 pthread_cleanup_push.
 // Use THREAD_RUN_DETACH_STATUS to pop them.
 #define THREAD_RUN_ATTACH_STATUS(instance_id, st)                \
-  struct guppi_status st;                                        \
+  struct hashpipe_status st;                                     \
   {                                                              \
-    int rv = guppi_status_attach(instance_id, &st);              \
-    if (rv!=GUPPI_OK) {                                          \
-        guppi_error(__FUNCTION__,                                \
+    int rv = hashpipe_status_attach(instance_id, &st);           \
+    if (rv!=HASHPIPE_OK) {                                       \
+        hashpipe_error(__FUNCTION__,                             \
                 "Error attaching to status shared memory.");     \
         return THREAD_ERROR;                                     \
     }                                                            \
   }                                                              \
-  pthread_cleanup_push((void *)guppi_status_detach, &st);        \
+  pthread_cleanup_push((void *)hashpipe_status_detach, &st);     \
   pthread_cleanup_push((void *)set_exit_status, &st);
 
 // Pops pthread cleanup for THREAD_RUN_ATTACH_STATUS
@@ -189,15 +188,14 @@ int set_priority(int priority);
 // and creates variable db for it.
 // Does 1 pthread_cleanup_push
 // Use THREAD_RUN_DETACH_DATAUF to pop it.
-#define THREAD_RUN_ATTACH_DATABUF(instance_id, type,db,databuf_id)  \
-  struct type *db = type##_attach(instance_id, databuf_id);         \
-  if (db==NULL) {                                                   \
-      char msg[256];                                                \
-      sprintf(msg, "Error attaching to databuf(%d) shared memory.", \
-              databuf_id);                                          \
-      guppi_error(__FUNCTION__, msg);                               \
-      return THREAD_ERROR;                                          \
-  }                                                                 \
+#define THREAD_RUN_ATTACH_DATABUF(instance_id, type,db,databuf_id) \
+  struct type *db = type##_attach(instance_id, databuf_id);        \
+  if (db==NULL) {                                                  \
+      hashpipe_error(__FUNCTION__,                                 \
+          "Error attaching to databuf(%d) shared memory.",         \
+          databuf_id);                                             \
+      return THREAD_ERROR;                                         \
+  }                                                                \
   pthread_cleanup_push((void *)type##_detach, db);
 
 // Pops pthread cleanup for THREAD_RUN_ATTACH_STATUS

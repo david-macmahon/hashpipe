@@ -27,7 +27,7 @@
 #endif
 
 #include "fitshead.h"
-#include "guppi_error.h"
+#include "hashpipe_error.h"
 #include "hashpipe_status.h"
 #include "paper_databuf.h"
 
@@ -85,14 +85,14 @@ static void *run(void * _args, int doCPU)
 
     // Init integration control status variables
     int gpu_dev = 0;
-    guppi_status_lock_safe(&st);
+    hashpipe_status_lock_safe(&st);
     hputs(st.buf,  "INTSTAT", "off");
     hputi8(st.buf, "INTSYNC", 0);
     hputi4(st.buf, "INTCOUNT", N_SUB_BLOCKS_PER_INPUT_BLOCK);
     hputi8(st.buf, "GPUDUMPS", 0);
     hgeti4(st.buf, "GPUDEV", &gpu_dev); // No change if not found
     hputi4(st.buf, "GPUDEV", gpu_dev);
-    guppi_status_unlock_safe(&st);
+    hashpipe_status_unlock_safe(&st);
 
     /* Loop */
     int rv;
@@ -129,21 +129,21 @@ static void *run(void * _args, int doCPU)
         // Note waiting status,
         // query integrating status
         // and, if armed, start count
-        guppi_status_lock_safe(&st);
+        hashpipe_status_lock_safe(&st);
         hputs(st.buf, STATUS_KEY, "waiting");
         hgets(st.buf,  "INTSTAT", 16, integ_status);
         hgeti8(st.buf, "INTSYNC", (long long*)&start_mcount);
-        guppi_status_unlock_safe(&st);
+        hashpipe_status_unlock_safe(&st);
 
         // Wait for new input block to be filled
-        while ((rv=paper_gpu_input_databuf_wait_filled(db_in, curblock_in)) != GUPPI_OK) {
-            if (rv==GUPPI_TIMEOUT) {
-                guppi_status_lock_safe(&st);
+        while ((rv=paper_gpu_input_databuf_wait_filled(db_in, curblock_in)) != HASHPIPE_OK) {
+            if (rv==HASHPIPE_TIMEOUT) {
+                hashpipe_status_lock_safe(&st);
                 hputs(st.buf, STATUS_KEY, "blocked_in");
-                guppi_status_unlock_safe(&st);
+                hashpipe_status_unlock_safe(&st);
                 continue;
             } else {
-                guppi_error(__FUNCTION__, "error waiting for filled databuf");
+                hashpipe_error(__FUNCTION__, "error waiting for filled databuf");
                 clear_run_threads();
                 pthread_exit(NULL);
                 break;
@@ -151,10 +151,10 @@ static void *run(void * _args, int doCPU)
         }
 
         // Got a new data block, update status and determine how to handle it
-        guppi_status_lock_safe(&st);
+        hashpipe_status_lock_safe(&st);
         hputi4(st.buf, "GPUBLKIN", curblock_in);
         hputu8(st.buf, "GPUMCNT", db_in->block[curblock_in].header.mcnt);
-        guppi_status_unlock_safe(&st);
+        hashpipe_status_unlock_safe(&st);
 
         // If integration status "off"
         if(!strcmp(integ_status, "off")) {
@@ -181,10 +181,10 @@ static void *run(void * _args, int doCPU)
               // Read integration count (INTCOUNT)
               fprintf(stderr, "--- integration on ---\n");
               strcpy(integ_status, "on");
-              guppi_status_lock_safe(&st);
+              hashpipe_status_lock_safe(&st);
               hputs(st.buf,  "INTSTAT", integ_status);
               hgeti4(st.buf, "INTCOUNT", &int_count);
-              guppi_status_unlock_safe(&st);
+              hashpipe_status_unlock_safe(&st);
               // Compute last mcount
               last_mcount = start_mcount + (int_count-1) * N_SUB_BLOCKS_PER_INPUT_BLOCK;
             // Else (missed starting mcount)
@@ -199,9 +199,9 @@ static void *run(void * _args, int doCPU)
         // Integration status is "on" or "stop"
 
         // Note processing status
-        guppi_status_lock_safe(&st);
+        hashpipe_status_lock_safe(&st);
         hputs(st.buf, STATUS_KEY, "processing gpu");
-        guppi_status_unlock_safe(&st);
+        hashpipe_status_unlock_safe(&st);
 
 
         // Setup for current chunk
@@ -215,14 +215,14 @@ static void *run(void * _args, int doCPU)
         if(db_in->block[curblock_in].header.mcnt == last_mcount || doCPU) {
           doDump = 1;
           // Wait for new output block to be free
-          while ((rv=paper_output_databuf_wait_free(db_out, curblock_out)) != GUPPI_OK) {
-              if (rv==GUPPI_TIMEOUT) {
-                  guppi_status_lock_safe(&st);
+          while ((rv=paper_output_databuf_wait_free(db_out, curblock_out)) != HASHPIPE_OK) {
+              if (rv==HASHPIPE_TIMEOUT) {
+                  hashpipe_status_lock_safe(&st);
                   hputs(st.buf, STATUS_KEY, "blocked gpu out");
-                  guppi_status_unlock_safe(&st);
+                  hashpipe_status_unlock_safe(&st);
                   continue;
               } else {
-                  guppi_error(__FUNCTION__, "error waiting for free databuf");
+                  hashpipe_error(__FUNCTION__, "error waiting for free databuf");
                   clear_run_threads();
                   pthread_exit(NULL);
                   break;
@@ -256,9 +256,9 @@ static void *run(void * _args, int doCPU)
           if(!strcmp(integ_status, "stop")) {
             // Set integration status to "off"
             strcpy(integ_status, "off");
-            guppi_status_lock_safe(&st);
+            hashpipe_status_lock_safe(&st);
             hputs(st.buf,  "INTSTAT", integ_status);
-            guppi_status_unlock_safe(&st);
+            hashpipe_status_unlock_safe(&st);
           } else {
             // Advance last_mcount for end of next integration
             last_mcount += int_count * N_SUB_BLOCKS_PER_INPUT_BLOCK;
@@ -271,10 +271,10 @@ static void *run(void * _args, int doCPU)
 
           // Update GPU dump counter and GPU Gbps
           gpu_dumps++;
-          guppi_status_lock_safe(&st);
+          hashpipe_status_lock_safe(&st);
           hputi8(st.buf, "GPUDUMPS", gpu_dumps);
           hputr4(st.buf, "GPUGBPS", (float)(8*N_FLUFFED_BYTES_PER_BLOCK*gpu_block_count)/elapsed_gpu_ns);
-          guppi_status_unlock_safe(&st);
+          hashpipe_status_unlock_safe(&st);
 
           // Start new average
           elapsed_gpu_ns  = 0;
@@ -284,19 +284,19 @@ static void *run(void * _args, int doCPU)
         if(doCPU) {
 
             /* Note waiting status */
-            guppi_status_lock_safe(&st);
+            hashpipe_status_lock_safe(&st);
             hputs(st.buf, STATUS_KEY, "waiting");
-            guppi_status_unlock_safe(&st);
+            hashpipe_status_unlock_safe(&st);
 
             // Wait for new output block to be free
-            while ((rv=paper_output_databuf_wait_free(db_out, curblock_out)) != GUPPI_OK) {
-                if (rv==GUPPI_TIMEOUT) {
-                    guppi_status_lock_safe(&st);
+            while ((rv=paper_output_databuf_wait_free(db_out, curblock_out)) != HASHPIPE_OK) {
+                if (rv==HASHPIPE_TIMEOUT) {
+                    hashpipe_status_lock_safe(&st);
                     hputs(st.buf, STATUS_KEY, "blocked cpu out");
-                    guppi_status_unlock_safe(&st);
+                    hashpipe_status_unlock_safe(&st);
                     continue;
                 } else {
-                    guppi_error(__FUNCTION__, "error waiting for free databuf");
+                    hashpipe_error(__FUNCTION__, "error waiting for free databuf");
                     clear_run_threads();
                     pthread_exit(NULL);
                     break;
@@ -304,9 +304,9 @@ static void *run(void * _args, int doCPU)
             }
 
             // Note "processing cpu" status, current input block
-            guppi_status_lock_safe(&st);
+            hashpipe_status_lock_safe(&st);
             hputs(st.buf, STATUS_KEY, "processing cpu");
-            guppi_status_unlock_safe(&st);
+            hashpipe_status_unlock_safe(&st);
 
             /*
              * Call CPU X engine function

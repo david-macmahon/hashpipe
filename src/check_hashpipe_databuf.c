@@ -8,7 +8,6 @@
 #include <string.h>
 
 #include "fitshead.h"
-#include "guppi_error.h"
 #include "hashpipe_status.h"
 #include "guppi_databuf.h"
 

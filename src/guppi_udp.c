@@ -17,7 +17,7 @@
 
 #include "guppi_udp.h"
 #include "guppi_databuf.h"
-#include "guppi_error.h"
+#include "hashpipe_error.h"
 
 int guppi_udp_init(struct guppi_udp_params *p) {
 
@@ -30,9 +30,9 @@ int guppi_udp_init(struct guppi_udp_params *p) {
     hints.ai_protocol = 0;
     int rv = getaddrinfo(p->bindhost, NULL, &hints, &result);
     if (rv!=0) { 
-        guppi_error("guppi_udp_init", "getaddrinfo failed");
+        hashpipe_error("guppi_udp_init", "getaddrinfo failed");
         freeaddrinfo(result);
-        return(GUPPI_ERR_SYS);
+        return(HASHPIPE_ERR_SYS);
     }
 
     // getaddrinfo() returns a list of address structures.
@@ -61,9 +61,9 @@ int guppi_udp_init(struct guppi_udp_params *p) {
     }
 
     if (rp == NULL) { // No address succeeded
-        guppi_error("guppi_udp_init", "Could not create/bind socket");
+        hashpipe_error("guppi_udp_init", "Could not create/bind socket");
         freeaddrinfo(result);
-        return(GUPPI_ERR_SYS);
+        return(HASHPIPE_ERR_SYS);
     }
 
     /* Non-blocking recv */
@@ -74,7 +74,7 @@ int guppi_udp_init(struct guppi_udp_params *p) {
     socklen_t ss = sizeof(int);
     rv = setsockopt(p->sock, SOL_SOCKET, SO_RCVBUF, &bufsize, sizeof(int));
     if (rv<0) { 
-        guppi_error("guppi_udp_init", "Error setting rcvbuf size.");
+        hashpipe_error("guppi_udp_init", "Error setting rcvbuf size.");
         perror("setsockopt");
     } 
     rv = getsockopt(p->sock, SOL_SOCKET, SO_RCVBUF, &bufsize, &ss); 
@@ -86,10 +86,10 @@ int guppi_udp_init(struct guppi_udp_params *p) {
     p->pfd.fd = p->sock;
     p->pfd.events = POLLIN;
 
-    return(GUPPI_OK);
+    return(HASHPIPE_OK);
 }
 
 int guppi_udp_close(struct guppi_udp_params *p) {
     close(p->sock);
-    return(GUPPI_OK);
+    return(HASHPIPE_OK);
 }

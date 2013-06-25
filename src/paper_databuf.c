@@ -35,10 +35,9 @@ static struct timespec now;
 #endif // DEBUG_SEMS
 
 #include "fitshead.h"
-#include "guppi_ipckey.h"
 #include "hashpipe_status.h"
 #include "paper_databuf.h"
-#include "guppi_error.h"
+#include "hashpipe_error.h"
 
 /*
  * Since the first element of struct paper_input_databuf is a struct

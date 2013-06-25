@@ -1,4 +1,4 @@
-/* guppi_error.c
+/* hashpipe_error.c
  *
  * Error handling routine
  */
@@ -6,12 +6,12 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <string.h>
-#include "guppi_error.h"
+#include "hashpipe_error.h"
 
 /* For now just put it all to stderr.
  * Maybe do something clever like a stack in the future?
  */
-void guppi_error(const char *name, const char *msg, ...) {
+void hashpipe_error(const char *name, const char *msg, ...) {
     fprintf(stderr, "Error (%s)", name);
     if(msg) {
         va_list ap;
@@ -27,7 +27,7 @@ void guppi_error(const char *name, const char *msg, ...) {
     fflush(stderr);
 }
 
-void guppi_warn(const char *name, const char *msg, ...) {
+void hashpipe_warn(const char *name, const char *msg, ...) {
     fprintf(stderr, "Warning (%s)", name);
     if(msg) {
         va_list ap;

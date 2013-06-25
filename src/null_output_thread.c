@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <time.h>
 
-#include "guppi_error.h"
+#include "hashpipe_error.h"
 #include "guppi_databuf.h"
 
 #define STATUS_KEY "NULLOUT"  /* Define before guppi_threads.h */
@@ -54,7 +54,7 @@ static void *run(void * _args)
         char msg[256];
         sprintf(msg, "Error attaching to databuf(%d) shared memory.",
                 args->input_buffer);
-        guppi_error(__FUNCTION__, msg);
+        hashpipe_error(__FUNCTION__, msg);
         return THREAD_ERROR;
     }
     pthread_cleanup_push((void *)guppi_databuf_detach, db);
@@ -65,19 +65,19 @@ static void *run(void * _args)
     int block_idx = 0;
     while (run_threads()) {
 
-        guppi_status_lock_safe(&st);
+        hashpipe_status_lock_safe(&st);
         hputs(st.buf, STATUS_KEY, "waiting");
-        guppi_status_unlock_safe(&st);
+        hashpipe_status_unlock_safe(&st);
 
         // Wait for new block to be filled
-        while ((rv=guppi_databuf_wait_filled(db, block_idx)) != GUPPI_OK) {
-            if (rv==GUPPI_TIMEOUT) {
-                guppi_status_lock_safe(&st);
+        while ((rv=guppi_databuf_wait_filled(db, block_idx)) != HASHPIPE_OK) {
+            if (rv==HASHPIPE_TIMEOUT) {
+                hashpipe_status_lock_safe(&st);
                 hputs(st.buf, STATUS_KEY, "blocked");
-                guppi_status_unlock_safe(&st);
+                hashpipe_status_unlock_safe(&st);
                 continue;
             } else {
-                guppi_error(__FUNCTION__, "error waiting for filled databuf");
+                hashpipe_error(__FUNCTION__, "error waiting for filled databuf");
                 clear_run_threads();
                 pthread_exit(NULL);
                 break;
@@ -85,10 +85,10 @@ static void *run(void * _args)
         }
 
         // Note processing status, current input block
-        guppi_status_lock_safe(&st);
+        hashpipe_status_lock_safe(&st);
         hputs(st.buf, STATUS_KEY, "processing");
         hputi4(st.buf, "NULBLKIN", block_idx);
-        guppi_status_unlock_safe(&st);
+        hashpipe_status_unlock_safe(&st);
 
         // Mark block as free
         guppi_databuf_set_free(db, block_idx);

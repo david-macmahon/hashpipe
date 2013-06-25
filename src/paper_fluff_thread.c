@@ -16,7 +16,7 @@
 #include <sys/types.h>
 
 #include "fitshead.h"
-#include "guppi_error.h"
+#include "hashpipe_error.h"
 #include "hashpipe_status.h"
 #include "paper_databuf.h"
 #include "paper_fluff.h"
@@ -70,9 +70,9 @@ static void *run(void * _args)
         paper_gpu_input_databuf, db_out, args->output_buffer);
 
     // Init status variables
-    guppi_status_lock_safe(&st);
+    hashpipe_status_lock_safe(&st);
     hputi8(st.buf, "FLUFMCNT", 0);
-    guppi_status_unlock_safe(&st);
+    hashpipe_status_unlock_safe(&st);
 
     /* Loop */
     int rv;
@@ -87,19 +87,19 @@ static void *run(void * _args)
         // Note waiting status,
         // query integrating status
         // and, if armed, start count
-        guppi_status_lock_safe(&st);
+        hashpipe_status_lock_safe(&st);
         hputs(st.buf, STATUS_KEY, "waiting");
-        guppi_status_unlock_safe(&st);
+        hashpipe_status_unlock_safe(&st);
 
         // Wait for new input block to be filled
-        while ((rv=paper_input_databuf_wait_filled(db_in, curblock_in)) != GUPPI_OK) {
-            if (rv==GUPPI_TIMEOUT) {
-                guppi_status_lock_safe(&st);
+        while ((rv=paper_input_databuf_wait_filled(db_in, curblock_in)) != HASHPIPE_OK) {
+            if (rv==HASHPIPE_TIMEOUT) {
+                hashpipe_status_lock_safe(&st);
                 hputs(st.buf, STATUS_KEY, "blocked_in");
-                guppi_status_unlock_safe(&st);
+                hashpipe_status_unlock_safe(&st);
                 continue;
             } else {
-                guppi_error(__FUNCTION__, "error waiting for filled databuf");
+                hashpipe_error(__FUNCTION__, "error waiting for filled databuf");
                 clear_run_threads();
                 pthread_exit(NULL);
                 break;
@@ -107,14 +107,14 @@ static void *run(void * _args)
         }
 
         // Wait for new gpu_input block (our output block) to be free
-        while ((rv=paper_gpu_input_databuf_wait_free(db_out, curblock_out)) != GUPPI_OK) {
-            if (rv==GUPPI_TIMEOUT) {
-                guppi_status_lock_safe(&st);
+        while ((rv=paper_gpu_input_databuf_wait_free(db_out, curblock_out)) != HASHPIPE_OK) {
+            if (rv==HASHPIPE_TIMEOUT) {
+                hashpipe_status_lock_safe(&st);
                 hputs(st.buf, STATUS_KEY, "blocked gpu input");
-                guppi_status_unlock_safe(&st);
+                hashpipe_status_unlock_safe(&st);
                 continue;
             } else {
-                guppi_error(__FUNCTION__, "error waiting for free databuf");
+                hashpipe_error(__FUNCTION__, "error waiting for free databuf");
                 clear_run_threads();
                 pthread_exit(NULL);
                 break;
@@ -122,11 +122,11 @@ static void *run(void * _args)
         }
 
         // Got a new data block, update status
-        guppi_status_lock_safe(&st);
+        hashpipe_status_lock_safe(&st);
         hputs(st.buf, STATUS_KEY, "fluffing");
         hputi4(st.buf, "FLUFBKIN", curblock_in);
         hputu8(st.buf, "FLUFMCNT", db_in->block[curblock_in].header.mcnt);
-        guppi_status_unlock_safe(&st);
+        hashpipe_status_unlock_safe(&st);
 
         // Copy header and call fluff function
         clock_gettime(CLOCK_MONOTONIC, &start);
@@ -138,7 +138,7 @@ static void *run(void * _args)
         clock_gettime(CLOCK_MONOTONIC, &finish);
 
         // Note processing time
-        guppi_status_lock_safe(&st);
+        hashpipe_status_lock_safe(&st);
         // Bits per fluff / ns per fluff = Gbps
         hgetr4(st.buf, "FLUFMING", &min_gbps);
         gbps = (float)(8*N_BYTES_PER_BLOCK)/ELAPSED_NS(start,finish);
@@ -146,7 +146,7 @@ static void *run(void * _args)
         if(min_gbps == 0 || gbps < min_gbps) {
           hputr4(st.buf, "FLUFMING", gbps);
         }
-        guppi_status_unlock_safe(&st);
+        hashpipe_status_unlock_safe(&st);
 
         // Mark input block as free and advance
         paper_input_databuf_set_free(db_in, curblock_in);

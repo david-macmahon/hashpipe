@@ -20,7 +20,7 @@
 #include <xgpu.h>
 
 #include "fitshead.h"
-#include "guppi_error.h"
+#include "hashpipe_error.h"
 #include "hashpipe_status.h"
 #include "paper_databuf.h"
 #include "guppi_udp.h"
@@ -68,9 +68,9 @@ static void *run(void * _args)
     int block_idx = 0;
     while (run_threads()) {
 
-        guppi_status_lock_safe(&st);
+        hashpipe_status_lock_safe(&st);
         hputs(st.buf, STATUS_KEY, "waiting");
-        guppi_status_unlock_safe(&st);
+        hashpipe_status_unlock_safe(&st);
  
 #if 0
         // xgpuRandomComplex is super-slow so no need to sleep
@@ -85,24 +85,24 @@ static void *run(void * _args)
          * if necessary and fill its header with new values.
          */
         while ((rv=paper_input_databuf_wait_free(db, block_idx)) 
-                != GUPPI_OK) {
-            if (rv==GUPPI_TIMEOUT) {
-                guppi_status_lock_safe(&st);
+                != HASHPIPE_OK) {
+            if (rv==HASHPIPE_TIMEOUT) {
+                hashpipe_status_lock_safe(&st);
                 hputs(st.buf, STATUS_KEY, "blocked");
-                guppi_status_unlock_safe(&st);
+                hashpipe_status_unlock_safe(&st);
                 continue;
             } else {
-                guppi_error(__FUNCTION__, "error waiting for free databuf");
+                hashpipe_error(__FUNCTION__, "error waiting for free databuf");
                 clear_run_threads();
                 pthread_exit(NULL);
                 break;
             }
         }
 
-        guppi_status_lock_safe(&st);
+        hashpipe_status_lock_safe(&st);
         hputs(st.buf, STATUS_KEY, "receiving");
         hputi4(st.buf, "NETBKOUT", block_idx);
-        guppi_status_unlock_safe(&st);
+        hashpipe_status_unlock_safe(&st);
  
         // Fill in sub-block headers
         for(i=0; i<N_SUB_BLOCKS_PER_INPUT_BLOCK; i++) {

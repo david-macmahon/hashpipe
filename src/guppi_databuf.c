@@ -15,10 +15,10 @@
 #include <time.h>
 
 #include "fitshead.h"
-#include "guppi_ipckey.h"
+#include "hashpipe_ipckey.h"
 #include "hashpipe_status.h"
 #include "guppi_databuf.h"
-#include "guppi_error.h"
+#include "hashpipe_error.h"
 
 struct guppi_databuf *guppi_databuf_create(int instance_id,
         int databuf_id, size_t header_size, size_t block_size, int n_block)
@@ -28,15 +28,15 @@ struct guppi_databuf *guppi_databuf_create(int instance_id,
     size_t total_size = header_size + block_size*n_block;
 
     if(header_size < sizeof(struct guppi_databuf)) {
-        guppi_error(__FUNCTION__, "header size must be larger than %lu",
+        hashpipe_error(__FUNCTION__, "header size must be larger than %lu",
             sizeof(struct guppi_databuf));
         return NULL;
     }
 
     /* Get shared memory block */
-    key_t key = guppi_databuf_key(instance_id);
-    if(key == GUPPI_KEY_ERROR) {
-        guppi_error(__FUNCTION__, "guppi_databuf_key error");
+    key_t key = hashpipe_databuf_key(instance_id);
+    if(key == HASHPIPE_KEY_ERROR) {
+        hashpipe_error(__FUNCTION__, "hashpipe_databuf_key error");
         return NULL;
     }
     int shmid;
@@ -49,7 +49,7 @@ struct guppi_databuf *guppi_databuf_create(int instance_id,
     }
     if (shmid==-1) {
         perror("shmget");
-        guppi_error(__FUNCTION__, "shmget error");
+        hashpipe_error(__FUNCTION__, "shmget error");
         return NULL;
     }
 
@@ -57,7 +57,7 @@ struct guppi_databuf *guppi_databuf_create(int instance_id,
     struct guppi_databuf *d;
     d = shmat(shmid, NULL, 0);
     if (d==(void *)-1) {
-        guppi_error(__FUNCTION__, "shmat error");
+        hashpipe_error(__FUNCTION__, "shmat error");
         return NULL;
     }
 
@@ -71,9 +71,9 @@ struct guppi_databuf *guppi_databuf_create(int instance_id,
                 "(%lu + %lu x %d) != (%lu + %ld x %d)",
                 d->header_size, d->block_size, d->n_block,
                 header_size, block_size, n_block);
-            guppi_error(__FUNCTION__, msg);
+            hashpipe_error(__FUNCTION__, msg);
             if(shmdt(d)) {
-                guppi_error(__FUNCTION__, "shmdt error");
+                hashpipe_error(__FUNCTION__, "shmdt error");
             }
             return NULL;
         }
@@ -83,7 +83,7 @@ struct guppi_databuf *guppi_databuf_create(int instance_id,
     rv = shmctl(shmid, SHM_LOCK, NULL);
     if (rv==-1) {
         perror("shmctl");
-        guppi_error(__FUNCTION__, "Error locking shared memory.");
+        hashpipe_error(__FUNCTION__, "Error locking shared memory.");
         return NULL;
     }
 
@@ -101,7 +101,7 @@ struct guppi_databuf *guppi_databuf_create(int instance_id,
     /* Get semaphores set up */
     d->semid = semget(key + databuf_id - 1, n_block, 0666 | IPC_CREAT);
     if (d->semid==-1) { 
-        guppi_error(__FUNCTION__, "semget error");
+        hashpipe_error(__FUNCTION__, "semget error");
         return NULL;
     }
 
@@ -112,7 +112,7 @@ struct guppi_databuf *guppi_databuf_create(int instance_id,
     rv = semctl(d->semid, 0, SETALL, arg);
     if (rv==-1) {
         perror("semctl");
-        guppi_error(__FUNCTION__, "Error clearing semaphores.");
+        hashpipe_error(__FUNCTION__, "Error clearing semaphores.");
         free(arg.array);
         return NULL;
     }
@@ -125,10 +125,10 @@ int guppi_databuf_detach(struct guppi_databuf *d)
 {
     int rv = shmdt(d);
     if (rv!=0) {
-        guppi_error(__FUNCTION__, "shmdt error");
-        return GUPPI_ERR_SYS;
+        hashpipe_error(__FUNCTION__, "shmdt error");
+        return HASHPIPE_ERR_SYS;
     }
-    return GUPPI_OK;
+    return HASHPIPE_OK;
 }
 
 void guppi_databuf_clear(struct guppi_databuf *d)
@@ -152,9 +152,9 @@ struct guppi_databuf *guppi_databuf_attach(int instance_id, int databuf_id)
 {
 
     /* Get shmid */
-    key_t key = guppi_databuf_key(instance_id);
-    if(key == GUPPI_KEY_ERROR) {
-        guppi_error(__FUNCTION__, "guppi_databuf_key error");
+    key_t key = hashpipe_databuf_key(instance_id);
+    if(key == HASHPIPE_KEY_ERROR) {
+        hashpipe_error(__FUNCTION__, "hashpipe_databuf_key error");
         return NULL;
     }
     int shmid;
@@ -162,7 +162,7 @@ struct guppi_databuf *guppi_databuf_attach(int instance_id, int databuf_id)
     if (shmid==-1) {
         // Doesn't exist, exit quietly otherwise complain
         if (errno!=ENOENT)
-            guppi_error(__FUNCTION__, "shmget error");
+            hashpipe_error(__FUNCTION__, "shmget error");
         return NULL;
     }
 
@@ -170,7 +170,7 @@ struct guppi_databuf *guppi_databuf_attach(int instance_id, int databuf_id)
     struct guppi_databuf *d;
     d = shmat(shmid, NULL, 0);
     if (d==(void *)-1) {
-        guppi_error(__FUNCTION__, "shmat error");
+        hashpipe_error(__FUNCTION__, "shmat error");
         return NULL;
     }
 
@@ -236,13 +236,13 @@ int guppi_databuf_wait_free(struct guppi_databuf *d, int block_id)
             printf("%s(%p, %d) timeout (%016lx)\n",
                 __FUNCTION__, d, block_id, guppi_databuf_total_mask(d));
 #endif
-            return GUPPI_TIMEOUT;
+            return HASHPIPE_TIMEOUT;
         }
         // Don't complain on a signal interruption
-        if (errno==EINTR) return GUPPI_ERR_SYS;
-        guppi_error(__FUNCTION__, "semop error");
+        if (errno==EINTR) return HASHPIPE_ERR_SYS;
+        hashpipe_error(__FUNCTION__, "semop error");
         perror("semop");
-        return GUPPI_ERR_SYS;
+        return HASHPIPE_ERR_SYS;
     }
     return 0;
 }
@@ -262,10 +262,10 @@ int guppi_databuf_busywait_free(struct guppi_databuf *d, int block_id)
     } while(rv == -1 && errno == EAGAIN);
     if (rv==-1) { 
         // Don't complain on a signal interruption
-        if (errno==EINTR) return GUPPI_ERR_SYS;
-        guppi_error(__FUNCTION__, "semop error");
+        if (errno==EINTR) return HASHPIPE_ERR_SYS;
+        hashpipe_error(__FUNCTION__, "semop error");
         perror("semop");
-        return GUPPI_ERR_SYS;
+        return HASHPIPE_ERR_SYS;
     }
     return 0;
 }
@@ -290,12 +290,12 @@ int guppi_databuf_wait_filled(struct guppi_databuf *d, int block_id)
     timeout.tv_nsec = 250000000;
     rv = semtimedop(d->semid, op, 2, &timeout);
     if (rv==-1) {
-        if (errno==EAGAIN) return GUPPI_TIMEOUT;
+        if (errno==EAGAIN) return HASHPIPE_TIMEOUT;
         // Don't complain on a signal interruption
-        if (errno==EINTR) return GUPPI_ERR_SYS;
-        guppi_error(__FUNCTION__, "semop error");
+        if (errno==EINTR) return HASHPIPE_ERR_SYS;
+        hashpipe_error(__FUNCTION__, "semop error");
         perror("semop");
-        return GUPPI_ERR_SYS;
+        return HASHPIPE_ERR_SYS;
     }
     return 0;
 }
@@ -324,10 +324,10 @@ int guppi_databuf_busywait_filled(struct guppi_databuf *d, int block_id)
     } while(rv == -1 && errno == EAGAIN);
     if (rv==-1) { 
         // Don't complain on a signal interruption
-        if (errno==EINTR) return GUPPI_ERR_SYS;
-        guppi_error(__FUNCTION__, "semop error");
+        if (errno==EINTR) return HASHPIPE_ERR_SYS;
+        hashpipe_error(__FUNCTION__, "semop error");
         perror("semop");
-        return GUPPI_ERR_SYS;
+        return HASHPIPE_ERR_SYS;
     }
     return 0;
 }
@@ -347,8 +347,8 @@ int guppi_databuf_set_free(struct guppi_databuf *d, int block_id)
         __FUNCTION__, d, block_id, guppi_databuf_total_mask(d));
 #endif
     if (rv==-1) { 
-        guppi_error(__FUNCTION__, "semctl error");
-        return GUPPI_ERR_SYS;
+        hashpipe_error(__FUNCTION__, "semctl error");
+        return HASHPIPE_ERR_SYS;
     }
     return 0;
 }
@@ -368,8 +368,8 @@ int guppi_databuf_set_filled(struct guppi_databuf *d, int block_id)
         __FUNCTION__, d, block_id, guppi_databuf_total_mask(d));
 #endif
     if (rv==-1) { 
-        guppi_error(__FUNCTION__, "semctl error");
-        return GUPPI_ERR_SYS;
+        hashpipe_error(__FUNCTION__, "semctl error");
+        return HASHPIPE_ERR_SYS;
     }
     return 0;
 }

@@ -21,7 +21,7 @@
 #include <xgpu.h>
 
 #include "fitshead.h"
-#include "guppi_error.h"
+#include "hashpipe_error.h"
 #include "hashpipe_status.h"
 #include "paper_databuf.h"
 #include "guppi_udp.h"
@@ -56,7 +56,7 @@ typedef struct {
     int block_active[N_INPUT_BLOCKS];
 } block_info_t;
 
-static struct guppi_status *st_p;
+static struct hashpipe_status *st_p;
 
 void print_pkt_header(packet_header_t * pkt_header) {
 
@@ -176,8 +176,8 @@ int set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t 
 #endif
 	}
 
-	if(paper_input_databuf_set_filled(paper_input_databuf_p, block_i) != GUPPI_OK) {
-	    guppi_error(__FUNCTION__, "error waiting for databuf filled call");
+	if(paper_input_databuf_set_filled(paper_input_databuf_p, block_i) != HASHPIPE_OK) {
+	    hashpipe_error(__FUNCTION__, "error waiting for databuf filled call");
 	    clear_run_threads();
 	    pthread_exit(NULL);
 	    return 0;
@@ -190,7 +190,7 @@ int set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t 
 	// as dropped packets.
 	block_missed_feng    = block_missed_pkt_cnt / N_PACKETS_PER_BLOCK_PER_F;
 	block_missed_mod_cnt = block_missed_pkt_cnt % N_PACKETS_PER_BLOCK_PER_F;
-	guppi_status_lock_busywait_safe(st_p);
+	hashpipe_status_lock_busywait_safe(st_p);
 	hputu4(st_p->buf, "NETBKOUT", block_i);
 	hputu4(st_p->buf, "MISSEDFE", block_missed_feng);
 	if(block_missed_mod_cnt) {
@@ -201,7 +201,7 @@ int set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t 
 	//  fprintf(stderr, "got %d packets instead of %d\n",
 	//	    binfo->block_active[block_i], N_PACKETS_PER_BLOCK);
 	}
-	guppi_status_unlock_safe(st_p);
+	hashpipe_status_unlock_safe(st_p);
 
     	binfo->block_active[block_i] = 0;
     } 
@@ -214,8 +214,8 @@ static inline int calc_block_indexes(block_info_t *binfo, packet_header_t * pkt_
     if(pkt_header->mcnt < binfo->mcnt_start) {
 	char msg[120];
 	sprintf(msg, "current packet mcnt %012lx less than mcnt start %012lx", pkt_header->mcnt, binfo->mcnt_start);
-	    guppi_error(__FUNCTION__, msg);
-	    //guppi_error(__FUNCTION__, "current packet mcnt less than mcnt start");
+	    hashpipe_error(__FUNCTION__, msg);
+	    //hashpipe_error(__FUNCTION__, "current packet mcnt less than mcnt start");
 	    //clear_run_threads();
 	    //pthread_exit(NULL);
 	    return -1;
@@ -349,12 +349,12 @@ static inline uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper
 #endif
 	netmcnt = paper_input_databuf_p->block[i].header.mcnt;
 	// Wait (hopefully not long!) for free block for this packet
-	if((rv = paper_input_databuf_busywait_free(paper_input_databuf_p, binfo.block_i)) != GUPPI_OK) {    
+	if((rv = paper_input_databuf_busywait_free(paper_input_databuf_p, binfo.block_i)) != HASHPIPE_OK) {    
 	    if (errno == EINTR) {
 		// Interrupted by signal, return -1
 	        return -1;
 	    } else {
-	        guppi_error(__FUNCTION__, "error waiting for free databuf");
+	        hashpipe_error(__FUNCTION__, "error waiting for free databuf");
 	        clear_run_threads();
 	        pthread_exit(NULL);
 	        return -1;
@@ -414,17 +414,17 @@ static void *run(void * _args)
     THREAD_RUN_ATTACH_DATABUF(args->instance_id, paper_input_databuf, db, args->output_buffer);
 
     /* Copy status buffer */
-    char status_buf[GUPPI_STATUS_SIZE];
-    guppi_status_lock_busywait_safe(st_p);
-    memcpy(status_buf, st_p->buf, GUPPI_STATUS_SIZE);
-    guppi_status_unlock_safe(st_p);
+    char status_buf[HASHPIPE_STATUS_SIZE];
+    hashpipe_status_lock_busywait_safe(st_p);
+    memcpy(status_buf, st_p->buf, HASHPIPE_STATUS_SIZE);
+    hashpipe_status_unlock_safe(st_p);
 
     /* Read network params */
     struct guppi_udp_params up = {
 	.bindhost = "0.0.0.0",
 	.bindport = 8511
     };
-    guppi_status_lock_busywait_safe(&st);
+    hashpipe_status_lock_busywait_safe(&st);
     // Get info from status buffer if present (no change if not present)
     hgets(st.buf, "BINDHOST", 80, up.bindhost);
     hgeti4(st.buf, "BINDPORT", &up.bindport);
@@ -434,7 +434,7 @@ static void *run(void * _args)
     hputu4(st.buf, "MISSEDFE", 0);
     hputu4(st.buf, "MISSEDPK", 0);
     hputs(st.buf, STATUS_KEY, "running");
-    guppi_status_unlock_safe(&st);
+    hashpipe_status_unlock_safe(&st);
 
     struct guppi_udp_packet p;
 
@@ -445,8 +445,8 @@ static void *run(void * _args)
 #ifndef TIMING_TEST
     /* Set up UDP socket */
     int rv = guppi_udp_init(&up);
-    if (rv!=GUPPI_OK) {
-        guppi_error("guppi_net_thread",
+    if (rv!=HASHPIPE_OK) {
+        hashpipe_error("guppi_net_thread",
                 "Error opening UDP socket.");
         pthread_exit(NULL);
     }
@@ -477,11 +477,11 @@ static void *run(void * _args)
         if (up.packet_size != p.packet_size) {
             if (p.packet_size != -1) {
                 #ifdef DEBUG_NET
-                guppi_warn("guppi_net_thread", "Incorrect pkt size");
+                hashpipe_warn("guppi_net_thread", "Incorrect pkt size");
                 #endif
                 continue; 
             } else {
-                guppi_error("guppi_net_thread", 
+                hashpipe_error("guppi_net_thread", 
                         "guppi_udp_recv returned error");
                 perror("guppi_udp_recv");
                 pthread_exit(NULL);
@@ -503,7 +503,7 @@ static void *run(void * _args)
             ns_per_wait = (float)elapsed_wait_ns / packet_count;
             ns_per_recv = (float)elapsed_recv_ns / packet_count;
             ns_per_proc = (float)elapsed_proc_ns / packet_count;
-            guppi_status_lock_busywait_safe(&st);
+            hashpipe_status_lock_busywait_safe(&st);
             hputu8(st.buf, "NETMCNT", mcnt);
 	    // Gbps = bits_per_packet / ns_per_packet
 	    // (N_BYTES_PER_PACKET excludes header, so +8 for the header)
@@ -511,7 +511,7 @@ static void *run(void * _args)
             hputr4(st.buf, "NETWATNS", ns_per_wait);
             hputr4(st.buf, "NETRECNS", ns_per_recv);
             hputr4(st.buf, "NETPRCNS", ns_per_proc);
-            guppi_status_unlock_safe(&st);
+            hashpipe_status_unlock_safe(&st);
 	    // Start new average
 	    elapsed_wait_ns = 0;
 	    elapsed_recv_ns = 0;

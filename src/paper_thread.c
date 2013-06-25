@@ -4,7 +4,7 @@
 #include <sched.h>
 #include <sys/time.h>
 #include <sys/resource.h>
-#include "guppi_error.h"
+#include "hashpipe_error.h"
 #include "paper_thread.h"
 
 #define MAX_MODULES 1024
@@ -76,7 +76,7 @@ set_cpu_affinity(unsigned int mask)
         }
         rv = sched_setaffinity(0, sizeof(cpu_set_t), &cpuset);
         if (rv<0) {
-            guppi_error(__FUNCTION__, "Error setting cpu affinity.");
+            hashpipe_error(__FUNCTION__, "Error setting cpu affinity.");
             return rv;
         }
     }
@@ -92,7 +92,7 @@ get_cpu_affinity()
 
     i = sched_getaffinity(0, sizeof(cpu_set_t), &cpuset);
     if (i<0) {
-        guppi_error(__FUNCTION__, "Error getting cpu affinity.");
+        hashpipe_error(__FUNCTION__, "Error getting cpu affinity.");
         return 0;
     }
     if(mask != 0) {
@@ -113,7 +113,7 @@ set_priority(int priority)
     /* Set priority */
     int rv = setpriority(PRIO_PROCESS, 0, priority);
     if (rv<0) {
-        guppi_error(__FUNCTION__, "Error setting priority level.");
+        hashpipe_error(__FUNCTION__, "Error setting priority level.");
         return rv;
     }
 

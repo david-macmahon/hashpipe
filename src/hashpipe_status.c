@@ -14,9 +14,9 @@
 #include <semaphore.h>
 #include <errno.h>
 
-#include "guppi_ipckey.h"
+#include "hashpipe_ipckey.h"
 #include "hashpipe_status.h"
-#include "guppi_error.h"
+#include "hashpipe_error.h"
 #include "fitshead.h"
 
 /*
@@ -24,7 +24,7 @@
  * size.  Returns 0 (no error) if semaphore name fit in given size, returns 1
  * if semaphore name is truncated.
  */
-int guppi_status_semname(int instance_id, char * semid, size_t size)
+int hashpipe_status_semname(int instance_id, char * semid, size_t size)
 {
     //static char semid[NAME_MAX-4] = {'\0'};
     size_t length_remaining = size;
@@ -32,12 +32,12 @@ int guppi_status_semname(int instance_id, char * semid, size_t size)
     char *s;
     int rc = 1;
 
-    const char * envstr = getenv("GUPPI_STATUS_SEMNAME");
+    const char * envstr = getenv("HASHPIPE_STATUS_SEMNAME");
     if(envstr) {
         strncpy(semid, envstr, length_remaining);
         semid[length_remaining-1] = '\0';
     } else {
-        envstr = getenv("GUPPI_KEYFILE");
+        envstr = getenv("HASHPIPE_KEYFILE");
         if(!envstr) {
             envstr = getenv("HOME");
             if(!envstr) {
@@ -54,49 +54,49 @@ int guppi_status_semname(int instance_id, char * semid, size_t size)
         length_remaining -= strlen(semid);
         if(length_remaining > 0) {
             bytes_written = snprintf(semid+strlen(semid),
-                length_remaining, "_guppi_status_%d", instance_id&0x3f);
+                length_remaining, "_hashpipe_status_%d", instance_id&0x3f);
             if(bytes_written < length_remaining) {
               // No truncation
               rc = 0;
             }
         }
     }
-#ifdef GUPPI_VERBOSE
+#ifdef HASHPIPE_VERBOSE
     fprintf(stderr, "using guppi status semaphore '%s'\n", semid);
 #endif
     return rc;
 }
 
-int guppi_status_exists(int instance_id)
+int hashpipe_status_exists(int instance_id)
 {
     instance_id &= 0x3f;
 
     /* Compute status buffer key for instance_id */
-    key_t key = guppi_status_key(instance_id);
-    if(key == GUPPI_KEY_ERROR) {
-        guppi_error("guppi_status_attach", "guppi_status_key error");
+    key_t key = hashpipe_status_key(instance_id);
+    if(key == HASHPIPE_KEY_ERROR) {
+        hashpipe_error("hashpipe_status_attach", "hashpipe_status_key error");
         return 0;
     }
-    int shmid = shmget(key, GUPPI_STATUS_SIZE, 0666);
+    int shmid = shmget(key, HASHPIPE_STATUS_SIZE, 0666);
     return (shmid==-1) ? 0 : 1;
 }
 
-int guppi_status_attach(int instance_id, struct guppi_status *s)
+int hashpipe_status_attach(int instance_id, struct hashpipe_status *s)
 {
     char semid[NAME_MAX] = {'\0'};
     instance_id &= 0x3f;
     s->instance_id = instance_id;
 
     /* Get shared mem id (creating it if necessary) */
-    key_t key = guppi_status_key(instance_id);
-    if(key == GUPPI_KEY_ERROR) {
-        guppi_error("guppi_status_attach", "guppi_status_key error");
+    key_t key = hashpipe_status_key(instance_id);
+    if(key == HASHPIPE_KEY_ERROR) {
+        hashpipe_error("hashpipe_status_attach", "hashpipe_status_key error");
         return(0);
     }
-    s->shmid = shmget(key, GUPPI_STATUS_SIZE, 0666 | IPC_CREAT);
+    s->shmid = shmget(key, HASHPIPE_STATUS_SIZE, 0666 | IPC_CREAT);
     if (s->shmid==-1) { 
-        guppi_error("guppi_status_attach", "shmget error");
-        return(GUPPI_ERR_SYS);
+        hashpipe_error("hashpipe_status_attach", "shmget error");
+        return(HASHPIPE_ERR_SYS);
     }
 
     /* Now attach to the segment */
@@ -104,16 +104,16 @@ int guppi_status_attach(int instance_id, struct guppi_status *s)
     if (s->buf == (void *)-1) {
         perror("shmat");
         printf("shmid=%d\n", s->shmid);
-        guppi_error("guppi_status_attach", "shmat error");
-        return(GUPPI_ERR_SYS);
+        hashpipe_error("hashpipe_status_attach", "shmat error");
+        return(HASHPIPE_ERR_SYS);
     }
 
     /*
      * Get the semaphore name.  Return error on truncation.
      */
-    if(guppi_status_semname(instance_id, semid, NAME_MAX)) {
-        guppi_error("guppi_status_attach", "semname truncated");
-        return(GUPPI_ERR_SYS);
+    if(hashpipe_status_semname(instance_id, semid, NAME_MAX)) {
+        hashpipe_error("hashpipe_status_attach", "semname truncated");
+        return(HASHPIPE_ERR_SYS);
     }
 
     /* Get the locking semaphore.
@@ -123,33 +123,33 @@ int guppi_status_attach(int instance_id, struct guppi_status *s)
     s->lock = sem_open(semid, O_CREAT, 0666, 1);
     umask(old_umask);
     if (s->lock==SEM_FAILED) {
-        guppi_error("guppi_status_attach", "sem_open");
-        return(GUPPI_ERR_SYS);
+        hashpipe_error("hashpipe_status_attach", "sem_open");
+        return(HASHPIPE_ERR_SYS);
     }
 
     /* Init buffer if needed */
-    guppi_status_chkinit(s);
+    hashpipe_status_chkinit(s);
 
-    return(GUPPI_OK);
+    return(HASHPIPE_OK);
 }
 
-int guppi_status_detach(struct guppi_status *s) {
+int hashpipe_status_detach(struct hashpipe_status *s) {
     int rv = shmdt(s->buf);
     if (rv!=0) {
-        guppi_error("guppi_status_detach", "shmdt error");
-        return(GUPPI_ERR_SYS);
+        hashpipe_error("hashpipe_status_detach", "shmdt error");
+        return(HASHPIPE_ERR_SYS);
     }
     s->buf = NULL;
-    return(GUPPI_OK);
+    return(HASHPIPE_OK);
 }
 
 /* TODO: put in some (long, ~few sec) timeout */
-int guppi_status_lock(struct guppi_status *s) {
+int hashpipe_status_lock(struct hashpipe_status *s) {
     return(sem_wait(s->lock));
 }
 
 /* TODO: put in some (long, ~few sec) timeout */
-int guppi_status_lock_busywait(struct guppi_status *s) {
+int hashpipe_status_lock_busywait(struct hashpipe_status *s) {
     int rv;
     do {
       rv = sem_trywait(s->lock);
@@ -157,36 +157,36 @@ int guppi_status_lock_busywait(struct guppi_status *s) {
     return rv;
 }
 
-int guppi_status_unlock(struct guppi_status *s) {
+int hashpipe_status_unlock(struct hashpipe_status *s) {
     return(sem_post(s->lock));
 }
 
 /* Return pointer to END key */
 static
-char *guppi_find_end(char *buf) {
+char *hashpipe_find_end(char *buf) {
     /* Loop over 80 byte cards */
     int offs;
     char *out=NULL;
-    for (offs=0; offs<GUPPI_STATUS_SIZE; offs+=GUPPI_STATUS_CARD) {
+    for (offs=0; offs<HASHPIPE_STATUS_SIZE; offs+=HASHPIPE_STATUS_CARD) {
         if (strncmp(&buf[offs], "END", 3)==0) { out=&buf[offs]; break; }
     }
     return(out);
 }
 
 /* So far, just checks for existence of "END" in the proper spot */
-void guppi_status_chkinit(struct guppi_status *s)
+void hashpipe_status_chkinit(struct hashpipe_status *s)
 {
     int instance_id = -1;
 
     /* Lock */
-    guppi_status_lock(s);
+    hashpipe_status_lock(s);
 
     /* If no END, clear it out */
-    if (guppi_find_end(s->buf)==NULL) {
+    if (hashpipe_find_end(s->buf)==NULL) {
         /* Zero bufer */
-        memset(s->buf, 0, GUPPI_STATUS_SIZE);
+        memset(s->buf, 0, HASHPIPE_STATUS_SIZE);
         /* Fill first card w/ spaces */
-        memset(s->buf, ' ', GUPPI_STATUS_CARD);
+        memset(s->buf, ' ', HASHPIPE_STATUS_CARD);
         /* add END */
         strncpy(s->buf, "END", 3);
         // Add INSTANCE record
@@ -207,24 +207,24 @@ void guppi_status_chkinit(struct guppi_status *s)
     }
 
     /* Unlock */
-    guppi_status_unlock(s);
+    hashpipe_status_unlock(s);
 }
 
 /* Clear out guppi status buf */
-void guppi_status_clear(struct guppi_status *s) {
+void hashpipe_status_clear(struct hashpipe_status *s) {
 
     /* Lock */
-    guppi_status_lock(s);
+    hashpipe_status_lock(s);
 
     /* Zero bufer */
-    memset(s->buf, 0, GUPPI_STATUS_SIZE);
+    memset(s->buf, 0, HASHPIPE_STATUS_SIZE);
     /* Fill first card w/ spaces */
-    memset(s->buf, ' ', GUPPI_STATUS_CARD);
+    memset(s->buf, ' ', HASHPIPE_STATUS_CARD);
     /* add END */
     strncpy(s->buf, "END", 3);
 
     hputi4(s->buf, "INSTANCE", s->instance_id);
 
     /* Unlock */
-    guppi_status_unlock(s);
+    hashpipe_status_unlock(s);
 }

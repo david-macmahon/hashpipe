@@ -10,7 +10,7 @@
 
 #include <xgpu.h>
 
-#include "guppi_error.h"
+#include "hashpipe_error.h"
 #include "paper_databuf.h"
 
 #define STATUS_KEY "CGOUT"  /* Define before guppi_threads.h */
@@ -26,11 +26,11 @@ static int init(struct guppi_thread_args *args)
     /* Attach to status shared mem area */
     THREAD_INIT_ATTACH_STATUS(args->instance_id, st, STATUS_KEY);
 
-    guppi_status_lock_safe(&st);
+    hashpipe_status_lock_safe(&st);
     hputr4(st.buf, "CGMAXERR", 0.0);
     hputi4(st.buf, "CGERRCNT", 0);
     hputi4(st.buf, "CGMXERCT", 0);
-    guppi_status_unlock_safe(&st);
+    hashpipe_status_unlock_safe(&st);
 
     THREAD_INIT_DETACH_STATUS(st);
 
@@ -66,21 +66,21 @@ static void *run(void * _args)
     float error, max_error = 0.0;
     while (run_threads()) {
 
-        guppi_status_lock_safe(&st);
+        hashpipe_status_lock_safe(&st);
         hputs(st.buf, STATUS_KEY, "waiting");
-        guppi_status_unlock_safe(&st);
+        hashpipe_status_unlock_safe(&st);
 
         // Wait for two new blocks to be filled
         for(i=0; i<2; i++) {
             while ((rv=paper_output_databuf_wait_filled(db, block_idx[i]))
-                    != GUPPI_OK) {
-                if (rv==GUPPI_TIMEOUT) {
-                    guppi_status_lock_safe(&st);
+                    != HASHPIPE_OK) {
+                if (rv==HASHPIPE_TIMEOUT) {
+                    hashpipe_status_lock_safe(&st);
                     hputs(st.buf, STATUS_KEY, "blocked");
-                    guppi_status_unlock_safe(&st);
+                    hashpipe_status_unlock_safe(&st);
                     continue;
                 } else {
-                    guppi_error(__FUNCTION__, "error waiting for filled databuf");
+                    hashpipe_error(__FUNCTION__, "error waiting for filled databuf");
                     clear_run_threads();
                     pthread_exit(NULL);
                     break;
@@ -89,10 +89,10 @@ static void *run(void * _args)
         }
 
         // Note processing status, current input block
-        guppi_status_lock_safe(&st);
+        hashpipe_status_lock_safe(&st);
         hputs(st.buf, STATUS_KEY, "processing");
         hputi4(st.buf, "CGBLKIN", block_idx[0]);
-        guppi_status_unlock_safe(&st);
+        hashpipe_status_unlock_safe(&st);
 
         // Reorder GPU block
         if(debug==20) {
@@ -133,11 +133,11 @@ static void *run(void * _args)
         }
 
         // Update status values
-        guppi_status_lock_safe(&st);
+        hashpipe_status_lock_safe(&st);
         hputr4(st.buf, "CGMAXERR", max_error);
         hputi4(st.buf, "CGERRCNT", error_count);
         hputi4(st.buf, "CGMXERCT", max_error_count);
-        guppi_status_unlock_safe(&st);
+        hashpipe_status_unlock_safe(&st);
 
         // Mark blocks as free
         for(i=0; i<2; i++) {

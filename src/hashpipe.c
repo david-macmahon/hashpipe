@@ -18,7 +18,7 @@
 
 #include <xgpu.h>
 
-#include "guppi_error.h"
+#include "hashpipe_error.h"
 #include "hashpipe_status.h"
 #include "guppi_databuf.h"
 #include "paper_databuf.h"
@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
 {
     int opt, i, rv;
     char * cp;
-    struct guppi_status st;
+    struct hashpipe_status st;
     int num_threads = 0;
     pthread_t threads[MAX_THREADS];
     pipeline_thread_module_t *modules[MAX_THREADS];
@@ -165,12 +165,12 @@ int main(int argc, char *argv[])
 
         case 'o': // K=V option to store in status memory
           // Attach to status memory for current instance_id value
-          if (guppi_status_attach(instance_id, &st) !=GUPPI_OK) {
+          if (hashpipe_status_attach(instance_id, &st) != HASHPIPE_OK) {
             // Should "never" happen
             fprintf(stderr,
                 "Error connecting to status buffer instance %d.\n",
                 instance_id);
-            perror("guppi_status_attach");                           \
+            perror("hashpipe_status_attach");                           \
             exit(1);
           }
           // Look for equal sign
@@ -180,18 +180,18 @@ int main(int argc, char *argv[])
             // Nul-terminate key
             *cp = '\0';
             // Store key and value (value starts right after '=')
-            guppi_status_lock(&st);
+            hashpipe_status_lock(&st);
             hputs(st.buf, optarg, cp+1);
-            guppi_status_unlock(&st);
+            hashpipe_status_unlock(&st);
             // Restore '=' character
             *cp = '=';
           } else {
             // Valueless key, just store empty string
-            guppi_status_lock(&st);
+            hashpipe_status_lock(&st);
             hputs(st.buf, optarg, "");
-            guppi_status_unlock(&st);
+            hashpipe_status_unlock(&st);
           }
-          guppi_status_detach(&st);
+          hashpipe_status_detach(&st);
           break;
 
         case 'm': // CPU mask

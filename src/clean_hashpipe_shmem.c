@@ -1,6 +1,6 @@
 /* clean_hashpipe_shmem.c
  *
- * Mark all GUPPI shmem segs for deletion.
+ * Mark all HASHPIPE shmem segs for deletion.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,9 +11,9 @@
 #include <fcntl.h>
 #include <getopt.h>
 
+#include "hashpipe_error.h"
 #include "hashpipe_status.h"
 #include "guppi_databuf.h"
-#include "guppi_error.h"
 
 int main(int argc, char *argv[]) {
     int rv,ex=0;
@@ -45,21 +45,21 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    struct guppi_status s;
+    struct hashpipe_status s;
     char semname[NAME_MAX] = {'\0'};
 
     /*
      * Get the semaphore name.  Return error on truncation.
      */
-    if(guppi_status_semname(instance_id, semname, NAME_MAX)) {
+    if(hashpipe_status_semname(instance_id, semname, NAME_MAX)) {
         fprintf(stderr, "Error: semaphore name truncated.\n");
         exit(1);
     }
 
     /* Status shared mem, force unlock first */
     sem_unlink(semname);
-    rv = guppi_status_attach(instance_id, &s);
-    if (rv!=GUPPI_OK) {
+    rv = hashpipe_status_attach(instance_id, &s);
+    if (rv!=HASHPIPE_OK) {
         fprintf(stderr, "Error connecting to status shared mem.\n");
         perror(NULL);
         exit(1);
@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
           break;
       }
     } else {
-      guppi_status_clear(&s);
+      hashpipe_status_clear(&s);
       printf("Cleared status shared memory.\n");
     }
 

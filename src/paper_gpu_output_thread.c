@@ -16,7 +16,7 @@
 
 #include <xgpu.h>
 
-#include "guppi_error.h"
+#include "hashpipe_error.h"
 #include "paper_databuf.h"
 
 #define STATUS_KEY "OUTSTAT"  /* Define before guppi_threads.h */
@@ -227,7 +227,7 @@ open_udp_socket(const char *host, const char *port)
 
     s = getaddrinfo(host, port, &hints, &result);
     if (s != 0) {
-        guppi_error("getaddrinfo", gai_strerror(s));
+        hashpipe_error("getaddrinfo", gai_strerror(s));
         return -1;
     }
 
@@ -446,11 +446,11 @@ static void *run(void * _args)
       .tv_nsec = PACKET_DELAY_NS
     };
 
-    guppi_status_lock_safe(&st);
+    hashpipe_status_lock_safe(&st);
     hgetu4(st.buf, "XID", &xengine_id); // No change if not found
     hputu4(st.buf, "XID", xengine_id);
     hputu4(st.buf, "OUTDUMPS", 0);
-    guppi_status_unlock_safe(&st);
+    hashpipe_status_unlock_safe(&st);
 
     pkt_t pkt;
     pkt.hdr.header = HEADER;
@@ -469,7 +469,7 @@ static void *run(void * _args)
     // Open socket
     sockfd = open_udp_socket("catcher", stringify(CATCHER_PORT));
     if(sockfd == -1) {
-        guppi_error(__FUNCTION__, "error opening socket");
+        hashpipe_error(__FUNCTION__, "error opening socket");
         clear_run_threads();
         pthread_exit(NULL);
     }
@@ -499,20 +499,20 @@ static void *run(void * _args)
     struct timespec pkt_start, pkt_stop;
     while (run_threads()) {
 
-        guppi_status_lock_safe(&st);
+        hashpipe_status_lock_safe(&st);
         hputs(st.buf, STATUS_KEY, "waiting");
-        guppi_status_unlock_safe(&st);
+        hashpipe_status_unlock_safe(&st);
 
         // Wait for new block to be filled
         while ((rv=paper_output_databuf_wait_filled(db, block_idx))
-                != GUPPI_OK) {
-            if (rv==GUPPI_TIMEOUT) {
-                guppi_status_lock_safe(&st);
+                != HASHPIPE_OK) {
+            if (rv==HASHPIPE_TIMEOUT) {
+                hashpipe_status_lock_safe(&st);
                 hputs(st.buf, STATUS_KEY, "blocked");
-                guppi_status_unlock_safe(&st);
+                hashpipe_status_unlock_safe(&st);
                 continue;
             } else {
-                guppi_error(__FUNCTION__, "error waiting for filled databuf");
+                hashpipe_error(__FUNCTION__, "error waiting for filled databuf");
                 clear_run_threads();
                 pthread_exit(NULL);
                 break;
@@ -522,10 +522,10 @@ static void *run(void * _args)
         clock_gettime(CLOCK_MONOTONIC, &start);
 
         // Note processing status, current input block
-        guppi_status_lock_safe(&st);
+        hashpipe_status_lock_safe(&st);
         hputs(st.buf, STATUS_KEY, "processing");
         hputi4(st.buf, "OUTBLKIN", block_idx);
-        guppi_status_unlock_safe(&st);
+        hashpipe_status_unlock_safe(&st);
 
         // Update header's timestamp for this dump.  For historic/unknown
         // reasons, the catcher expects timestamps to be in units of PFB
@@ -565,11 +565,11 @@ static void *run(void * _args)
                 if(errno != ECONNREFUSED) {
                   perror("send");
                   // Update stats
-                  guppi_status_lock_safe(&st);
+                  hashpipe_status_lock_safe(&st);
                   hputu4(st.buf, "OUTDUMPS", ++dumps);
                   hputr4(st.buf, "OUTSECS", 0.0);
                   hputr4(st.buf, "OUTMBPS", 0.0);
-                  guppi_status_unlock_safe(&st);
+                  hashpipe_status_unlock_safe(&st);
                   // Break out of both for loops
                   goto done_sending;
                 }
@@ -595,11 +595,11 @@ static void *run(void * _args)
 
         clock_gettime(CLOCK_MONOTONIC, &stop);
 
-        guppi_status_lock_safe(&st);
+        hashpipe_status_lock_safe(&st);
         hputu4(st.buf, "OUTDUMPS", ++dumps);
         hputr4(st.buf, "OUTSECS", (float)ELAPSED_NS(start,stop)/1e9);
         hputr4(st.buf, "OUTMBPS", (1e3*8*bytes_per_dump)/ELAPSED_NS(start,stop));
-        guppi_status_unlock_safe(&st);
+        hashpipe_status_unlock_safe(&st);
 
 done_sending:
 

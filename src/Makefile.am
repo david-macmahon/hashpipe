@@ -8,14 +8,14 @@ noinst_PROGRAMS  =
 
 guppi_base = guppi_databuf.c \
 	     fitshead.h      \
-	     guppi_ipckey.h  \
+	     hashpipe_ipckey.h  \
 	     hashpipe_status.h  \
 	     guppi_udp.h     \
 	     guppi_threads.h     \
 	     guppi_threads.c     \
 	     guppi_thread_args.h \
 	     guppi_databuf.h \
-	     guppi_error.h
+	     hashpipe_error.h
 
 guppi_net = $(guppi_base) \
 	    guppi_udp.c
@@ -68,8 +68,8 @@ lib_LTLIBRARIES = libhashpipestatus.la
 libhashpipestatus_la_SOURCES = hashpipe_status.c \
 			       hget.c \
 			       hput.c \
-			       guppi_error.c \
-			       guppi_ipckey.c
+			       hashpipe_error.c \
+			       hashpipe_ipckey.c
 libhashpipestatus_la_LIBADD = -lm
 
 include_HEADERS = fitshead.h \
