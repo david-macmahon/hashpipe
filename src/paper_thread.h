@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include "fitshead.h"
 #include "hashpipe_status.h"
-#include "guppi_thread_args.h"
+#include "hashpipe_thread_args.h"
 
 /* Functions to query, set, and clear the "run_threads" flag. */
 int run_threads();
@@ -46,7 +46,7 @@ void clear_run_threads();
 
 // These typedefs are used to declare pointers to a pipeline thread module's
 // init and run functions.
-typedef int (* initfunc_t)(struct guppi_thread_args *);
+typedef int (* initfunc_t)(struct hashpipe_thread_args *);
 typedef void *(* runfunc_t)(void *);
 
 // This structure is used to store metadata about a pipeline thread module.
@@ -150,24 +150,24 @@ int set_priority(int priority);
 // Does 1 pthread_cleanup_push.
 // Use THREAD_RUN_END to pop it.
 #define THREAD_RUN_BEGIN(args) \
-  pthread_cleanup_push((void *)guppi_thread_set_finished, args);
+  pthread_cleanup_push((void *)hashpipe_thread_set_finished, args);
 
 // Pops pthread cleanup for THREAD_RUN_BEGIN
 #define THREAD_RUN_END pthread_cleanup_pop(0);
 
 // Set CPU affinity and process priority from args.
-#define THREAD_RUN_SET_AFFINITY_PRIORITY(args)                        \
-  do {                                                                \
-    unsigned int mask = ((struct guppi_thread_args *)args)->cpu_mask; \
-    int priority = ((struct guppi_thread_args *)args)->priority;      \
-    if(set_cpu_affinity(mask) < 0) {                                  \
-        perror("set_cpu_affinity");                                   \
-        return THREAD_ERROR;                                          \
-    }                                                                 \
-    if(set_priority(priority) < 0) {                                  \
-        perror("set_priority");                                       \
-        return THREAD_ERROR;                                          \
-    }                                                                 \
+#define THREAD_RUN_SET_AFFINITY_PRIORITY(args)                           \
+  do {                                                                   \
+    unsigned int mask = ((struct hashpipe_thread_args *)args)->cpu_mask; \
+    int priority = ((struct hashpipe_thread_args *)args)->priority;      \
+    if(set_cpu_affinity(mask) < 0) {                                     \
+        perror("set_cpu_affinity");                                      \
+        return THREAD_ERROR;                                             \
+    }                                                                    \
+    if(set_priority(priority) < 0) {                                     \
+        perror("set_priority");                                          \
+        return THREAD_ERROR;                                             \
+    }                                                                    \
   } while(0)
 
 // Attaches to status memory and creates variable st for it.

@@ -394,7 +394,7 @@ static int init_idx_map()
   return 0;
 }
 
-static int init(struct guppi_thread_args *args)
+static int init(struct hashpipe_thread_args *args)
 {
     /* Attach to status shared mem area */
     THREAD_INIT_ATTACH_STATUS(args->instance_id, st, STATUS_KEY);
@@ -425,7 +425,7 @@ static int init(struct guppi_thread_args *args)
 static void *run(void * _args)
 {
     // Cast _args
-    struct guppi_thread_args *args = (struct guppi_thread_args *)_args;
+    struct hashpipe_thread_args *args = (struct hashpipe_thread_args *)_args;
 
     THREAD_RUN_BEGIN(args);
 

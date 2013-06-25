@@ -377,7 +377,7 @@ static inline uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper
     return netmcnt;
 }
 
-static int init(struct guppi_thread_args *args)
+static int init(struct hashpipe_thread_args *args)
 {
     /* Attach to status shared mem area */
     THREAD_INIT_STATUS(args->instance_id, STATUS_KEY);
@@ -396,7 +396,7 @@ static int init(struct guppi_thread_args *args)
 static void *run(void * _args)
 {
     // Cast _args
-    struct guppi_thread_args *args = (struct guppi_thread_args *)_args;
+    struct hashpipe_thread_args *args = (struct hashpipe_thread_args *)_args;
 
 #ifdef DEBUG_SEMS
     fprintf(stderr, "s/tid %lu/NET/' <<.\n", pthread_self());

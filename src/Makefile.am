@@ -11,14 +11,14 @@ guppi_base = hashpipe_databuf.c \
 	     hashpipe_ipckey.h  \
 	     hashpipe_status.h  \
 	     guppi_udp.h     \
-	     guppi_thread_args.h \
+	     hashpipe_thread_args.h \
 	     hashpipe_databuf.h \
 	     hashpipe_error.h
 
 guppi_net = $(guppi_base) \
 	    guppi_udp.c
 
-guppi_utils = guppi_thread_args.c
+guppi_utils = hashpipe_thread_args.c
 
 paper_net = $(guppi_net) \
 	     paper_databuf.c \

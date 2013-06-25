@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
     int num_threads = 0;
     pthread_t threads[MAX_THREADS];
     pipeline_thread_module_t *modules[MAX_THREADS];
-    struct guppi_thread_args args[MAX_THREADS];
+    struct hashpipe_thread_args args[MAX_THREADS];
 
     static struct option long_opts[] = {
       {"help",     0, NULL, 'h'},
@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
     }
 #endif // RTPRIO
 
-    guppi_thread_args_init(&args[num_threads]);
+    hashpipe_thread_args_init(&args[num_threads]);
     args[num_threads].instance_id   = instance_id;
     args[num_threads].input_buffer  = input_buffer;
     args[num_threads].output_buffer = output_buffer;
@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
           num_threads++;
           input_buffer++;
           output_buffer++;
-          guppi_thread_args_init(&args[num_threads]);
+          hashpipe_thread_args_init(&args[num_threads]);
           args[num_threads].instance_id   = instance_id;
           args[num_threads].input_buffer  = input_buffer;
           args[num_threads].output_buffer = output_buffer;
@@ -268,7 +268,7 @@ int main(int argc, char *argv[])
       fflush(stdout);
     }
     for(i=num_threads; i>=0; i--) {
-      guppi_thread_args_destroy(&args[i]);
+      hashpipe_thread_args_destroy(&args[i]);
     }
 
     exit(0);
