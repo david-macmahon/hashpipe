@@ -1,4 +1,4 @@
-/* clean_guppi_shmem.c
+/* clean_hashpipe_shmem.c
  *
  * Mark all GUPPI shmem segs for deletion.
  */

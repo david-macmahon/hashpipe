@@ -40,17 +40,17 @@ paper_utils = $(guppi_utils) \
 	      paper_thread.c \
 	      paper_thread.h
 
-bin_PROGRAMS += check_guppi_databuf
-check_guppi_databuf_SOURCES = check_guppi_databuf.c $(guppi_base)
-check_guppi_databuf_LDADD = libhashpipestatus.la -lm
+bin_PROGRAMS += check_hashpipe_databuf
+check_hashpipe_databuf_SOURCES = check_hashpipe_databuf.c $(guppi_base)
+check_hashpipe_databuf_LDADD = libhashpipestatus.la -lm
 
 bin_PROGRAMS += check_hashpipe_status
 check_hashpipe_status_SOURCES = check_hashpipe_status.c $(guppi_base)
 check_hashpipe_status_LDADD = libhashpipestatus.la -lm
 
-bin_PROGRAMS += clean_guppi_shmem
-clean_guppi_shmem_SOURCES = clean_guppi_shmem.c $(guppi_base)
-clean_guppi_shmem_LDADD = libhashpipestatus.la -lm
+bin_PROGRAMS += clean_hashpipe_shmem
+clean_hashpipe_shmem_SOURCES = clean_hashpipe_shmem.c $(guppi_base)
+clean_hashpipe_shmem_LDADD = libhashpipestatus.la -lm
 
 bin_PROGRAMS += dump_databuf
 dump_databuf_SOURCES = dump_databuf.c $(guppi_base)
