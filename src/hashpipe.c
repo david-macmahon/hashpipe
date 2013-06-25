@@ -16,14 +16,11 @@
 #include <errno.h>
 #include <sys/resource.h> 
 
-#include <xgpu.h>
-
 #include "hashpipe_error.h"
 #include "fitshead.h"
 #include "hashpipe_status.h"
 #include "hashpipe_databuf.h"
 #include "hashpipe_thread.h"
-#include "paper_databuf.h"
 
 #define MAX_THREADS (1024)
 
@@ -38,7 +35,7 @@ void usage(const char *argv0) {
       "  -c N, --cpu=N         Set CPU number for subsequent threads\n"
       "  -m N, --mask=N        Set CPU mask for subsequent threads\n"
       "  -o K=V, --option=K=V  Store K=V in status buffer\n"
-//    "  -b N, --size=N        Jump to input buffer B, output buffer B+1\n"
+//    "  -b N, --buffer=N        Jump to input buffer B, output buffer B+1\n"
       , argv0
     );
 }
