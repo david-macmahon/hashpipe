@@ -1,6 +1,6 @@
-/* check_guppi_databuf.c
+/* dump_hashpipe_databuf.c
  *
- * Basic prog to test dstabuf shared mem routines.
+ * Basic prog to test databuf shared mem routines.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,7 +13,7 @@
 
 void usage() { 
     fprintf(stderr, 
-            "Usage: dump_databuf [options]\n"
+            "Usage: dump_hashpipe_databuf [options]\n"
             "\n"
             "Options [defaults]:\n"
             "  -h, --help\n"

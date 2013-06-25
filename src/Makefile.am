@@ -52,9 +52,9 @@ bin_PROGRAMS += clean_hashpipe_shmem
 clean_hashpipe_shmem_SOURCES = clean_hashpipe_shmem.c $(guppi_base)
 clean_hashpipe_shmem_LDADD = libhashpipestatus.la -lm
 
-bin_PROGRAMS += dump_databuf
-dump_databuf_SOURCES = dump_databuf.c $(guppi_base)
-dump_databuf_LDADD = libhashpipestatus.la -lm
+bin_PROGRAMS += dump_hashpipe_databuf
+dump_hashpipe_databuf_SOURCES = dump_hashpipe_databuf.c $(guppi_base)
+dump_hashpipe_databuf_LDADD = libhashpipestatus.la -lm
 
 bin_PROGRAMS += hashpipe
 hashpipe_SOURCES = hashpipe.c $(paper_threads) $(paper_utils)

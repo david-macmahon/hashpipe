@@ -6,7 +6,7 @@ TAGS
 check_hashpipe_databuf
 check_hashpipe_status
 clean_hashpipe_shmem
-dump_databuf
+dump_hashpipe_databuf
 hashpipe
 paper_fluff_test
 *.so
