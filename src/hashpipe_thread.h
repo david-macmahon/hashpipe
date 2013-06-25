@@ -90,7 +90,7 @@ int set_priority(int priority);
 
 // Macros for the init function
 
-// Attach to guppi status shared memory and set status_key to "init".
+// Attach to hashpipe status shared memory and set status_key to "init".
 // Returns 1 from current function on error.
 #define THREAD_INIT_ATTACH_STATUS(instance_id, st, status_key) \
   /* Attach to status shared mem area */                       \
@@ -108,7 +108,7 @@ int set_priority(int priority);
     hashpipe_status_unlock_safe(&st);                          \
   } while(0)
 
-// Detach from guppi status shared memory.
+// Detach from hashpipe status shared memory.
 // Returns 1 from current function on error.
 #define THREAD_INIT_DETACH_STATUS(st)                          \
   do {                                                         \
@@ -121,7 +121,8 @@ int set_priority(int priority);
     }                                                          \
   } while(0)
 
-// Attach to guppi status shared memory and set status_key to "init".
+// Attach to hashpipe status shared memory and set status_key to "init", then
+// detach.
 // Returns 1 from current function on error.
 #define THREAD_INIT_STATUS(instance_id, status_key) \
   do {                                 \

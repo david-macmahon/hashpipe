@@ -11,7 +11,7 @@
 
 #define HASHPIPE_KEY_ERROR ((key_t)-1)
 /*
- * Get the base key to use for guppi databufs.
+ * Get the base key to use for hashpipe databufs.
  *
  * If HASHPIPE_DATABUF_KEY is defined in the environment, its value is used as
  * the base databuf key.  Otherwise, the base key is obtained by calling the
@@ -33,7 +33,7 @@
 key_t hashpipe_databuf_key(int instance_id);
 
 /*
- * Get the base key to use for the guppi status buffer.
+ * Get the base key to use for the hashpipe status buffer.
  *
  * If HASHPIPE_STATUS_KEY is defined in the environment, its value is used as
  * the base databuf key.  Otherwise, the base key is obtained by calling the

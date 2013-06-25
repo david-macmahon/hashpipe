@@ -1,6 +1,6 @@
 /* hashpipe_status.h
  *
- * Routines dealing with the guppi status shared memory
+ * Routines dealing with the hashpipe status shared memory
  * segment.  Info is passed through this segment using 
  * a FITS-like keyword=value syntax.
  */
@@ -25,14 +25,14 @@ struct hashpipe_status {
 };
 
 /*
- * Stores the guppi status (POSIX) semaphore name in semid buffer of length
+ * Stores the hashpipe status (POSIX) semaphore name in semid buffer of length
  * size.  Returns 0 (no error) if semaphore name fit in given size, returns 1
  * if semaphore name is truncated.
  *
- * The guppi status semaphore name is $HASHPIPE_STATUS_SEMNAME (if defined in
- * the environment) or ${HASHPIPE_KEYFILE}_hashpipe_status (if defined in the
- * environment) or ${HOME}_hashpipe_status (if defined in the environment) or
- * "/tmp_hashpipe_status" (global fallback).  Any slashes after the leading
+ * The hashpipe status semaphore name is $HASHPIPE_STATUS_SEMNAME (if defined
+ * in the environment) or ${HASHPIPE_KEYFILE}_hashpipe_status (if defined in
+ * the environment) or ${HOME}_hashpipe_status (if defined in the environment)
+ * or "/tmp_hashpipe_status" (global fallback).  Any slashes after the leading
  * slash are converted to underscores.
  */
 int hashpipe_status_semname(int instance_id, char * semid, size_t size);

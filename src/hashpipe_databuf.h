@@ -29,13 +29,14 @@ union semun {
 };
 
 /*
- * Get the base key to use for *all* guppi databufs.  The base key is obtained
- * by calling the ftok function, using the value of $HASHPIPE_KEYFILE, if
- * defined, or $HOME from the environment or, if $HOME is not defined, by using
- * "/tmp".  By default (i.e. no HASHPIPE_KEYFILE in the environment), this will
- * create and connect to a user specific set of shared memory buffers (provided
- * $HOME exists in the environment), but if desired users can connect to any
- * other set of memory buffers by setting HASHPIPE_KEYFILE appropraitely.
+ * Get the base key to use for *all* hashpipe databufs.  The base key is
+ * obtained by calling the ftok function, using the value of $HASHPIPE_KEYFILE,
+ * if defined, or $HOME from the environment or, if $HOME is not defined, by
+ * using "/tmp".  By default (i.e. no HASHPIPE_KEYFILE in the environment),
+ * this will create and connect to a user specific set of shared memory buffers
+ * (provided $HOME exists in the environment), but if desired users can connect
+ * to any other set of memory buffers by setting HASHPIPE_KEYFILE
+ * appropraitely.
  */
 key_t hashpipe_databuf_key();
 

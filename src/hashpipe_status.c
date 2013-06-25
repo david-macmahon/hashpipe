@@ -20,7 +20,7 @@
 #include "fitshead.h"
 
 /*
- * Stores the guppi status (POSIX) semaphore name in semid buffer of length
+ * Stores the hashpipe status (POSIX) semaphore name in semid buffer of length
  * size.  Returns 0 (no error) if semaphore name fit in given size, returns 1
  * if semaphore name is truncated.
  */
@@ -62,7 +62,7 @@ int hashpipe_status_semname(int instance_id, char * semid, size_t size)
         }
     }
 #ifdef HASHPIPE_VERBOSE
-    fprintf(stderr, "using guppi status semaphore '%s'\n", semid);
+    fprintf(stderr, "using hashpipe status semaphore '%s'\n", semid);
 #endif
     return rc;
 }
@@ -210,7 +210,7 @@ void hashpipe_status_chkinit(struct hashpipe_status *s)
     hashpipe_status_unlock(s);
 }
 
-/* Clear out guppi status buf */
+/* Clear out hashpipe status buf */
 void hashpipe_status_clear(struct hashpipe_status *s) {
 
     /* Lock */

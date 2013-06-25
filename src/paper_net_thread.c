@@ -61,7 +61,7 @@ void print_pkt_header(packet_header_t * pkt_header) {
 
     static long long prior_mcnt;
 
-    printf("packet header : mcnt %012lx (diff from prior %lld) fid %d xid %d\n", 
+    printf("packet header : mcnt %012lx (diff from prior %lld) fid %d xid %d\n",
 	   pkt_header->mcnt, pkt_header->mcnt-prior_mcnt, pkt_header->fid, pkt_header->xid);
 
     prior_mcnt = pkt_header->mcnt;
@@ -74,7 +74,7 @@ void print_block_info(block_info_t * binfo) {
 
 void print_block_active(block_info_t * binfo) {
     int i;
-    for(i=0;i<N_INPUT_BLOCKS;i++) { 
+    for(i=0;i<N_INPUT_BLOCKS;i++) {
 	if(i == binfo->block_i) {
 		fprintf(stdout, "*%03d ", binfo->block_active[i]);	
 	} else {
@@ -203,7 +203,7 @@ int set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t 
 	hashpipe_status_unlock_safe(st_p);
 
     	binfo->block_active[block_i] = 0;
-    } 
+    }
 
     return block_missed_pkt_cnt;
 }
@@ -222,14 +222,14 @@ static inline int calc_block_indexes(block_info_t *binfo, packet_header_t * pkt_
 	binfo->mcnt_offset = pkt_header->mcnt - binfo->mcnt_start;
     }
 
-    binfo->block_i     = (binfo->mcnt_offset) / N_SUB_BLOCKS_PER_INPUT_BLOCK % N_INPUT_BLOCKS; 
+    binfo->block_i     = (binfo->mcnt_offset) / N_SUB_BLOCKS_PER_INPUT_BLOCK % N_INPUT_BLOCKS;
     binfo->m = (binfo->mcnt_offset) % Nm;
     binfo->f = pkt_header->fid;
 
     return 0;
 }
 
-#define MAX_MCNT_DIFF 64 
+#define MAX_MCNT_DIFF 64
 static inline int out_of_seq_mcnt(block_info_t * binfo, uint64_t pkt_mcnt) {
 // mcnt rollovers are seen and treated like any other out of sequence mcnt
 
@@ -256,7 +256,7 @@ static inline int handle_out_of_seq_mcnt(block_info_t * binfo) {
 
 static inline void initialize_block(paper_input_databuf_t * paper_input_databuf_p, block_info_t * binfo, uint64_t pkt_mcnt) {
 
-    paper_input_databuf_p->block[binfo->block_i].header.good_data = 0; 
+    paper_input_databuf_p->block[binfo->block_i].header.good_data = 0;
     // Round pkt_mcnt down to nearest multiple of Nm
     paper_input_databuf_p->block[binfo->block_i].header.mcnt = pkt_mcnt - (pkt_mcnt%Nm);
 }
@@ -266,8 +266,8 @@ static inline void initialize_block_info(paper_input_databuf_t *paper_input_data
     int i;
 
     // We might be restarting so mark all currently active blocks, with the exception
-    // of block_i, as filled. We will restart at block_i.  On program startup, this loop 
-    // as no functional effect as no blocks are active and all block_active elements are 0. 
+    // of block_i, as filled. We will restart at block_i.  On program startup, this loop
+    // as no functional effect as no blocks are active and all block_active elements are 0.
     for(i = 0; i < N_INPUT_BLOCKS; i++) {
 	if(i == binfo->block_i) {
 		binfo->block_active[i] = 0;	
@@ -279,8 +279,8 @@ static inline void initialize_block_info(paper_input_databuf_t *paper_input_data
 	}
     }		
 
-    // On program startup block_i will be zero.  If we are restarting,  this will set 
-    // us up to restart at the beginning of block_i. 
+    // On program startup block_i will be zero.  If we are restarting,  this will set
+    // us up to restart at the beginning of block_i.
     binfo->mcnt_start = pkt_mcnt - binfo->block_i * N_SUB_BLOCKS_PER_INPUT_BLOCK;
 
     binfo->mcnt_prior = pkt_mcnt;
@@ -348,7 +348,7 @@ static inline uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper
 #endif
 	netmcnt = paper_input_databuf_p->block[i].header.mcnt;
 	// Wait (hopefully not long!) for free block for this packet
-	if((rv = paper_input_databuf_busywait_free(paper_input_databuf_p, binfo.block_i)) != HASHPIPE_OK) {    
+	if((rv = paper_input_databuf_busywait_free(paper_input_databuf_p, binfo.block_i)) != HASHPIPE_OK) {
 	    if (errno == EINTR) {
 		// Interrupted by signal, return -1
 	        return -1;
@@ -360,7 +360,7 @@ static inline uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper
 	    }
 	}
 
-	initialize_block(paper_input_databuf_p, &binfo, pkt_header.mcnt); 
+	initialize_block(paper_input_databuf_p, &binfo, pkt_header.mcnt);
     }
     binfo.block_active[binfo.block_i]++;	// increment packet count for block
     // end housekeeping
@@ -445,7 +445,7 @@ static void *run(void * _args)
     /* Set up UDP socket */
     int rv = hashpipe_udp_init(&up);
     if (rv!=HASHPIPE_OK) {
-        hashpipe_error("guppi_net_thread",
+        hashpipe_error("paper_net_thread",
                 "Error opening UDP socket.");
         pthread_exit(NULL);
     }
@@ -476,11 +476,11 @@ static void *run(void * _args)
         if (up.packet_size != p.packet_size) {
             if (p.packet_size != -1) {
                 #ifdef DEBUG_NET
-                hashpipe_warn("guppi_net_thread", "Incorrect pkt size");
+                hashpipe_warn("paper_net_thread", "Incorrect pkt size");
                 #endif
-                continue; 
+                continue;
             } else {
-                hashpipe_error("guppi_net_thread", 
+                hashpipe_error("paper_net_thread",
                         "hashpipe_udp_recv returned error");
                 perror("hashpipe_udp_recv");
                 pthread_exit(NULL);
