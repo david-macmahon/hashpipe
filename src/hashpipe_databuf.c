@@ -123,10 +123,12 @@ hashpipe_databuf_t *hashpipe_databuf_create(int instance_id,
 
 int hashpipe_databuf_detach(hashpipe_databuf_t *d)
 {
-    int rv = shmdt(d);
-    if (rv!=0) {
-        hashpipe_error(__FUNCTION__, "shmdt error");
-        return HASHPIPE_ERR_SYS;
+    if(d) {
+        int rv = shmdt(d);
+        if (rv!=0) {
+            hashpipe_error(__FUNCTION__, "shmdt error");
+            return HASHPIPE_ERR_SYS;
+        }
     }
     return HASHPIPE_OK;
 }
@@ -150,7 +152,6 @@ char *hashpipe_databuf_data(hashpipe_databuf_t *d, int block_id)
 
 hashpipe_databuf_t *hashpipe_databuf_attach(int instance_id, int databuf_id)
 {
-
     /* Get shmid */
     key_t key = hashpipe_databuf_key(instance_id);
     if(key == HASHPIPE_KEY_ERROR) {
