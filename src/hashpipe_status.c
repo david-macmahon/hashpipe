@@ -134,13 +134,15 @@ int hashpipe_status_attach(int instance_id, struct hashpipe_status *s)
 }
 
 int hashpipe_status_detach(struct hashpipe_status *s) {
-    int rv = shmdt(s->buf);
-    if (rv!=0) {
-        hashpipe_error("hashpipe_status_detach", "shmdt error");
-        return(HASHPIPE_ERR_SYS);
+    if(s && s->buf) {
+      int rv = shmdt(s->buf);
+      if (rv!=0) {
+          hashpipe_error("hashpipe_status_detach", "shmdt error");
+          return HASHPIPE_ERR_SYS;
+      }
+      s->buf = NULL;
     }
-    s->buf = NULL;
-    return(HASHPIPE_OK);
+    return HASHPIPE_OK;
 }
 
 /* TODO: put in some (long, ~few sec) timeout */
