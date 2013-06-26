@@ -20,16 +20,16 @@
 #include "hashpipe_databuf.h"
 #include "hashpipe_error.h"
 
-struct hashpipe_databuf *hashpipe_databuf_create(int instance_id,
+hashpipe_databuf_t *hashpipe_databuf_create(int instance_id,
         int databuf_id, size_t header_size, size_t block_size, int n_block)
 {
     int rv = 0;
     int verify_sizing = 0;
     size_t total_size = header_size + block_size*n_block;
 
-    if(header_size < sizeof(struct hashpipe_databuf)) {
+    if(header_size < sizeof(hashpipe_databuf_t)) {
         hashpipe_error(__FUNCTION__, "header size must be larger than %lu",
-            sizeof(struct hashpipe_databuf));
+            sizeof(hashpipe_databuf_t));
         return NULL;
     }
 
@@ -54,7 +54,7 @@ struct hashpipe_databuf *hashpipe_databuf_create(int instance_id,
     }
 
     /* Attach */
-    struct hashpipe_databuf *d;
+    hashpipe_databuf_t *d;
     d = shmat(shmid, NULL, 0);
     if (d==(void *)-1) {
         hashpipe_error(__FUNCTION__, "shmat error");
@@ -121,7 +121,7 @@ struct hashpipe_databuf *hashpipe_databuf_create(int instance_id,
     return d;
 }
 
-int hashpipe_databuf_detach(struct hashpipe_databuf *d)
+int hashpipe_databuf_detach(hashpipe_databuf_t *d)
 {
     int rv = shmdt(d);
     if (rv!=0) {
@@ -131,7 +131,7 @@ int hashpipe_databuf_detach(struct hashpipe_databuf *d)
     return HASHPIPE_OK;
 }
 
-void hashpipe_databuf_clear(struct hashpipe_databuf *d)
+void hashpipe_databuf_clear(hashpipe_databuf_t *d)
 {
     /* Zero out semaphores */
     union semun arg;
@@ -143,12 +143,12 @@ void hashpipe_databuf_clear(struct hashpipe_databuf *d)
     // TODO memset to 0?
 }
 
-char *hashpipe_databuf_data(struct hashpipe_databuf *d, int block_id)
+char *hashpipe_databuf_data(hashpipe_databuf_t *d, int block_id)
 {
     return (char *)d + d->header_size + d->block_size*block_id;
 }
 
-struct hashpipe_databuf *hashpipe_databuf_attach(int instance_id, int databuf_id)
+hashpipe_databuf_t *hashpipe_databuf_attach(int instance_id, int databuf_id)
 {
 
     /* Get shmid */
@@ -167,7 +167,7 @@ struct hashpipe_databuf *hashpipe_databuf_attach(int instance_id, int databuf_id
     }
 
     /* Attach */
-    struct hashpipe_databuf *d;
+    hashpipe_databuf_t *d;
     d = shmat(shmid, NULL, 0);
     if (d==(void *)-1) {
         hashpipe_error(__FUNCTION__, "shmat error");
@@ -178,12 +178,12 @@ struct hashpipe_databuf *hashpipe_databuf_attach(int instance_id, int databuf_id
 
 }
 
-int hashpipe_databuf_block_status(struct hashpipe_databuf *d, int block_id)
+int hashpipe_databuf_block_status(hashpipe_databuf_t *d, int block_id)
 {
     return semctl(d->semid, block_id, GETVAL);
 }
 
-int hashpipe_databuf_total_status(struct hashpipe_databuf *d)
+int hashpipe_databuf_total_status(hashpipe_databuf_t *d)
 {
 
     /* Get all values at once */
@@ -198,7 +198,7 @@ int hashpipe_databuf_total_status(struct hashpipe_databuf *d)
 
 }
 
-uint64_t hashpipe_databuf_total_mask(struct hashpipe_databuf *d)
+uint64_t hashpipe_databuf_total_mask(hashpipe_databuf_t *d)
 {
 
     /* Get all values at once */
@@ -219,7 +219,7 @@ uint64_t hashpipe_databuf_total_mask(struct hashpipe_databuf *d)
     return tot;
 }
 
-int hashpipe_databuf_wait_free(struct hashpipe_databuf *d, int block_id)
+int hashpipe_databuf_wait_free(hashpipe_databuf_t *d, int block_id)
 {
     int rv;
     struct sembuf op;
@@ -247,7 +247,7 @@ int hashpipe_databuf_wait_free(struct hashpipe_databuf *d, int block_id)
     return 0;
 }
 
-int hashpipe_databuf_busywait_free(struct hashpipe_databuf *d, int block_id)
+int hashpipe_databuf_busywait_free(hashpipe_databuf_t *d, int block_id)
 {
     int rv;
     struct sembuf op;
@@ -270,7 +270,7 @@ int hashpipe_databuf_busywait_free(struct hashpipe_databuf *d, int block_id)
     return 0;
 }
 
-int hashpipe_databuf_wait_filled(struct hashpipe_databuf *d, int block_id)
+int hashpipe_databuf_wait_filled(hashpipe_databuf_t *d, int block_id)
 {
     /* This needs to wait for the semval of the given block
      * to become > 0, but NOT immediately decrement it to 0.
@@ -300,7 +300,7 @@ int hashpipe_databuf_wait_filled(struct hashpipe_databuf *d, int block_id)
     return 0;
 }
 
-int hashpipe_databuf_busywait_filled(struct hashpipe_databuf *d, int block_id)
+int hashpipe_databuf_busywait_filled(hashpipe_databuf_t *d, int block_id)
 {
     /* This needs to wait for the semval of the given block
      * to become > 0, but NOT immediately decrement it to 0.
@@ -332,7 +332,7 @@ int hashpipe_databuf_busywait_filled(struct hashpipe_databuf *d, int block_id)
     return 0;
 }
 
-int hashpipe_databuf_set_free(struct hashpipe_databuf *d, int block_id)
+int hashpipe_databuf_set_free(hashpipe_databuf_t *d, int block_id)
 {
     /* This function should always succeed regardless of the current
      * state of the specified databuf.  So we use semctl (not semop) to set
@@ -353,7 +353,7 @@ int hashpipe_databuf_set_free(struct hashpipe_databuf *d, int block_id)
     return 0;
 }
 
-int hashpipe_databuf_set_filled(struct hashpipe_databuf *d, int block_id)
+int hashpipe_databuf_set_filled(hashpipe_databuf_t *d, int block_id)
 {
     /* This function should always succeed regardless of the current
      * state of the specified databuf.  So we use semctl (not semop) to set

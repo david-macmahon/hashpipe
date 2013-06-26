@@ -22,7 +22,7 @@ void usage() {
             "  -i n, --id=n (1)\n"
             "  -s MB, --blksize=MB (32)\n"
             "  -n n, --nblock=n (24)\n"
-            "  -H n, --hdrsize=n (sizeof(hashpipe_databuf))\n"
+            "  -H n, --hdrsize=n (sizeof(hashpipe_databuf_t))\n"
             );
 }
 
@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
     int db_id=1;
     int blocksize = 32;
     int nblock = 24;
-    size_t header_size = sizeof(struct hashpipe_databuf);
+    size_t header_size = sizeof(hashpipe_databuf_t);
     while ((opt=getopt_long(argc,argv,"hqI:ci:s:n:t:H:",long_opts,&opti))!=-1) {
         switch (opt) {
             case 'I':
@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* Create mem if asked, otherwise attach */
-    struct hashpipe_databuf *db=NULL;
+    hashpipe_databuf_t *db=NULL;
     if (create) { 
         db = hashpipe_databuf_create(instance_id, header_size, nblock, blocksize*1024*1024, db_id);
         if (db==NULL) {

@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* Create mem if asked, otherwise attach */
-    struct hashpipe_databuf *db=NULL;
+    hashpipe_databuf_t *db=NULL;
     db = hashpipe_databuf_attach(instance_id, db_id);
     if (db==NULL) { 
       fprintf(stderr, 

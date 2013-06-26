@@ -35,14 +35,14 @@ static void *run(void * _args)
 
     THREAD_RUN_ATTACH_STATUS(args->instance_id, st);
 
-    // Attach to databuf as a low-level hashpipe_databuf.  Since
+    // Attach to databuf as a low-level hashpipe databuf.  Since
     // null_output_thread can attach to any kind of databuf, we cannot create
     // the upstream databuf if it does not yet exist.  We have to simply wait
     // for it to be created by the upstream thread.  Give up after 1 second.
     int i;
     struct timespec ts = {0, 1000}; // One microsecond
     int max_tries = 1000000; // One million microseconds
-    struct hashpipe_databuf *db;
+    hashpipe_databuf_t *db;
     for(i = 0; i < max_tries; i++) {
         db = hashpipe_databuf_attach(args->instance_id, args->input_buffer);
         if(db) break;

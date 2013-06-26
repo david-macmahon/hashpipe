@@ -11,14 +11,14 @@
 #include <sys/ipc.h>
 #include <sys/sem.h>
 
-struct hashpipe_databuf {
+typedef struct {
     char data_type[64]; /* Type of data in buffer */
     size_t header_size; /* Size of each block header (bytes) */
     size_t block_size;  /* Size of each data block (bytes) */
     int n_block;        /* Number of data blocks in buffer */
     int shmid;          /* ID of this shared mem segment */
     int semid;          /* ID of locking semaphore set */
-};
+} hashpipe_databuf_t;
 
 /* union for semaphore ops.  Is this really needed? */
 union semun {
@@ -44,32 +44,32 @@ key_t hashpipe_databuf_key();
  * area on success, or NULL on error.  Returns error if an existing shmem area
  * exists with the given shmid and different sizing parameters.
  */
-struct hashpipe_databuf *hashpipe_databuf_create(int instance_id,
+hashpipe_databuf_t *hashpipe_databuf_create(int instance_id,
         int databuf_id, size_t header_size, size_t block_size, int n_block);
 
 /* Return a pointer to a existing shmem segment with given id.
  * Returns error if segment does not exist 
  */
-struct hashpipe_databuf *hashpipe_databuf_attach(int instance_id, int databuf_id);
+hashpipe_databuf_t *hashpipe_databuf_attach(int instance_id, int databuf_id);
 
 /* Detach from shared mem segment */
-int hashpipe_databuf_detach(struct hashpipe_databuf *d);
+int hashpipe_databuf_detach(hashpipe_databuf_t *d);
 
 /* Set all semaphores to 0, 
  * TODO: memset to 0 as well?
  */
-void hashpipe_databuf_clear(struct hashpipe_databuf *d);
+void hashpipe_databuf_clear(hashpipe_databuf_t *d);
 
 /* Returns pointer to the beginning of the given data block.
  */
-char *hashpipe_databuf_data(struct hashpipe_databuf *d, int block_id);
+char *hashpipe_databuf_data(hashpipe_databuf_t *d, int block_id);
 
 /* Returns lock status for given block_id, or total for
  * whole array.
  */
-int hashpipe_databuf_block_status(struct hashpipe_databuf *d, int block_id);
-int hashpipe_databuf_total_status(struct hashpipe_databuf *d);
-uint64_t hashpipe_databuf_total_mask(struct hashpipe_databuf *d);
+int hashpipe_databuf_block_status(hashpipe_databuf_t *d, int block_id);
+int hashpipe_databuf_total_status(hashpipe_databuf_t *d);
+uint64_t hashpipe_databuf_total_mask(hashpipe_databuf_t *d);
 
 /* Databuf locking functions.  Each block in the buffer
  * can be marked as free or filled.  The "wait" functions
@@ -79,12 +79,12 @@ uint64_t hashpipe_databuf_total_mask(struct hashpipe_databuf *d);
  * put the buffer in the specified state, returning error if
  * it is already in that state.
  */
-int hashpipe_databuf_wait_filled(struct hashpipe_databuf *d, int block_id);
-int hashpipe_databuf_busywait_filled(struct hashpipe_databuf *d, int block_id);
-int hashpipe_databuf_set_filled(struct hashpipe_databuf *d, int block_id);
-int hashpipe_databuf_wait_free(struct hashpipe_databuf *d, int block_id);
-int hashpipe_databuf_busywait_free(struct hashpipe_databuf *d, int block_id);
-int hashpipe_databuf_set_free(struct hashpipe_databuf *d, int block_id);
+int hashpipe_databuf_wait_filled(hashpipe_databuf_t *d, int block_id);
+int hashpipe_databuf_busywait_filled(hashpipe_databuf_t *d, int block_id);
+int hashpipe_databuf_set_filled(hashpipe_databuf_t *d, int block_id);
+int hashpipe_databuf_wait_free(hashpipe_databuf_t *d, int block_id);
+int hashpipe_databuf_busywait_free(hashpipe_databuf_t *d, int block_id);
+int hashpipe_databuf_set_free(hashpipe_databuf_t *d, int block_id);
 
 
 #endif // _HASHPIPE_DATABUF_H

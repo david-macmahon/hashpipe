@@ -26,7 +26,7 @@ static struct timespec now;
     clock_gettime(CLOCK_MONOTONIC, &now);                      \
     fprintf(stderr, "%13ld tid %lu " msg " %d (%lx)\n",        \
         ELAPSED_NS(now), pthread_self(), block_id,             \
-        hashpipe_databuf_total_mask((struct hashpipe_databuf *)pd)); \
+        hashpipe_databuf_total_mask((hashpipe_databuf_t *)pd)); \
     errno = orig_errno;                                        \
   } while(0)
 
@@ -40,42 +40,28 @@ static struct timespec now;
 #include "hashpipe_error.h"
 
 /*
- * Since the first element of struct paper_input_databuf is a struct
- * hashpipe_databuf, a pointer to a struct paper_input_databuf is also a pointer
- * to a struct hashpipe_databuf.  This allows a pointer to a struct
- * paper_input_databuf to be passed, with appropriate casting, to functions
- * that accept a pointer to a struct hashpipe_databuf.  This allows the reuse of
- * many of the functions in hashpipe_databuf.c.  This is a form of inheritence: a
- * struct paper_input_databuf is a struct hashpipe_databuf (plus additional
- * specializations).
- *
- * Many of the functions in hashpipe_databuf.c accept a pointer to a struct
- * hashpipe_databuf, but unfortunately some of them have non-generic code or
- * parameters which render them unsuitable for general use.
+ * Since the first element of paper_input_databuf_t is a hashpipe_databuf_t, a
+ * pointer to a paper_input_databuf_t is also a pointer to a
+ * hashpipe_databuf_t.  This allows a pointer to a paper_input_databuf_t to be
+ * passed, with appropriate casting, to functions that accept a pointer to a
+ * hashpipe_databuf_t.  This allows the reuse of many of the functions in
+ * hashpipe_databuf.c.  This is a form of inheritence: a paper_input_databuf_t
+ * is a hashpipe_databuf_t (plus additional specializations).
  *
  * For hashpipe_databuf.c function...
  *
- *   hashpipe_databuf_xyzzy(struct hashpipe_databuf *d...)
+ *   hashpipe_databuf_xyzzy(hashpipe_databuf_t *d...)
  *
- * ...that is suitable for general use, a corresponding paper_databuf.c
- * function...
+ * ...a corresponding paper_databuf.c function...
  *
- *   paper_input_databuf_xyzzy(struct paper_input_databuf *d...)
+ *   paper_input_databuf_xyzzy(paper_input_databuf_t *d...)
  *
  * ...can be created that passes its d parameter to hashpipe_databuf_xyzzy with
  * appropraite casting.  In some cases (e.g. hashpipe_databuf_attach), that's all
  * that's needed, but other cases may require additional functionality in the
  * paper_input_buffer function.
  *
- * hashpipe_databuf.c functions that are not suitable for general use will have
- * to be duplicated in a paper-specific way (i.e. without calling the
- * hashpipe_databuf version) if they are in fact relevent to paper_input_databuf.
- * Functions that are duplicated for this reason should have a brief comment
- * indicating why they are bgin duplicated rather than simply calling the
- * hashpipe_databuf.c equivalent.
- *
- * The same comments apply to struct paper_output_databuf.
- *
+ * The same comments apply to paper_output_databuf_t.
  */
 
 /*
@@ -93,7 +79,7 @@ paper_input_databuf_t *paper_input_databuf_create(int instance_id, int databuf_i
 #endif
 
     /* Calc databuf sizes */
-    size_t header_size = sizeof(struct hashpipe_databuf)
+    size_t header_size = sizeof(hashpipe_databuf_t)
                        + sizeof(hashpipe_databuf_cache_alignment);
     size_t block_size  = sizeof(paper_input_block_t);
     int    n_block = N_INPUT_BLOCKS + N_DEBUG_INPUT_BLOCKS;
@@ -102,52 +88,52 @@ paper_input_databuf_t *paper_input_databuf_create(int instance_id, int databuf_i
         instance_id, databuf_id, header_size, block_size, n_block);
 }
 
-int paper_input_databuf_wait_free(struct paper_input_databuf *d, int block_id)
+int paper_input_databuf_wait_free(paper_input_databuf_t *d, int block_id)
 {
     int rv;
     SEMLOG(d, "wait free");
-    rv = hashpipe_databuf_wait_free((struct hashpipe_databuf *)d, block_id);
+    rv = hashpipe_databuf_wait_free((hashpipe_databuf_t *)d, block_id);
     SEMLOG(d, "got  free");
     return rv;
 }
 
-int paper_input_databuf_busywait_free(struct paper_input_databuf *d, int block_id)
+int paper_input_databuf_busywait_free(paper_input_databuf_t *d, int block_id)
 {
     int rv;
     SEMLOG(d, "busy-wait free");
-    rv = hashpipe_databuf_busywait_free((struct hashpipe_databuf *)d, block_id);
+    rv = hashpipe_databuf_busywait_free((hashpipe_databuf_t *)d, block_id);
     SEMLOG(d, "busy-got  free");
     return rv;
 }
 
-int paper_input_databuf_wait_filled(struct paper_input_databuf *d, int block_id)
+int paper_input_databuf_wait_filled(paper_input_databuf_t *d, int block_id)
 {
     int rv;
     SEMLOG(d, "wait fill");
-    rv = hashpipe_databuf_wait_filled((struct hashpipe_databuf *)d, block_id);
+    rv = hashpipe_databuf_wait_filled((hashpipe_databuf_t *)d, block_id);
     SEMLOG(d, "got  fill");
     return rv;
 }
 
-int paper_input_databuf_busywait_filled(struct paper_input_databuf *d, int block_id)
+int paper_input_databuf_busywait_filled(paper_input_databuf_t *d, int block_id)
 {
     int rv;
     SEMLOG(d, "busy-wait fill");
-    rv = hashpipe_databuf_busywait_filled((struct hashpipe_databuf *)d, block_id);
+    rv = hashpipe_databuf_busywait_filled((hashpipe_databuf_t *)d, block_id);
     SEMLOG(d, "busy-got  fill");
     return rv;
 }
 
-int paper_input_databuf_set_free(struct paper_input_databuf *d, int block_id)
+int paper_input_databuf_set_free(paper_input_databuf_t *d, int block_id)
 {
     SEMLOG(d, "set  free");
-    return hashpipe_databuf_set_free((struct hashpipe_databuf *)d, block_id);
+    return hashpipe_databuf_set_free((hashpipe_databuf_t *)d, block_id);
 }
 
-int paper_input_databuf_set_filled(struct paper_input_databuf *d, int block_id)
+int paper_input_databuf_set_filled(paper_input_databuf_t *d, int block_id)
 {
     SEMLOG(d, "set  fill");
-    return hashpipe_databuf_set_filled((struct hashpipe_databuf *)d, block_id);
+    return hashpipe_databuf_set_filled((hashpipe_databuf_t *)d, block_id);
 }
 
 paper_gpu_input_databuf_t *paper_gpu_input_databuf_create(int instance_id, int databuf_id)
@@ -162,7 +148,7 @@ paper_gpu_input_databuf_t *paper_gpu_input_databuf_create(int instance_id, int d
 #endif
 
     /* Calc databuf sizes */
-    size_t header_size = sizeof(struct hashpipe_databuf)
+    size_t header_size = sizeof(hashpipe_databuf_t)
                        + sizeof(hashpipe_databuf_cache_alignment);
     size_t block_size  = sizeof(paper_gpu_input_block_t);
     int    n_block = N_GPU_INPUT_BLOCKS;
@@ -171,10 +157,10 @@ paper_gpu_input_databuf_t *paper_gpu_input_databuf_create(int instance_id, int d
         instance_id, databuf_id, header_size, block_size, n_block);
 }
 
-struct paper_output_databuf *paper_output_databuf_create(int instance_id, int databuf_id)
+paper_output_databuf_t *paper_output_databuf_create(int instance_id, int databuf_id)
 {
     /* Calc databuf sizes */
-    size_t header_size = sizeof(struct hashpipe_databuf)
+    size_t header_size = sizeof(hashpipe_databuf_t)
                        + sizeof(hashpipe_databuf_cache_alignment);
     size_t block_size  = sizeof(paper_output_block_t);
     int    n_block = N_OUTPUT_BLOCKS;

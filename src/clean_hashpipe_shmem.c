@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* Databuf shared mem */
-    struct hashpipe_databuf *d=NULL;
+    hashpipe_databuf_t *d=NULL;
     int i = 0;
     for (i=1; i<=20; i++) {
         d = hashpipe_databuf_attach(instance_id, i); // Repeat for however many needed ..
