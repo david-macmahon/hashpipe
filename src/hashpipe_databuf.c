@@ -20,6 +20,14 @@
 #include "hashpipe_databuf.h"
 #include "hashpipe_error.h"
 
+/* union for semaphore ops. */
+union semun {
+    int val;
+    struct semid_ds *buf;
+    unsigned short *array;
+    struct seminfo *__buf;
+};
+
 hashpipe_databuf_t *hashpipe_databuf_create(int instance_id,
         int databuf_id, size_t header_size, size_t block_size, int n_block)
 {

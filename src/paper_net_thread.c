@@ -20,14 +20,8 @@
 
 #include <xgpu.h>
 
-#include "fitshead.h"
-#include "hashpipe_error.h"
-#include "hashpipe_status.h"
+#include "hashpipe.h"
 #include "paper_databuf.h"
-#include "hashpipe_udp.h"
-
-#define STATUS_KEY "NETSTAT"  /* Define before hashpipe_thread.h */
-#include "hashpipe_thread.h"
 
 #define DEBUG_NET
 
@@ -55,7 +49,7 @@ typedef struct {
     int block_active[N_INPUT_BLOCKS];
 } block_info_t;
 
-static struct hashpipe_status *st_p;
+static hashpipe_status_t *st_p;
 
 void print_pkt_header(packet_header_t * pkt_header) {
 
@@ -377,46 +371,30 @@ static inline uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper
     return netmcnt;
 }
 
-static int init(struct hashpipe_thread_args *args)
-{
-    /* Attach to status shared mem area */
-    THREAD_INIT_STATUS(args->instance_id, STATUS_KEY);
-
-    /* Create paper_input_databuf for output buffer */
-    THREAD_INIT_DATABUF(args->instance_id, paper_input_databuf,
-        args->output_buffer);
-
-    // Success!
-    return 0;
-}
-
 #define ELAPSED_NS(start,stop) \
   (((int64_t)stop.tv_sec-start.tv_sec)*1000*1000*1000+(stop.tv_nsec-start.tv_nsec))
 
-static void *run(void * _args)
+static void *run(hashpipe_thread_args_t * args)
 {
-    // Cast _args
-    struct hashpipe_thread_args *args = (struct hashpipe_thread_args *)_args;
+    // Local aliases to shorten access to args fields
+    // Our output buffer happens to be a paper_input_databuf
+    paper_input_databuf_t *db = (paper_input_databuf_t *)args->obuf;
+    hashpipe_status_t st = args->st;
+    const char * status_key = args->module->skey;
 
 #ifdef DEBUG_SEMS
     fprintf(stderr, "s/tid %lu/NET/' <<.\n", pthread_self());
 #endif
 
-    THREAD_RUN_BEGIN(args);
-
-    THREAD_RUN_SET_AFFINITY_PRIORITY(args);
-
-    THREAD_RUN_ATTACH_STATUS(args->instance_id, st);
     st_p = &st;		// allow global (this source file) access to the status buffer
 
-    /* Attach to paper_input_databuf */
-    THREAD_RUN_ATTACH_DATABUF(args->instance_id, paper_input_databuf, db, args->output_buffer);
-
+#if 0
     /* Copy status buffer */
     char status_buf[HASHPIPE_STATUS_SIZE];
     hashpipe_status_lock_busywait_safe(st_p);
     memcpy(status_buf, st_p->buf, HASHPIPE_STATUS_SIZE);
     hashpipe_status_unlock_safe(st_p);
+#endif
 
     /* Read network params */
     struct hashpipe_udp_params up = {
@@ -432,7 +410,7 @@ static void *run(void * _args)
     hputi4(st.buf, "BINDPORT", up.bindport);
     hputu4(st.buf, "MISSEDFE", 0);
     hputu4(st.buf, "MISSEDPK", 0);
-    hputs(st.buf, STATUS_KEY, "running");
+    hputs(st.buf, status_key, "running");
     hashpipe_status_unlock_safe(&st);
 
     struct hashpipe_udp_packet p;
@@ -541,22 +519,21 @@ static void *run(void * _args)
         pthread_testcancel();
     }
 
-    /* Have to close all push's */
 #ifndef TIMING_TEST
-    pthread_cleanup_pop(0); /* Closes push(hashpipe_udp_close) */
+    /* Have to close all push's */
+    pthread_cleanup_pop(1); /* Closes push(hashpipe_udp_close) */
 #endif
-    THREAD_RUN_DETACH_DATAUF;
-    THREAD_RUN_DETACH_STATUS;
-    THREAD_RUN_END;
 
     return NULL;
 }
 
 static pipeline_thread_module_t module = {
     name: "paper_net_thread",
-    type: PIPELINE_INPUT_THREAD,
-    init: init,
-    run:  run
+    skey: "NETSTAT",
+    init: NULL,
+    run:  run,
+    ibuf_desc: {NULL},
+    obuf_desc: {paper_input_databuf_create}
 };
 
 static __attribute__((constructor)) void ctor()

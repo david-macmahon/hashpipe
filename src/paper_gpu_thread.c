@@ -26,61 +26,23 @@
 #define SYNCOP_SYNC_TRANSFER 0
 #endif
 
-#include "fitshead.h"
-#include "hashpipe_error.h"
-#include "hashpipe_status.h"
+#include "hashpipe.h"
 #include "paper_databuf.h"
-
-#define STATUS_KEY "GPUSTAT"  /* Define before hashpipe_thread.h */
-#include "hashpipe_thread.h"
-
-static int init(struct hashpipe_thread_args *args)
-{
-    /* Attach to status shared mem area */
-    THREAD_INIT_STATUS(args->instance_id, STATUS_KEY);
-
-    // Get sizing parameters
-    XGPUInfo xgpu_info;
-    xgpuInfo(&xgpu_info);
-
-    /* Create paper_gpu_input_databuf */
-    THREAD_INIT_DATABUF(args->instance_id, paper_gpu_input_databuf,
-        args->input_buffer);
-
-    /* Create paper_ouput_databuf */
-    THREAD_INIT_DATABUF(args->instance_id, paper_output_databuf,
-        args->output_buffer);
-
-    // Success!
-    return 0;
-}
 
 #define ELAPSED_NS(start,stop) \
   (((int64_t)stop.tv_sec-start.tv_sec)*1000*1000*1000+(stop.tv_nsec-start.tv_nsec))
 
-static void *run(void * _args, int doCPU)
+static void *run(hashpipe_thread_args_t * args, int doCPU)
 {
-    // Cast _args
-    struct hashpipe_thread_args *args = (struct hashpipe_thread_args *)_args;
+    // Local aliases to shorten access to args fields
+    paper_input_databuf_t *db_in = (paper_input_databuf_t *)args->ibuf;
+    paper_output_databuf_t *db_out = (paper_output_databuf_t *)args->obuf;
+    hashpipe_status_t st = args->st;
+    const char * status_key = args->module->skey;
 
 #ifdef DEBUG_SEMS
     fprintf(stderr, "s/tid %lu/                      GPU/\n", pthread_self());
 #endif
-
-    THREAD_RUN_BEGIN(args);
-
-    THREAD_RUN_SET_AFFINITY_PRIORITY(args);
-
-    /* Attach to status shared mem area */
-    THREAD_RUN_ATTACH_STATUS(args->instance_id, st);
-
-    /* Attach to paper_gpu_input_databuf */
-    THREAD_RUN_ATTACH_DATABUF(args->instance_id,
-        paper_gpu_input_databuf, db_in, args->input_buffer);
-
-    /* Attach to paper_ouput_databuf */
-    THREAD_RUN_ATTACH_DATABUF(args->instance_id,
-        paper_output_databuf, db_out, args->output_buffer);
 
     // Init integration control status variables
     int gpu_dev = 0;
@@ -129,16 +91,16 @@ static void *run(void * _args, int doCPU)
         // query integrating status
         // and, if armed, start count
         hashpipe_status_lock_safe(&st);
-        hputs(st.buf, STATUS_KEY, "waiting");
+        hputs(st.buf, status_key, "waiting");
         hgets(st.buf,  "INTSTAT", 16, integ_status);
         hgeti8(st.buf, "INTSYNC", (long long*)&start_mcount);
         hashpipe_status_unlock_safe(&st);
 
         // Wait for new input block to be filled
-        while ((rv=paper_gpu_input_databuf_wait_filled(db_in, curblock_in)) != HASHPIPE_OK) {
+        while ((rv=hashpipe_databuf_wait_filled((hashpipe_databuf_t *)db_in, curblock_in)) != HASHPIPE_OK) {
             if (rv==HASHPIPE_TIMEOUT) {
                 hashpipe_status_lock_safe(&st);
-                hputs(st.buf, STATUS_KEY, "blocked_in");
+                hputs(st.buf, status_key, "blocked_in");
                 hashpipe_status_unlock_safe(&st);
                 continue;
             } else {
@@ -158,7 +120,7 @@ static void *run(void * _args, int doCPU)
         // If integration status "off"
         if(!strcmp(integ_status, "off")) {
             // Mark input block as free and advance
-            paper_gpu_input_databuf_set_free(db_in, curblock_in);
+            hashpipe_databuf_set_free((hashpipe_databuf_t *)db_in, curblock_in);
             curblock_in = (curblock_in + 1) % db_in->header.n_block;
             // Skip to next input buffer
             continue;
@@ -170,7 +132,7 @@ static void *run(void * _args, int doCPU)
             if(db_in->block[curblock_in].header.mcnt < start_mcount) {
               // Drop input buffer
               // Mark input block as free and advance
-              paper_gpu_input_databuf_set_free(db_in, curblock_in);
+              hashpipe_databuf_set_free((hashpipe_databuf_t *)db_in, curblock_in);
               curblock_in = (curblock_in + 1) % db_in->header.n_block;
               // Skip to next input buffer
               continue;
@@ -199,7 +161,7 @@ static void *run(void * _args, int doCPU)
 
         // Note processing status
         hashpipe_status_lock_safe(&st);
-        hputs(st.buf, STATUS_KEY, "processing gpu");
+        hputs(st.buf, status_key, "processing gpu");
         hashpipe_status_unlock_safe(&st);
 
 
@@ -217,7 +179,7 @@ static void *run(void * _args, int doCPU)
           while ((rv=paper_output_databuf_wait_free(db_out, curblock_out)) != HASHPIPE_OK) {
               if (rv==HASHPIPE_TIMEOUT) {
                   hashpipe_status_lock_safe(&st);
-                  hputs(st.buf, STATUS_KEY, "blocked gpu out");
+                  hputs(st.buf, status_key, "blocked gpu out");
                   hashpipe_status_unlock_safe(&st);
                   continue;
               } else {
@@ -284,14 +246,14 @@ static void *run(void * _args, int doCPU)
 
             /* Note waiting status */
             hashpipe_status_lock_safe(&st);
-            hputs(st.buf, STATUS_KEY, "waiting");
+            hputs(st.buf, status_key, "waiting");
             hashpipe_status_unlock_safe(&st);
 
             // Wait for new output block to be free
             while ((rv=paper_output_databuf_wait_free(db_out, curblock_out)) != HASHPIPE_OK) {
                 if (rv==HASHPIPE_TIMEOUT) {
                     hashpipe_status_lock_safe(&st);
-                    hputs(st.buf, STATUS_KEY, "blocked cpu out");
+                    hputs(st.buf, status_key, "blocked cpu out");
                     hashpipe_status_unlock_safe(&st);
                     continue;
                 } else {
@@ -304,7 +266,7 @@ static void *run(void * _args, int doCPU)
 
             // Note "processing cpu" status, current input block
             hashpipe_status_lock_safe(&st);
-            hputs(st.buf, STATUS_KEY, "processing cpu");
+            hputs(st.buf, status_key, "processing cpu");
             hashpipe_status_unlock_safe(&st);
 
             /*
@@ -319,7 +281,7 @@ static void *run(void * _args, int doCPU)
         }
 
         // Mark input block as free and advance
-        paper_gpu_input_databuf_set_free(db_in, curblock_in);
+        hashpipe_databuf_set_free((hashpipe_databuf_t *)db_in, curblock_in);
         curblock_in = (curblock_in + 1) % db_in->header.n_block;
 
         /* Check for cancel */
@@ -329,38 +291,36 @@ static void *run(void * _args, int doCPU)
 
     xgpuFree(&context);
 
-    // Have to close all pushes
-    THREAD_RUN_DETACH_DATAUF;
-    THREAD_RUN_DETACH_DATAUF;
-    THREAD_RUN_DETACH_STATUS;
-    THREAD_RUN_END;
-
     // Thread success!
     return NULL;
 }
 
-static void *run_gpu_only(void * _args)
+static void *run_gpu_only(hashpipe_thread_args_t * args)
 {
-  return run(_args, 0);
+  return run(args, 0);
 }
 
-static void *run_gpu_cpu(void * _args)
+static void *run_gpu_cpu(hashpipe_thread_args_t * args)
 {
-  return run(_args, 1);
+  return run(args, 1);
 }
 
 static pipeline_thread_module_t module1 = {
     name: "paper_gpu_thread",
-    type: PIPELINE_INOUT_THREAD,
-    init: init,
-    run:  run_gpu_only
+    skey: "GPUSTAT",
+    init: NULL,
+    run:  run_gpu_only,
+    ibuf_desc: {paper_gpu_input_databuf_create},
+    obuf_desc: {paper_output_databuf_create}
 };
 
 static pipeline_thread_module_t module2 = {
     name: "paper_gpu_cpu_thread",
-    type: PIPELINE_INOUT_THREAD,
-    init: init,
-    run:  run_gpu_cpu
+    skey: "GPUSTAT",
+    init: NULL,
+    run:  run_gpu_cpu,
+    ibuf_desc: {paper_gpu_input_databuf_create},
+    obuf_desc: {paper_output_databuf_create}
 };
 
 static __attribute__((constructor)) void ctor()

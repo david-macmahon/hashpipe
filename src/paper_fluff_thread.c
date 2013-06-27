@@ -15,58 +15,26 @@
 #include <sys/resource.h>
 #include <sys/types.h>
 
-#include "fitshead.h"
-#include "hashpipe_error.h"
-#include "hashpipe_status.h"
+#include "hashpipe.h"
 #include "paper_databuf.h"
 #include "paper_fluff.h"
-
-#define STATUS_KEY "FLUFSTAT"  /* Define before hashpipe_thread.h */
-#include "hashpipe_thread.h"
-
-static int init(struct hashpipe_thread_args *args)
-{
-    /* Attach to status shared mem area */
-    THREAD_INIT_STATUS(args->instance_id, STATUS_KEY);
-
-    /* Create paper_input_databuf */
-    THREAD_INIT_DATABUF(args->instance_id, paper_input_databuf,
-        args->input_buffer);
-
-    /* Create paper_gpu_input_databuf */
-    THREAD_INIT_DATABUF(args->instance_id, paper_gpu_input_databuf,
-        args->output_buffer);
-
-    // Success!
-    return 0;
-}
 
 #define ELAPSED_NS(start,stop) \
   (((int64_t)stop.tv_sec-start.tv_sec)*1000*1000*1000+(stop.tv_nsec-start.tv_nsec))
 
-static void *run(void * _args)
+static void *run(hashpipe_thread_args_t * args)
 {
-    // Cast _args
-    struct hashpipe_thread_args *args = (struct hashpipe_thread_args *)_args;
+    // Local aliases to shorten access to args fields
+    // Our input buffer is a paper_input_databuf
+    // Our output buffer is a paper_gpu_input_databuf
+    paper_input_databuf_t *db_in = (paper_input_databuf_t *)args->ibuf;
+    paper_gpu_input_databuf_t *db_out = (paper_gpu_input_databuf_t *)args->obuf;
+    hashpipe_status_t st = args->st;
+    const char * status_key = args->module->skey;
 
 #ifdef DEBUG_SEMS
     fprintf(stderr, "s/tid %lu/                      FLUFf/\n", pthread_self());
 #endif
-
-    THREAD_RUN_BEGIN(args);
-
-    THREAD_RUN_SET_AFFINITY_PRIORITY(args);
-
-    /* Attach to status shared mem area */
-    THREAD_RUN_ATTACH_STATUS(args->instance_id, st);
-
-    /* Attach to paper_input_databuf */
-    THREAD_RUN_ATTACH_DATABUF(args->instance_id,
-        paper_input_databuf, db_in, args->input_buffer);
-
-    /* Attach to paper_gpu_input_databuf */
-    THREAD_RUN_ATTACH_DATABUF(args->instance_id,
-        paper_gpu_input_databuf, db_out, args->output_buffer);
 
     // Init status variables
     hashpipe_status_lock_safe(&st);
@@ -87,14 +55,14 @@ static void *run(void * _args)
         // query integrating status
         // and, if armed, start count
         hashpipe_status_lock_safe(&st);
-        hputs(st.buf, STATUS_KEY, "waiting");
+        hputs(st.buf, status_key, "waiting");
         hashpipe_status_unlock_safe(&st);
 
         // Wait for new input block to be filled
         while ((rv=paper_input_databuf_wait_filled(db_in, curblock_in)) != HASHPIPE_OK) {
             if (rv==HASHPIPE_TIMEOUT) {
                 hashpipe_status_lock_safe(&st);
-                hputs(st.buf, STATUS_KEY, "blocked_in");
+                hputs(st.buf, status_key, "blocked_in");
                 hashpipe_status_unlock_safe(&st);
                 continue;
             } else {
@@ -109,7 +77,7 @@ static void *run(void * _args)
         while ((rv=paper_gpu_input_databuf_wait_free(db_out, curblock_out)) != HASHPIPE_OK) {
             if (rv==HASHPIPE_TIMEOUT) {
                 hashpipe_status_lock_safe(&st);
-                hputs(st.buf, STATUS_KEY, "blocked gpu input");
+                hputs(st.buf, status_key, "blocked gpu input");
                 hashpipe_status_unlock_safe(&st);
                 continue;
             } else {
@@ -122,7 +90,7 @@ static void *run(void * _args)
 
         // Got a new data block, update status
         hashpipe_status_lock_safe(&st);
-        hputs(st.buf, STATUS_KEY, "fluffing");
+        hputs(st.buf, status_key, "fluffing");
         hputi4(st.buf, "FLUFBKIN", curblock_in);
         hputu8(st.buf, "FLUFMCNT", db_in->block[curblock_in].header.mcnt);
         hashpipe_status_unlock_safe(&st);
@@ -160,21 +128,17 @@ static void *run(void * _args)
     }
     clear_run_threads();
 
-    // Have to close all pushes
-    THREAD_RUN_DETACH_DATAUF;
-    THREAD_RUN_DETACH_DATAUF;
-    THREAD_RUN_DETACH_STATUS;
-    THREAD_RUN_END;
-
     // Thread success!
     return NULL;
 }
 
 static pipeline_thread_module_t module1 = {
     name: "paper_fluff_thread",
-    type: PIPELINE_INOUT_THREAD,
-    init: init,
-    run:  run
+    skey: "FLUFSTAT",
+    init: NULL,
+    run:  run,
+    ibuf_desc: {paper_input_databuf_create},
+    obuf_desc: {paper_gpu_input_databuf_create}
 };
 
 static __attribute__((constructor)) void ctor()

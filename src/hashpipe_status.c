@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <sys/types.h>
@@ -18,6 +19,9 @@
 #include "hashpipe_status.h"
 #include "hashpipe_error.h"
 #include "fitshead.h"
+
+#define HASHPIPE_STATUS_SIZE (2880*64) // FITS-style buffer
+#define HASHPIPE_STATUS_CARD 80 // Size of each FITS "card"
 
 /*
  * Stores the hashpipe status (POSIX) semaphore name in semid buffer of length
@@ -81,7 +85,7 @@ int hashpipe_status_exists(int instance_id)
     return (shmid==-1) ? 0 : 1;
 }
 
-int hashpipe_status_attach(int instance_id, struct hashpipe_status *s)
+int hashpipe_status_attach(int instance_id, hashpipe_status_t *s)
 {
     char semid[NAME_MAX] = {'\0'};
     instance_id &= 0x3f;
@@ -133,7 +137,7 @@ int hashpipe_status_attach(int instance_id, struct hashpipe_status *s)
     return(HASHPIPE_OK);
 }
 
-int hashpipe_status_detach(struct hashpipe_status *s) {
+int hashpipe_status_detach(hashpipe_status_t *s) {
     if(s && s->buf) {
       int rv = shmdt(s->buf);
       if (rv!=0) {
@@ -146,12 +150,12 @@ int hashpipe_status_detach(struct hashpipe_status *s) {
 }
 
 /* TODO: put in some (long, ~few sec) timeout */
-int hashpipe_status_lock(struct hashpipe_status *s) {
+int hashpipe_status_lock(hashpipe_status_t *s) {
     return(sem_wait(s->lock));
 }
 
 /* TODO: put in some (long, ~few sec) timeout */
-int hashpipe_status_lock_busywait(struct hashpipe_status *s) {
+int hashpipe_status_lock_busywait(hashpipe_status_t *s) {
     int rv;
     do {
       rv = sem_trywait(s->lock);
@@ -159,7 +163,7 @@ int hashpipe_status_lock_busywait(struct hashpipe_status *s) {
     return rv;
 }
 
-int hashpipe_status_unlock(struct hashpipe_status *s) {
+int hashpipe_status_unlock(hashpipe_status_t *s) {
     return(sem_post(s->lock));
 }
 
@@ -176,7 +180,7 @@ char *hashpipe_find_end(char *buf) {
 }
 
 /* So far, just checks for existence of "END" in the proper spot */
-void hashpipe_status_chkinit(struct hashpipe_status *s)
+void hashpipe_status_chkinit(hashpipe_status_t *s)
 {
     int instance_id = -1;
 
@@ -213,7 +217,7 @@ void hashpipe_status_chkinit(struct hashpipe_status *s)
 }
 
 /* Clear out hashpipe status buf */
-void hashpipe_status_clear(struct hashpipe_status *s) {
+void hashpipe_status_clear(hashpipe_status_t *s) {
 
     /* Lock */
     hashpipe_status_lock(s);

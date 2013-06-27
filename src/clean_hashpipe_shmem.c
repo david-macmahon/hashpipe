@@ -4,6 +4,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <sys/sem.h>
@@ -45,7 +46,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    struct hashpipe_status s;
+    hashpipe_status_t s;
     char semname[NAME_MAX] = {'\0'};
 
     /*

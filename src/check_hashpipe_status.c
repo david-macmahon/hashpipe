@@ -10,11 +10,11 @@
 #include "hashpipe_error.h"
 #include "hashpipe_status.h"
 
-static struct hashpipe_status *get_status_buffer(int instance_id)
+static hashpipe_status_t *get_status_buffer(int instance_id)
 {
     int rv;
     static int last_used_instance_id = -1;
-    static struct hashpipe_status s;
+    static hashpipe_status_t s;
 
     instance_id &= 0x3f;
 
@@ -35,7 +35,7 @@ static struct hashpipe_status *get_status_buffer(int instance_id)
 int main(int argc, char *argv[]) {
 
     int instance_id = 0;
-    struct hashpipe_status *s;
+    hashpipe_status_t *s;
 
     /* Loop over cmd line to fill in params */
     static struct option long_opts[] = {

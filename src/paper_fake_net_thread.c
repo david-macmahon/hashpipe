@@ -19,41 +19,14 @@
 
 #include <xgpu.h>
 
-#include "fitshead.h"
-#include "hashpipe_error.h"
-#include "hashpipe_status.h"
+#include "hashpipe.h"
 #include "paper_databuf.h"
 
-#define STATUS_KEY "NETSTAT"  /* Define before hashpipe_thread.h */
-#include "hashpipe_thread.h"
-
-static int init(struct hashpipe_thread_args *args)
+static void *run(hashpipe_thread_args_t * args)
 {
-    /* Attach to status shared mem area */
-    THREAD_INIT_STATUS(args->instance_id, STATUS_KEY);
-
-    /* Create paper_input_databuf for output buffer */
-    THREAD_INIT_DATABUF(args->instance_id, paper_input_databuf,
-        args->output_buffer);
-
-    // Success!
-    return 0;
-}
-
-static void *run(void * _args)
-{
-    // Cast _args
-    struct hashpipe_thread_args *args = (struct hashpipe_thread_args *)_args;
-
-    THREAD_RUN_BEGIN(args);
-
-    THREAD_RUN_SET_AFFINITY_PRIORITY(args);
-
-    THREAD_RUN_ATTACH_STATUS(args->instance_id, st);
-
-    /* Attach to paper_input_databuf */
-    THREAD_RUN_ATTACH_DATABUF(args->instance_id,
-        paper_input_databuf, db, args->output_buffer);
+    paper_input_databuf_t *db = (paper_input_databuf_t *)args->obuf;
+    hashpipe_status_t st = args->st;
+    const char * status_key = args->module->skey;
 
     /* Main loop */
     int i, rv;
@@ -67,7 +40,7 @@ static void *run(void * _args)
     while (run_threads()) {
 
         hashpipe_status_lock_safe(&st);
-        hputs(st.buf, STATUS_KEY, "waiting");
+        hputs(st.buf, status_key, "waiting");
         hashpipe_status_unlock_safe(&st);
  
 #if 0
@@ -86,7 +59,7 @@ static void *run(void * _args)
                 != HASHPIPE_OK) {
             if (rv==HASHPIPE_TIMEOUT) {
                 hashpipe_status_lock_safe(&st);
-                hputs(st.buf, STATUS_KEY, "blocked");
+                hputs(st.buf, status_key, "blocked");
                 hashpipe_status_unlock_safe(&st);
                 continue;
             } else {
@@ -98,7 +71,7 @@ static void *run(void * _args)
         }
 
         hashpipe_status_lock_safe(&st);
-        hputs(st.buf, STATUS_KEY, "receiving");
+        hputs(st.buf, status_key, "receiving");
         hputi4(st.buf, "NETBKOUT", block_idx);
         hashpipe_status_unlock_safe(&st);
  
@@ -151,20 +124,17 @@ static void *run(void * _args)
         pthread_testcancel();
     }
 
-    // Have to close all pushes
-    THREAD_RUN_DETACH_DATAUF;
-    THREAD_RUN_DETACH_STATUS;
-    THREAD_RUN_END;
-
     // Thread success!
-    return NULL;
+    return THREAD_OK;
 }
 
 static pipeline_thread_module_t module = {
     name: "paper_fake_net_thread",
-    type: PIPELINE_INPUT_THREAD,
-    init: init,
-    run:  run
+    skey: "NETSTAT",
+    init: NULL,
+    run:  run,
+    ibuf_desc: {NULL},
+    obuf_desc: {paper_input_databuf_create}
 };
 
 static __attribute__((constructor)) void ctor()

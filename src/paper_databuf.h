@@ -196,7 +196,7 @@ typedef struct paper_output_databuf {
  * INPUT BUFFER FUNCTIONS
  */
 
-paper_input_databuf_t *paper_input_databuf_create(int instance_id, int databuf_id);
+hashpipe_databuf_t *paper_input_databuf_create(int instance_id, int databuf_id);
 
 static inline paper_input_databuf_t *paper_input_databuf_attach(int instance_id, int databuf_id)
 {
@@ -240,7 +240,7 @@ int paper_input_databuf_set_filled(paper_input_databuf_t *d, int block_id);
  * GPU INPUT BUFFER FUNCTIONS
  */
 
-paper_gpu_input_databuf_t *paper_gpu_input_databuf_create(int instance_id, int databuf_id);
+hashpipe_databuf_t *paper_gpu_input_databuf_create(int instance_id, int databuf_id);
 
 static inline void paper_gpu_input_databuf_clear(paper_gpu_input_databuf_t *d)
 {
@@ -301,7 +301,7 @@ static inline int paper_gpu_input_databuf_set_filled(paper_gpu_input_databuf_t *
  * OUTPUT BUFFER FUNCTIONS
  */
 
-paper_output_databuf_t *paper_output_databuf_create(int instance_id, int databuf_id);
+hashpipe_databuf_t *paper_output_databuf_create(int instance_id, int databuf_id);
 
 static inline void paper_output_databuf_clear(paper_output_databuf_t *d)
 {

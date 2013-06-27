@@ -1,12 +1,20 @@
+#include <math.h>
+#include <string.h>
+#include <pthread.h>
+#include <sys/time.h>
 #include "hashpipe_thread_args.h"
 
 void hashpipe_thread_args_init(struct hashpipe_thread_args *a) {
+    a->module=0;
     a->instance_id=0;
     a->cpu_mask=0;
     a->priority=0;
     a->finished=0;
     pthread_cond_init(&a->finished_c,NULL);
     pthread_mutex_init(&a->finished_m,NULL);
+    memset(&a->st, 0, sizeof(hashpipe_status_t));
+    a->ibuf = NULL;
+    a->obuf = NULL;
 }
 
 void hashpipe_thread_args_destroy(struct hashpipe_thread_args *a) {

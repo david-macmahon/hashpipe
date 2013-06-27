@@ -4,6 +4,7 @@
 #include <sched.h>
 #include <sys/time.h>
 #include <sys/resource.h>
+#include "hashpipe.h"
 #include "hashpipe_error.h"
 #include "hashpipe_thread.h"
 
@@ -33,9 +34,13 @@ register_pipeline_thread_module(pipeline_thread_module_t * ptm)
 {
   int rc = 1;
   if(num_modules < MAX_MODULES) {
-    module_list[num_modules] = ptm;
-    num_modules++;
-    rc = 0;
+    // Copy ptm since caller might reuse structure for multiple calls
+    module_list[num_modules] = malloc(sizeof(pipeline_thread_module_t));
+    if(module_list[num_modules]) {
+      memcpy(module_list[num_modules], ptm, sizeof(pipeline_thread_module_t));
+      num_modules++;
+      rc = 0;
+    }
   }
   return rc;
 }
@@ -56,21 +61,24 @@ void
 list_pipeline_thread_modules(FILE * f)
 {
   int i;
-  printf("Known input thread modules:\n");
+  printf("Known input-only thread modules:\n");
   for(i=0; i<num_modules; i++) {
-    if(module_list[i]->type == PIPELINE_INPUT_THREAD) {
+    if(!module_list[i]->ibuf_desc.create && module_list[i]->obuf_desc.create) {
       fprintf(f, "  %s\n", module_list[i]->name);
     }
   }
   printf("Known input/output thread modules:\n");
   for(i=0; i<num_modules; i++) {
-    if(module_list[i]->type == PIPELINE_INOUT_THREAD) {
+    if(module_list[i]->ibuf_desc.create && module_list[i]->obuf_desc.create) {
       fprintf(f, "  %s\n", module_list[i]->name);
     }
   }
-  printf("Known output thread modules:\n");
+  printf("Known output-only thread modules:\n");
+  // Need to explicitly show null_output_thread
+  // because it has neither ibof nor obuf.
+  fprintf(f, "  null_output_thread\n");
   for(i=0; i<num_modules; i++) {
-    if(module_list[i]->type == PIPELINE_OUTPUT_THREAD) {
+    if(module_list[i]->ibuf_desc.create && !module_list[i]->obuf_desc.create) {
       fprintf(f, "  %s\n", module_list[i]->name);
     }
   }

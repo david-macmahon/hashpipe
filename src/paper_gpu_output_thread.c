@@ -10,17 +10,15 @@
 #include <unistd.h>
 #include <endian.h>
 #include <sched.h>
+#include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
 
 #include <xgpu.h>
 
-#include "hashpipe_error.h"
+#include "hashpipe.h"
 #include "paper_databuf.h"
-
-#define STATUS_KEY "OUTSTAT"  /* Define before hashpipe_thread.h */
-#include "hashpipe_thread.h"
 
 // The PAPER cn_rx.py script receives UDP packets from multiple X engines and
 // assimilates them into a MIRIAD dataset.  The format of the packets appears
@@ -396,20 +394,11 @@ static int init_idx_map()
 
 static int init(struct hashpipe_thread_args *args)
 {
-    /* Attach to status shared mem area */
-    THREAD_INIT_ATTACH_STATUS(args->instance_id, st, STATUS_KEY);
-
-    THREAD_INIT_DETACH_STATUS(st);
-
     // Get sizing parameters
     xgpuInfo(&xgpu_info);
     bytes_per_dump = xgpu_info.triLength * sizeof(Complex);
     packets_per_dump = bytes_per_dump / BYTES_PER_PACKET;
     printf("bytes_per_dump = %lu\n", bytes_per_dump);
-
-    // Create paper_ouput_databuf
-    THREAD_INIT_DATABUF(args->instance_id, paper_output_databuf,
-        args->input_buffer);
 
     if(init_idx_map()) {
       return -1;
@@ -422,20 +411,13 @@ static int init(struct hashpipe_thread_args *args)
 #define ELAPSED_NS(start,stop) \
   (((int64_t)stop.tv_sec-start.tv_sec)*1000*1000*1000+(stop.tv_nsec-start.tv_nsec))
 
-static void *run(void * _args)
+static void *run(hashpipe_thread_args_t * args)
 {
-    // Cast _args
-    struct hashpipe_thread_args *args = (struct hashpipe_thread_args *)_args;
-
-    THREAD_RUN_BEGIN(args);
-
-    THREAD_RUN_SET_AFFINITY_PRIORITY(args);
-
-    THREAD_RUN_ATTACH_STATUS(args->instance_id, st);
-
-    // Attach to paper_ouput_databuf
-    THREAD_RUN_ATTACH_DATABUF(args->instance_id,
-        paper_output_databuf, db, args->input_buffer);
+    // Local aliases to shorten access to args fields
+    // Our input buffer happens to be a paper_ouput_databuf
+    paper_output_databuf_t *db = (paper_output_databuf_t *)args->ibuf;
+    hashpipe_status_t st = args->st;
+    const char * status_key = args->module->skey;
 
     // Setup socket and message structures
     int sockfd;
@@ -499,7 +481,7 @@ static void *run(void * _args)
     while (run_threads()) {
 
         hashpipe_status_lock_safe(&st);
-        hputs(st.buf, STATUS_KEY, "waiting");
+        hputs(st.buf, status_key, "waiting");
         hashpipe_status_unlock_safe(&st);
 
         // Wait for new block to be filled
@@ -507,7 +489,7 @@ static void *run(void * _args)
                 != HASHPIPE_OK) {
             if (rv==HASHPIPE_TIMEOUT) {
                 hashpipe_status_lock_safe(&st);
-                hputs(st.buf, STATUS_KEY, "blocked");
+                hputs(st.buf, status_key, "blocked");
                 hashpipe_status_unlock_safe(&st);
                 continue;
             } else {
@@ -522,7 +504,7 @@ static void *run(void * _args)
 
         // Note processing status, current input block
         hashpipe_status_lock_safe(&st);
-        hputs(st.buf, STATUS_KEY, "processing");
+        hputs(st.buf, status_key, "processing");
         hputi4(st.buf, "OUTBLKIN", block_idx);
         hashpipe_status_unlock_safe(&st);
 
@@ -612,20 +594,17 @@ done_sending:
         pthread_testcancel();
     }
 
-    // Have to close all pushes
-    THREAD_RUN_DETACH_DATAUF;
-    THREAD_RUN_DETACH_STATUS;
-    THREAD_RUN_END;
-
     // Thread success!
     return NULL;
 }
 
 static pipeline_thread_module_t module = {
     name: "paper_gpu_output_thread",
-    type: PIPELINE_OUTPUT_THREAD,
+    skey: "OUTSTAT",
     init: init,
-    run:  run
+    run:  run,
+    ibuf_desc: {paper_output_databuf_create},
+    obuf_desc: {NULL}
 };
 
 static __attribute__((constructor)) void ctor()

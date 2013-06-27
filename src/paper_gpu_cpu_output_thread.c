@@ -7,34 +7,27 @@
 #define _GNU_SOURCE 1
 #include <stdio.h>
 #include <time.h>
+#include <math.h>
+#include <pthread.h>
 
 #include <xgpu.h>
 
-#include "hashpipe_error.h"
+#include "hashpipe.h"
 #include "paper_databuf.h"
-
-#define STATUS_KEY "CGOUT"  /* Define before hashpipe_thread.h */
-#include "hashpipe_thread.h"
 
 #define TOL (1e-5)
 
 static XGPUInfo xgpu_info;
 
-static int init(struct hashpipe_thread_args *args)
+static int init(hashpipe_thread_args_t *args)
 {
-    /* Attach to status shared mem area */
-    THREAD_INIT_ATTACH_STATUS(args->instance_id, st, STATUS_KEY);
+    hashpipe_status_t st = args->st;
 
     hashpipe_status_lock_safe(&st);
-    hputr4(st.buf, "CGMAXERR", 0.0);
-    hputi4(st.buf, "CGERRCNT", 0);
-    hputi4(st.buf, "CGMXERCT", 0);
+    hputr4(st.buf, "CGOMXERR", 0.0);
+    hputi4(st.buf, "CGOERCNT", 0);
+    hputi4(st.buf, "CGOMXECT", 0);
     hashpipe_status_unlock_safe(&st);
-
-    THREAD_INIT_DETACH_STATUS(st);
-
-    // Create paper_ouput_databuf
-    THREAD_INIT_DATABUF(args->instance_id, paper_output_databuf, args->input_buffer);
 
     // Success!
     return 0;
@@ -42,20 +35,13 @@ static int init(struct hashpipe_thread_args *args)
 
 #define zabs(x,i) hypot(x[i],x[i+1])
 
-static void *run(void * _args)
+static void *run(hashpipe_thread_args_t * args)
 {
-    // Cast _args
-    struct hashpipe_thread_args *args = (struct hashpipe_thread_args *)_args;
-
-    THREAD_RUN_BEGIN(args);
-
-    THREAD_RUN_SET_AFFINITY_PRIORITY(args);
-
-    THREAD_RUN_ATTACH_STATUS(args->instance_id, st);
-
-    // Attach to paper_ouput_databuf
-    THREAD_RUN_ATTACH_DATABUF(args->instance_id,
-        paper_output_databuf, db, args->input_buffer);
+    // Local aliases to shorten access to args fields
+    // Our input buffer happens to be a paper_ouput_databuf
+    paper_output_databuf_t *db = (paper_output_databuf_t *)args->ibuf;
+    hashpipe_status_t st = args->st;
+    const char * status_key = args->module->skey;
 
     /* Main loop */
     int i, rv, debug=20;
@@ -66,7 +52,7 @@ static void *run(void * _args)
     while (run_threads()) {
 
         hashpipe_status_lock_safe(&st);
-        hputs(st.buf, STATUS_KEY, "waiting");
+        hputs(st.buf, status_key, "waiting");
         hashpipe_status_unlock_safe(&st);
 
         // Wait for two new blocks to be filled
@@ -75,7 +61,7 @@ static void *run(void * _args)
                     != HASHPIPE_OK) {
                 if (rv==HASHPIPE_TIMEOUT) {
                     hashpipe_status_lock_safe(&st);
-                    hputs(st.buf, STATUS_KEY, "blocked");
+                    hputs(st.buf, status_key, "blocked");
                     hashpipe_status_unlock_safe(&st);
                     continue;
                 } else {
@@ -89,8 +75,8 @@ static void *run(void * _args)
 
         // Note processing status, current input block
         hashpipe_status_lock_safe(&st);
-        hputs(st.buf, STATUS_KEY, "processing");
-        hputi4(st.buf, "CGBLKIN", block_idx[0]);
+        hputs(st.buf, status_key, "processing");
+        hputi4(st.buf, "CGOBLKIN", block_idx[0]);
         hashpipe_status_unlock_safe(&st);
 
         // Reorder GPU block
@@ -133,9 +119,9 @@ static void *run(void * _args)
 
         // Update status values
         hashpipe_status_lock_safe(&st);
-        hputr4(st.buf, "CGMAXERR", max_error);
-        hputi4(st.buf, "CGERRCNT", error_count);
-        hputi4(st.buf, "CGMXERCT", max_error_count);
+        hputr4(st.buf, "CGOMXERR", max_error);
+        hputi4(st.buf, "CGOERCNT", error_count);
+        hputi4(st.buf, "CGOMXECT", max_error_count);
         hashpipe_status_unlock_safe(&st);
 
         // Mark blocks as free
@@ -152,20 +138,17 @@ static void *run(void * _args)
         pthread_testcancel();
     }
 
-    // Have to close all pushes
-    pthread_cleanup_pop(0);
-    THREAD_RUN_DETACH_STATUS;
-    THREAD_RUN_END;
-
     // Thread success!
     return NULL;
 }
 
 static pipeline_thread_module_t module = {
     name: "paper_gpu_cpu_output_thread",
-    type: PIPELINE_OUTPUT_THREAD,
+    skey: "CGOSTAT",
     init: init,
-    run:  run
+    run:  run,
+    ibuf_desc: {paper_output_databuf_create},
+    obuf_desc: {NULL}
 };
 
 static __attribute__((constructor)) void ctor()

@@ -8,32 +8,16 @@
 #define _GNU_SOURCE 1
 #include <stdio.h>
 #include <time.h>
+#include <pthread.h>
 
-#include "hashpipe_error.h"
-#include "hashpipe_databuf.h"
-
-#define STATUS_KEY "NULLOUT"  /* Define before hashpipe_thread.h */
+#include "hashpipe.h"
 #include "hashpipe_thread.h"
 
-static int init(struct hashpipe_thread_args *args)
+static void *run(hashpipe_thread_args_t * args)
 {
-    /* Attach to status shared mem area */
-    THREAD_INIT_STATUS(args->instance_id, STATUS_KEY);
-
-    // Success!
-    return 0;
-}
-
-static void *run(void * _args)
-{
-    // Cast _args
-    struct hashpipe_thread_args *args = (struct hashpipe_thread_args *)_args;
-
-    THREAD_RUN_BEGIN(args);
-
-    THREAD_RUN_SET_AFFINITY_PRIORITY(args);
-
-    THREAD_RUN_ATTACH_STATUS(args->instance_id, st);
+    hashpipe_databuf_t *db;
+    hashpipe_status_t st = args->st;
+    const char * status_key = args->module->skey;
 
     // Attach to databuf as a low-level hashpipe databuf.  Since
     // null_output_thread can attach to any kind of databuf, we cannot create
@@ -42,7 +26,6 @@ static void *run(void * _args)
     int i;
     struct timespec ts = {0, 1000}; // One microsecond
     int max_tries = 1000000; // One million microseconds
-    hashpipe_databuf_t *db;
     for(i = 0; i < max_tries; i++) {
         db = hashpipe_databuf_attach(args->instance_id, args->input_buffer);
         if(db) break;
@@ -58,21 +41,20 @@ static void *run(void * _args)
     }
     pthread_cleanup_push((void *)hashpipe_databuf_detach, db);
 
-
     /* Main loop */
     int rv;
     int block_idx = 0;
     while (run_threads()) {
 
         hashpipe_status_lock_safe(&st);
-        hputs(st.buf, STATUS_KEY, "waiting");
+        hputs(st.buf, status_key, "waiting");
         hashpipe_status_unlock_safe(&st);
 
         // Wait for new block to be filled
         while ((rv=hashpipe_databuf_wait_filled(db, block_idx)) != HASHPIPE_OK) {
             if (rv==HASHPIPE_TIMEOUT) {
                 hashpipe_status_lock_safe(&st);
-                hputs(st.buf, STATUS_KEY, "blocked");
+                hputs(st.buf, status_key, "blocked");
                 hashpipe_status_unlock_safe(&st);
                 continue;
             } else {
@@ -85,7 +67,7 @@ static void *run(void * _args)
 
         // Note processing status, current input block
         hashpipe_status_lock_safe(&st);
-        hputs(st.buf, STATUS_KEY, "processing");
+        hputs(st.buf, status_key, "processing");
         hputi4(st.buf, "NULBLKIN", block_idx);
         hashpipe_status_unlock_safe(&st);
 
@@ -99,20 +81,21 @@ static void *run(void * _args)
         pthread_testcancel();
     }
 
-    // Have to close all pushes
-    pthread_cleanup_pop(0);
-    THREAD_RUN_DETACH_STATUS;
-    THREAD_RUN_END;
+    // Detach from databuf
+    hashpipe_databuf_detach(db);
+    pthread_cleanup_pop(0); // databuf detach
 
     // Thread success!
-    return NULL;
+    return THREAD_OK;
 }
 
 static pipeline_thread_module_t module = {
     name: "null_output_thread",
-    type: PIPELINE_OUTPUT_THREAD,
-    init: init,
-    run:  run
+    skey: "NULLSTAT",
+    init: NULL,
+    run:  run,
+    ibuf_desc: {NULL},
+    obuf_desc: {NULL}
 };
 
 static __attribute__((constructor)) void ctor()

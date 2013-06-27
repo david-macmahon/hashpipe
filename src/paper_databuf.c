@@ -34,10 +34,7 @@ static struct timespec now;
 #define SEMLOG(pd, msg)
 #endif // DEBUG_SEMS
 
-#include "fitshead.h"
-#include "hashpipe_status.h"
 #include "paper_databuf.h"
-#include "hashpipe_error.h"
 
 /*
  * Since the first element of paper_input_databuf_t is a hashpipe_databuf_t, a
@@ -67,7 +64,7 @@ static struct timespec now;
 /*
  * Create, if needed, and attach to paper_input_databuf shared memory.
  */
-paper_input_databuf_t *paper_input_databuf_create(int instance_id, int databuf_id)
+hashpipe_databuf_t *paper_input_databuf_create(int instance_id, int databuf_id)
 {
 #ifdef DEBUG_SEMS
     // Init clock variables
@@ -84,7 +81,7 @@ paper_input_databuf_t *paper_input_databuf_create(int instance_id, int databuf_i
     size_t block_size  = sizeof(paper_input_block_t);
     int    n_block = N_INPUT_BLOCKS + N_DEBUG_INPUT_BLOCKS;
 
-    return (paper_input_databuf_t *)hashpipe_databuf_create(
+    return hashpipe_databuf_create(
         instance_id, databuf_id, header_size, block_size, n_block);
 }
 
@@ -136,7 +133,7 @@ int paper_input_databuf_set_filled(paper_input_databuf_t *d, int block_id)
     return hashpipe_databuf_set_filled((hashpipe_databuf_t *)d, block_id);
 }
 
-paper_gpu_input_databuf_t *paper_gpu_input_databuf_create(int instance_id, int databuf_id)
+hashpipe_databuf_t *paper_gpu_input_databuf_create(int instance_id, int databuf_id)
 {
 #ifdef DEBUG_SEMS
     // Init clock variables
@@ -153,11 +150,11 @@ paper_gpu_input_databuf_t *paper_gpu_input_databuf_create(int instance_id, int d
     size_t block_size  = sizeof(paper_gpu_input_block_t);
     int    n_block = N_GPU_INPUT_BLOCKS;
 
-    return (paper_gpu_input_databuf_t *)hashpipe_databuf_create(
+    return hashpipe_databuf_create(
         instance_id, databuf_id, header_size, block_size, n_block);
 }
 
-paper_output_databuf_t *paper_output_databuf_create(int instance_id, int databuf_id)
+hashpipe_databuf_t *paper_output_databuf_create(int instance_id, int databuf_id)
 {
     /* Calc databuf sizes */
     size_t header_size = sizeof(hashpipe_databuf_t)
@@ -165,6 +162,6 @@ paper_output_databuf_t *paper_output_databuf_create(int instance_id, int databuf
     size_t block_size  = sizeof(paper_output_block_t);
     int    n_block = N_OUTPUT_BLOCKS;
 
-    return (paper_output_databuf_t *)hashpipe_databuf_create(
+    return hashpipe_databuf_create(
         instance_id, databuf_id, header_size, block_size, n_block);
 }

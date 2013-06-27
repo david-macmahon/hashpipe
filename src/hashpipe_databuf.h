@@ -11,6 +11,7 @@
 #include <sys/ipc.h>
 #include <sys/sem.h>
 
+// Define hashpipe_databuf structure
 typedef struct {
     char data_type[64]; /* Type of data in buffer */
     size_t header_size; /* Size of each block header (bytes) */
@@ -19,14 +20,6 @@ typedef struct {
     int shmid;          /* ID of this shared mem segment */
     int semid;          /* ID of locking semaphore set */
 } hashpipe_databuf_t;
-
-/* union for semaphore ops.  Is this really needed? */
-union semun {
-    int val;
-    struct semid_ds *buf;
-    unsigned short *array;
-    struct seminfo *__buf;
-};
 
 /*
  * Get the base key to use for *all* hashpipe databufs.  The base key is
