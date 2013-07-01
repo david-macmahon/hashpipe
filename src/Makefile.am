@@ -42,21 +42,21 @@ paper_threads = paper_fake_net_thread.c       \
 paper_fluff = paper_fluff.h \
 	      paper_fluff.c
 
-bin_PROGRAMS += check_hashpipe_databuf
-check_hashpipe_databuf_SOURCES = check_hashpipe_databuf.c
-check_hashpipe_databuf_LDADD = libhashpipe.la libhashpipestatus.la
+bin_PROGRAMS += hashpipe_check_databuf
+hashpipe_check_databuf_SOURCES = hashpipe_check_databuf.c
+hashpipe_check_databuf_LDADD = libhashpipe.la libhashpipestatus.la
 
-bin_PROGRAMS += check_hashpipe_status
-check_hashpipe_status_SOURCES = check_hashpipe_status.c
-check_hashpipe_status_LDADD = libhashpipestatus.la
+bin_PROGRAMS += hashpipe_check_status
+hashpipe_check_status_SOURCES = hashpipe_check_status.c
+hashpipe_check_status_LDADD = libhashpipestatus.la
 
-bin_PROGRAMS += clean_hashpipe_shmem
-clean_hashpipe_shmem_SOURCES = clean_hashpipe_shmem.c
-clean_hashpipe_shmem_LDADD = libhashpipe.la libhashpipestatus.la
+bin_PROGRAMS += hashpipe_clean_shmem
+hashpipe_clean_shmem_SOURCES = hashpipe_clean_shmem.c
+hashpipe_clean_shmem_LDADD = libhashpipe.la libhashpipestatus.la
 
-bin_PROGRAMS += dump_hashpipe_databuf
-dump_hashpipe_databuf_SOURCES = dump_hashpipe_databuf.c
-dump_hashpipe_databuf_LDADD = libhashpipe.la
+bin_PROGRAMS += hashpipe_dump_databuf
+hashpipe_dump_databuf_SOURCES = hashpipe_dump_databuf.c
+hashpipe_dump_databuf_LDADD = libhashpipe.la
 
 bin_PROGRAMS += hashpipe
 hashpipe_SOURCES = $(hashpipe_exec)

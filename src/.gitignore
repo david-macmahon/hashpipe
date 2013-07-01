@@ -3,10 +3,10 @@
 .*.swp
 tags
 TAGS
-check_hashpipe_databuf
-check_hashpipe_status
-clean_hashpipe_shmem
-dump_hashpipe_databuf
+hashpipe_check_databuf
+hashpipe_check_status
+hashpipe_clean_shmem
+hashpipe_dump_databuf
 hashpipe
 paper_fluff_test
 *.so
