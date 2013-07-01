@@ -8,11 +8,7 @@ hashpipe_check_status
 hashpipe_clean_shmem
 hashpipe_dump_databuf
 hashpipe
-paper_fluff_test
 *.so
-out0
-out1
-staging
 # Autotools cruft
 *.la
 *.lo
