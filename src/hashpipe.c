@@ -253,6 +253,10 @@ done:
     return rv;
 }
 
+#define MAX_PLUGIN_NAME (1024)
+#define MAX_PLUGIN_EXT  (7)
+#define PLUGIN_EXT ".so"
+
 int main(int argc, char *argv[])
 {
     int opt, i, rv;
@@ -261,6 +265,7 @@ int main(int argc, char *argv[])
     int num_threads = 0;
     pthread_t threads[MAX_HASHPIPE_THREADS];
     struct hashpipe_thread_args args[MAX_HASHPIPE_THREADS];
+    char plugin_name[MAX_PLUGIN_NAME+MAX_PLUGIN_EXT+1];
 
     static struct option long_opts[] = {
       {"help",     0, NULL, 'h'},
@@ -408,7 +413,18 @@ int main(int argc, char *argv[])
           break;
 
         case 'p': // Load plugin
-          if(!dlopen(optarg, RTLD_NOW)) {
+          // Copy plugin name from optarg
+          strncpy(plugin_name, optarg, MAX_PLUGIN_NAME);
+          plugin_name[MAX_PLUGIN_NAME] = '\0';
+          // Look for last dot
+          char * dot = strrchr(plugin_name, '.');
+          // If dot not found, or plugin_name does not end with PLUGIN_EXT
+          if(!dot || strcmp(dot, PLUGIN_EXT)) {
+            // Append PLUGIN_EXT
+            strcat(plugin_name, PLUGIN_EXT);
+          }
+          // Load plugin
+          if(!dlopen(plugin_name, RTLD_NOW)) {
             fprintf(stderr, "Error loading plugin '%s' (%s)\n",
                 optarg, dlerror());
             exit(1);
