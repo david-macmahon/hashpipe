@@ -55,6 +55,7 @@ libhashpipe_la_SOURCES = $(hashpipe_base)
 libhashpipe_la_LIBADD = libhashpipestatus.la
 
 include_HEADERS = fitshead.h \
+		  hashpipe.h \
 		  hashpipe_databuf.h \
 		  hashpipe_error.h \
 		  hashpipe_status.h \
