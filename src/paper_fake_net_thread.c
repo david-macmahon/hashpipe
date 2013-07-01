@@ -5,14 +5,12 @@
  * processing pipelines to be tested without the network portion of PAPER.
  */
 
-#define _GNU_SOURCE 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <unistd.h>
 #include <string.h>
 #include <pthread.h>
-#include <sched.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/types.h>
@@ -64,7 +62,6 @@ static void *run(hashpipe_thread_args_t * args)
                 continue;
             } else {
                 hashpipe_error(__FUNCTION__, "error waiting for free databuf");
-                clear_run_threads();
                 pthread_exit(NULL);
                 break;
             }

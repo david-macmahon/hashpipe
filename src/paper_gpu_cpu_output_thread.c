@@ -4,7 +4,6 @@
  * Routine to sink data from the paper_gpu_cpu_thread.
  */
 
-#define _GNU_SOURCE 1
 #include <stdio.h>
 #include <time.h>
 #include <math.h>
@@ -66,7 +65,6 @@ static void *run(hashpipe_thread_args_t * args)
                     continue;
                 } else {
                     hashpipe_error(__FUNCTION__, "error waiting for filled databuf");
-                    clear_run_threads();
                     pthread_exit(NULL);
                     break;
                 }

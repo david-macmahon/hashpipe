@@ -4,7 +4,6 @@
  * into shared memory blocks.
  */
 
-#define _GNU_SOURCE 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -12,7 +11,6 @@
 #include <stdint.h>
 #include <string.h>
 #include <pthread.h>
-#include <sched.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/types.h>
@@ -171,7 +169,6 @@ int set_block_filled(paper_input_databuf_t *paper_input_databuf_p, block_info_t 
 
 	if(paper_input_databuf_set_filled(paper_input_databuf_p, block_i) != HASHPIPE_OK) {
 	    hashpipe_error(__FUNCTION__, "error waiting for databuf filled call");
-	    clear_run_threads();
 	    pthread_exit(NULL);
 	    return 0;
 	}
@@ -209,7 +206,6 @@ static inline int calc_block_indexes(block_info_t *binfo, packet_header_t * pkt_
 	sprintf(msg, "current packet mcnt %012lx less than mcnt start %012lx", pkt_header->mcnt, binfo->mcnt_start);
 	    hashpipe_error(__FUNCTION__, msg);
 	    //hashpipe_error(__FUNCTION__, "current packet mcnt less than mcnt start");
-	    //clear_run_threads();
 	    //pthread_exit(NULL);
 	    return -1;
     } else {
@@ -348,7 +344,6 @@ static inline uint64_t write_paper_packet_to_blocks(paper_input_databuf_t *paper
 	        return -1;
 	    } else {
 	        hashpipe_error(__FUNCTION__, "error waiting for free databuf");
-	        clear_run_threads();
 	        pthread_exit(NULL);
 	        return -1;
 	    }
@@ -504,7 +499,7 @@ static void *run(hashpipe_thread_args_t * args)
 	if(loop_count == 0) {
 	    clock_gettime(CLOCK_MONOTONIC, &tt_start);
 	}
-	//if(loop_count == 1000000) clear_run_threads();
+	//if(loop_count == 1000000) pthread_exit(NULL);
 	if(loop_count == END_LOOP_COUNT) {
 	    clock_gettime(CLOCK_MONOTONIC, &tt_stop);
 	    int64_t elapsed = ELAPSED_NS(tt_start, tt_stop);

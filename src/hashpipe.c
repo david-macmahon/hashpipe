@@ -3,6 +3,7 @@
  *
  * The main HASHPIPE program
  */
+#define _GNU_SOURCE 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -10,6 +11,7 @@
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sched.h>
 #include <signal.h>
 #include <poll.h>
 #include <getopt.h>
@@ -17,10 +19,12 @@
 #include <sys/resource.h> 
 
 #include "hashpipe.h"
-#include "hashpipe_thread.h"
 #include "hashpipe_thread_args.h"
 
-#define MAX_THREADS (1024)
+// Functions defined in hashpipe_thread.c, but not declared/exposed in public
+// hashpipe_thread.h.
+void set_run_threads();
+void clear_run_threads();
 
 void usage(const char *argv0) {
     fprintf(stderr,
@@ -38,6 +42,7 @@ void usage(const char *argv0) {
     );
 }
 
+// Control-C handler
 static void cc(int sig)
 {
     clear_run_threads();
@@ -52,6 +57,32 @@ inline void set_exit_status(hashpipe_thread_args_t *args) {
     }
 }
 
+// Function to set cpu affinity
+int
+set_cpu_affinity(unsigned int mask)
+{
+    int i, rv;
+
+    if(mask != 0) {
+        cpu_set_t cpuset;
+        CPU_ZERO(&cpuset);
+        // Only handle 32 cores (for now)
+        for(i=0; i<32; i++) {
+            if(mask&1) {
+              CPU_SET(i, &cpuset);
+            }
+            mask >>= 1;
+        }
+        rv = sched_setaffinity(0, sizeof(cpu_set_t), &cpuset);
+        if (rv<0) {
+            hashpipe_error(__FUNCTION__, "Error setting cpu affinity.");
+            return rv;
+        }
+    }
+    return 0;
+}
+
+// General init function called for all threads.
 static int
 hashpipe_thread_init(hashpipe_thread_args_t *args)
 {
@@ -134,14 +165,9 @@ hashpipe_thread_run(void *vp_args)
     hashpipe_thread_args_t *args = (hashpipe_thread_args_t *)vp_args;
     void * rv = THREAD_OK;
 
-    // Set CPU affinity and priority
+    // Set CPU affinity
     if(set_cpu_affinity(args->cpu_mask) < 0) {
         perror("set_cpu_affinity");
-        rv = THREAD_ERROR;
-        goto done;
-    }
-    if(set_priority(args->priority) < 0) {
-        perror("set_priority");
         rv = THREAD_ERROR;
         goto done;
     }
@@ -231,8 +257,8 @@ int main(int argc, char *argv[])
     char * cp;
     hashpipe_status_t st;
     int num_threads = 0;
-    pthread_t threads[MAX_THREADS];
-    struct hashpipe_thread_args args[MAX_THREADS];
+    pthread_t threads[MAX_HASHPIPE_THREADS];
+    struct hashpipe_thread_args args[MAX_HASHPIPE_THREADS];
 
     static struct option long_opts[] = {
       {"help",     0, NULL, 'h'},

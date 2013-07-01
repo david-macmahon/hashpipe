@@ -4,13 +4,11 @@
  * Fluffs 4bit+4bit complex data into 8bit+8bit complex data
  */
 
-#define _GNU_SOURCE 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
 #include <signal.h>
-#include <sched.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/types.h>
@@ -67,7 +65,6 @@ static void *run(hashpipe_thread_args_t * args)
                 continue;
             } else {
                 hashpipe_error(__FUNCTION__, "error waiting for filled databuf");
-                clear_run_threads();
                 pthread_exit(NULL);
                 break;
             }
@@ -82,7 +79,6 @@ static void *run(hashpipe_thread_args_t * args)
                 continue;
             } else {
                 hashpipe_error(__FUNCTION__, "error waiting for free databuf");
-                clear_run_threads();
                 pthread_exit(NULL);
                 break;
             }
@@ -126,7 +122,6 @@ static void *run(hashpipe_thread_args_t * args)
         /* Check for cancel */
         pthread_testcancel();
     }
-    clear_run_threads();
 
     // Thread success!
     return NULL;

@@ -8,7 +8,6 @@ void hashpipe_thread_args_init(struct hashpipe_thread_args *a) {
     a->thread_desc=0;
     a->instance_id=0;
     a->cpu_mask=0;
-    a->priority=0;
     a->finished=0;
     pthread_cond_init(&a->finished_c,NULL);
     pthread_mutex_init(&a->finished_m,NULL);

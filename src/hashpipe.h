@@ -132,7 +132,6 @@ struct hashpipe_thread_args {
     int input_buffer;
     int output_buffer;
     unsigned int cpu_mask; // 0 means use inherited
-    int priority;
     int finished;
     pthread_cond_t finished_c;
     pthread_mutex_t finished_m;
@@ -140,6 +139,16 @@ struct hashpipe_thread_args {
     hashpipe_databuf_t *ibuf;
     hashpipe_databuf_t *obuf;
 };
+
+// Used to return OK status via return from run
+#define THREAD_OK ((void *)0)
+// Used to return error status via return from run
+#define THREAD_ERROR ((void *)-1)
+// Maximum number of threads that be defined by plugins
+#define MAX_HASHPIPE_THREADS 1024
+
+// Function threads use to determine whether to keep running.
+int run_threads();
 
 // This function is used by pipeline plugins to register threads with the
 // pipeline executable.
@@ -156,14 +165,8 @@ hashpipe_thread_desc_t * find_hashpipe_thread(char *name);
 // List all known hashpipe threads to FILE f.
 void list_hashpipe_threads(FILE * f);
 
-/* Functions to query, set, and clear the "run_threads" flag. */
-int run_threads();
-void set_run_threads();
-void clear_run_threads();
-
-// Used to return OK status via return from run
-#define THREAD_OK ((void *)0)
-// Used to return error status via return from run
-#define THREAD_ERROR ((void *)-1)
+// Get CPU affinity of calling thread
+// Returns 0 on error
+unsigned int get_cpu_affinity();
 
 #endif // _HASHPIPE_H

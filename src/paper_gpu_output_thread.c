@@ -9,7 +9,6 @@
 #include <errno.h>
 #include <unistd.h>
 #include <endian.h>
-#include <sched.h>
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -451,7 +450,6 @@ static void *run(hashpipe_thread_args_t * args)
     sockfd = open_udp_socket("catcher", stringify(CATCHER_PORT));
     if(sockfd == -1) {
         hashpipe_error(__FUNCTION__, "error opening socket");
-        clear_run_threads();
         pthread_exit(NULL);
     }
 
@@ -467,7 +465,6 @@ static void *run(hashpipe_thread_args_t * args)
         casper_index(2*i, 2*j);
       }
     }
-    clear_run_threads();
 #endif
 
     /* Main loop */
@@ -494,7 +491,6 @@ static void *run(hashpipe_thread_args_t * args)
                 continue;
             } else {
                 hashpipe_error(__FUNCTION__, "error waiting for filled databuf");
-                clear_run_threads();
                 pthread_exit(NULL);
                 break;
             }

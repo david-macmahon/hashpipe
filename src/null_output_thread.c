@@ -11,7 +11,6 @@
 #include <pthread.h>
 
 #include "hashpipe.h"
-#include "hashpipe_thread.h"
 
 static void *run(hashpipe_thread_args_t * args)
 {
@@ -59,7 +58,6 @@ static void *run(hashpipe_thread_args_t * args)
                 continue;
             } else {
                 hashpipe_error(__FUNCTION__, "error waiting for filled databuf");
-                clear_run_threads();
                 pthread_exit(NULL);
                 break;
             }

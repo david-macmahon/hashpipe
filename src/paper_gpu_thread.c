@@ -4,13 +4,11 @@
  * Performs correlation of incoming data using xGPU
  */
 
-#define _GNU_SOURCE 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
 #include <signal.h>
-#include <sched.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/types.h>
@@ -105,7 +103,6 @@ static void *run(hashpipe_thread_args_t * args, int doCPU)
                 continue;
             } else {
                 hashpipe_error(__FUNCTION__, "error waiting for filled databuf");
-                clear_run_threads();
                 pthread_exit(NULL);
                 break;
             }
@@ -184,7 +181,6 @@ static void *run(hashpipe_thread_args_t * args, int doCPU)
                   continue;
               } else {
                   hashpipe_error(__FUNCTION__, "error waiting for free databuf");
-                  clear_run_threads();
                   pthread_exit(NULL);
                   break;
               }
@@ -258,7 +254,6 @@ static void *run(hashpipe_thread_args_t * args, int doCPU)
                     continue;
                 } else {
                     hashpipe_error(__FUNCTION__, "error waiting for free databuf");
-                    clear_run_threads();
                     pthread_exit(NULL);
                     break;
                 }
@@ -287,7 +282,6 @@ static void *run(hashpipe_thread_args_t * args, int doCPU)
         /* Check for cancel */
         pthread_testcancel();
     }
-    clear_run_threads();
 
     xgpuFree(&context);
 
