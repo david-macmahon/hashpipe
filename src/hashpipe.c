@@ -16,6 +16,7 @@
 #include <poll.h>
 #include <getopt.h>
 #include <errno.h>
+#include <dlfcn.h>
 #include <sys/resource.h> 
 
 #include "hashpipe.h"
@@ -37,6 +38,7 @@ void usage(const char *argv0) {
       "  -c N, --cpu=N         Set CPU number for subsequent threads\n"
       "  -m N, --mask=N        Set CPU mask for subsequent threads\n"
       "  -o K=V, --option=K=V  Store K=V in status buffer\n"
+      "  -p P, --plugin=P      Load plugin P\n"
 //    "  -b N, --buffer=N        Jump to input buffer B, output buffer B+1\n"
       , argv0
     );
@@ -267,7 +269,8 @@ int main(int argc, char *argv[])
       {"cpu",      1, NULL, 'c'},
       {"mask",     1, NULL, 'm'},
       {"option",   1, NULL, 'o'},
-      {"buffer",   1, NULL, 'b'},
+      {"plugin",   1, NULL, 'p'},
+//    {"buffer",   1, NULL, 'b'},
       {0,0,0,0}
     };
 
@@ -310,7 +313,7 @@ int main(int argc, char *argv[])
 
     // Parse command line.  Leading '-' means treat non-option arguments as if
     // it were the argument of an option with character code 1.
-    while((opt=getopt_long(argc,argv,"-hlI:m:c:b:o:",long_opts,NULL))!=-1) {
+    while((opt=getopt_long(argc,argv,"-hlI:m:c:b:o:p:",long_opts,NULL))!=-1) {
       switch (opt) {
         case 1:
           // optarg is name of thread
@@ -404,6 +407,12 @@ int main(int argc, char *argv[])
           args[num_threads].cpu_mask = (1<<i);
           break;
 
+        case 'p': // Load plugin
+          if(!dlopen(optarg, RTLD_NOW)) {
+            fprintf(stderr, "Error loading plugin '%s' (%s)\n",
+                optarg, dlerror());
+            exit(1);
+          }
         case 'b': // Set buffer
           // "-b B" jumps to input buffer B, output buffer B+1
           // TODO

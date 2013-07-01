@@ -59,7 +59,7 @@ dump_hashpipe_databuf_LDADD = libhashpipe.la
 
 bin_PROGRAMS += hashpipe
 hashpipe_SOURCES = $(hashpipe_exec)
-hashpipe_LDADD = libhashpipe.la libhashpipestatus.la
+hashpipe_LDADD = -ldl libhashpipe.la libhashpipestatus.la
 
 lib_LTLIBRARIES += libhashpipestatus.la
 libhashpipestatus_la_SOURCES = $(hashpipe_status)
