@@ -20,6 +20,7 @@ hashpipe_status = hashpipe_error.h  \
 hashpipe_base = hashpipe.h             \
 		hashpipe_databuf.h     \
 	        hashpipe_databuf.c     \
+	        hashpipe_plugin.c      \
 	        hashpipe_udp.h         \
 	        hashpipe_udp.c
 

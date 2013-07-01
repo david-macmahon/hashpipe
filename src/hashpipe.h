@@ -1,61 +1,63 @@
 #ifndef _HASHPIPE_H
 #define _HASHPIPE_H
 
+#include <stdio.h>
+
 #include "hashpipe_error.h"
 #include "hashpipe_databuf.h"
 #include "hashpipe_status.h"
 #include "hashpipe_udp.h"
 
-// This file defines types needed by "hashpipe modules".  A hashpipe module is
+// This file defines types needed by hashpipe plugings.  A hashpipe plugin is
 // an shared library that defines application specific processing threads and
-// data buffers.  The hashpipe executable loads these modules dynamically at
-// runtime.
+// data buffers for use in a hashpipe pipeline.  The hashpipe executable loads
+// these plugins dynamically at run time.  Hashpipe contructs the pipeline
+// dynamically at run time based on command line arguments.
 
 // Forward declare some structures
 struct hashpipe_thread_args;
-struct pipeline_thread_module;
+struct hashpipe_thread_desc;
 
 // Create typedefs for convenience
 typedef struct hashpipe_thread_args hashpipe_thread_args_t;
-typedef struct pipeline_thread_module pipeline_thread_module_t;
+typedef struct hashpipe_thread_desc hashpipe_thread_desc_t;
 
-// A pipeline thread module encapsulates metadata and functionality for one or
-// more threads that can be used in a processing pipeline.  The pipeline
+// A hashpipe_thread structure encapsulates metadata and functionality for one
+// or more threads that can be used in a processing pipeline.  The hashpipe
 // executable dynamically assembles a pipeline at runtime consisting of
-// multiple pipeline threads.
+// multiple hashpipe threads.
 //
-// Pipeline thread modules must register themselves with the pipeline
-// executable via a call to register_pipeline_thread_module().  This is
-// typically performed from a static C function with the constructor attribute
-// in the pipeline thread module's source file.
+// Hashpipe threads must register themselves with the hashpipe executable via a
+// call to register_hashpipe_thread().  This is typically performed from a
+// static C function with the constructor attribute in the hashpipe thread's
+// source file.
 //
-// Pipeline thread modules are identified by their name.  The pipeline
-// executable can find (registered) pipeline thread modules by their name.  A
-// pipeline thread can be a PIPELINE_INPUT_THREAD, a PIPELINE_OUTPUT_THREAD, or
-// both.  A pipeline thread can have an associated input data buffer from which
-// it sinks data and/or an associated output data buffer to which it sources
-// data for further processing.
+// Hashpipe threads are identified by their name.  The hashpipe executable
+// finds (registered) hashpipe threads by their name.  A hashpipe thread can be
+// input-only, output-only, or both input and output.  An input thread has an
+// associated output data buffer into which it writes data.  An output thread
+// has an associated input data buffer from which it reads data.  An
+// input/output thread has both.
 //
-// PIPELINE_INPUT-only threads source data into the pipeline.  They do not get
-// their input data from a shared memory ring buffer.  They get their data from
+// Input-only threads source data into the pipeline.  They do not get their
+// input data from a shared memory ring buffer.  They get their data from
 // external sources (e.g.  files or the network) or generate it internally
-// (e.g.  for test vectors).  PIPELINE_INPUT-only threads have an output data
-// buffer, but no input data buffer (their input does not come from a shared
-// memory ring buffer).
+// (e.g.  for test vectors).  Input-only threads have an output data buffer,
+// but no input data buffer (their input does not come from a shared memory
+// ring buffer).
 //
-// PIPELINE_OUTPUT-only threads sink data from the pipeline.  Thy do not put
-// their output data into a shared memory ring buffer.  They send their data to
+// Output-only threads sink data from the pipeline.  Thy do not put their
+// output data into a shared memory ring buffer.  They send their data to
 // external sinks (e.g. files or the network) of consume it internally (e.g.
-// comparing against expected output).  PIPELINE_OUTPUT-only threads have an
-// input data buffer, but no output data buffer (their output data does not go
-// the a shared memory ring buffer).
+// comparing against expected output).  Output-only threads have an input data
+// buffer, but no output data buffer (their output data does not go the a
+// shared memory ring buffer).
 //
-// Threads that are both PIPELINE_INPUT and PIPELINE_OUTPUT get their input
-// data from one shared memory region (their input data buffer), process it,
-// and store the output data in another shared memory region (their output data
-// buffer).
+// Input/output threads get their input data from one shared memory region
+// (their input data buffer), process it, and store the output data in another
+// shared memory region (their output data buffer).
 //
-// The pipeline thread's metadata consists of the following information:
+// The hashpipe's thread's metadata consists of the following information:
 //
 //   name - A string containing the thread's name
 //   skey - A string containing the thread's status buffer "status" key
@@ -97,8 +99,8 @@ typedef struct pipeline_thread_module pipeline_thread_module_t;
 //
 //   hashpipe_databuf_t * my_create_function(int instance_id, int databuf_id)
 
-// These typedefs are used to declare pointers to a pipeline thread module's
-// init and run functions.
+// These typedefs are used to declare pointers to a pipeline thread's init and
+// run functions.
 typedef int (* initfunc_t)(hashpipe_thread_args_t *);
 typedef void * (* runfunc_t)(hashpipe_thread_args_t *);
 
@@ -110,10 +112,10 @@ typedef struct {
   databuf_createfunc_t create;
 } databuf_desc_t;
 
-// This structure is used to store metadata about a pipeline thread module.
-// Typically a pipeline thread module will define one of these per thread as a
-// static (i.e. file private) variable.
-struct pipeline_thread_module {
+// The hashpipe_thread_desc structure is used to store metadata describing a
+// hashpipe thread.  Typically a hashpipe plugin will define one of these
+// hashpipe thread descriptors per hashpipe thread.
+struct hashpipe_thread_desc {
   char * name;
   char * skey;
   initfunc_t init;
@@ -125,7 +127,7 @@ struct pipeline_thread_module {
 // This structure passed (via a pointer) to the application's thread
 // initialization and run functions.
 struct hashpipe_thread_args {
-    pipeline_thread_module_t *module;
+    hashpipe_thread_desc_t *thread_desc;
     int instance_id;
     int input_buffer;
     int output_buffer;
@@ -139,9 +141,20 @@ struct hashpipe_thread_args {
     hashpipe_databuf_t *obuf;
 };
 
-// This function is used by pipeline thread modules to register themselves with
-// the pipeline executable.
-int register_pipeline_thread_module(pipeline_thread_module_t * ptm);
+// This function is used by pipeline plugins to register threads with the
+// pipeline executable.
+int register_hashpipe_thread(hashpipe_thread_desc_t * ptm);
+
+// This function can be used to find hashpipe threads by name.  It is generally
+// used only by the hashpipe executable.  Returns a pointer to its
+// hashpipe_thread_desc_t structure or NULL if a test with the given name is
+// not found.
+//
+// NB: Names are case sensitive.
+hashpipe_thread_desc_t * find_hashpipe_thread(char *name);
+
+// List all known hashpipe threads to FILE f.
+void list_hashpipe_threads(FILE * f);
 
 /* Functions to query, set, and clear the "run_threads" flag. */
 int run_threads();

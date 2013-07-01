@@ -30,7 +30,7 @@ static void *run(hashpipe_thread_args_t * args)
     paper_input_databuf_t *db_in = (paper_input_databuf_t *)args->ibuf;
     paper_gpu_input_databuf_t *db_out = (paper_gpu_input_databuf_t *)args->obuf;
     hashpipe_status_t st = args->st;
-    const char * status_key = args->module->skey;
+    const char * status_key = args->thread_desc->skey;
 
 #ifdef DEBUG_SEMS
     fprintf(stderr, "s/tid %lu/                      FLUFf/\n", pthread_self());
@@ -132,7 +132,7 @@ static void *run(hashpipe_thread_args_t * args)
     return NULL;
 }
 
-static pipeline_thread_module_t module1 = {
+static hashpipe_thread_desc_t fluff_thread = {
     name: "paper_fluff_thread",
     skey: "FLUFSTAT",
     init: NULL,
@@ -143,5 +143,5 @@ static pipeline_thread_module_t module1 = {
 
 static __attribute__((constructor)) void ctor()
 {
-  register_pipeline_thread_module(&module1);
+  register_hashpipe_thread(&fluff_thread);
 }

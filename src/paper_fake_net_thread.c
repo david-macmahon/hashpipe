@@ -26,7 +26,7 @@ static void *run(hashpipe_thread_args_t * args)
 {
     paper_input_databuf_t *db = (paper_input_databuf_t *)args->obuf;
     hashpipe_status_t st = args->st;
-    const char * status_key = args->module->skey;
+    const char * status_key = args->thread_desc->skey;
 
     /* Main loop */
     int i, rv;
@@ -128,7 +128,7 @@ static void *run(hashpipe_thread_args_t * args)
     return THREAD_OK;
 }
 
-static pipeline_thread_module_t module = {
+static hashpipe_thread_desc_t fake_net_thread = {
     name: "paper_fake_net_thread",
     skey: "NETSTAT",
     init: NULL,
@@ -139,5 +139,5 @@ static pipeline_thread_module_t module = {
 
 static __attribute__((constructor)) void ctor()
 {
-  register_pipeline_thread_module(&module);
+  register_hashpipe_thread(&fake_net_thread);
 }

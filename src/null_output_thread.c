@@ -1,7 +1,7 @@
 /*
  * null_output_thread.c
  *
- * Routine to sink data from the end of a pipeline.  This is the thread module
+ * Routine to sink data from the end of a pipeline.  This is the hashpipe thread
  * analog of /dev/null for the output end of a pipeline.
  */
 
@@ -17,7 +17,7 @@ static void *run(hashpipe_thread_args_t * args)
 {
     hashpipe_databuf_t *db;
     hashpipe_status_t st = args->st;
-    const char * status_key = args->module->skey;
+    const char * status_key = args->thread_desc->skey;
 
     // Attach to databuf as a low-level hashpipe databuf.  Since
     // null_output_thread can attach to any kind of databuf, we cannot create
@@ -89,7 +89,7 @@ static void *run(hashpipe_thread_args_t * args)
     return THREAD_OK;
 }
 
-static pipeline_thread_module_t module = {
+static hashpipe_thread_desc_t null_thread = {
     name: "null_output_thread",
     skey: "NULLSTAT",
     init: NULL,
@@ -100,5 +100,5 @@ static pipeline_thread_module_t module = {
 
 static __attribute__((constructor)) void ctor()
 {
-  register_pipeline_thread_module(&module);
+  register_hashpipe_thread(&null_thread);
 }

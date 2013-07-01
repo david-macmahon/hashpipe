@@ -380,7 +380,7 @@ static void *run(hashpipe_thread_args_t * args)
     // Our output buffer happens to be a paper_input_databuf
     paper_input_databuf_t *db = (paper_input_databuf_t *)args->obuf;
     hashpipe_status_t st = args->st;
-    const char * status_key = args->module->skey;
+    const char * status_key = args->thread_desc->skey;
 
 #ifdef DEBUG_SEMS
     fprintf(stderr, "s/tid %lu/NET/' <<.\n", pthread_self());
@@ -527,7 +527,7 @@ static void *run(hashpipe_thread_args_t * args)
     return NULL;
 }
 
-static pipeline_thread_module_t module = {
+static hashpipe_thread_desc_t net_thread = {
     name: "paper_net_thread",
     skey: "NETSTAT",
     init: NULL,
@@ -538,7 +538,7 @@ static pipeline_thread_module_t module = {
 
 static __attribute__((constructor)) void ctor()
 {
-  register_pipeline_thread_module(&module);
+  register_hashpipe_thread(&net_thread);
 }
 
 // vi: set ts=8 sw=4 noet :

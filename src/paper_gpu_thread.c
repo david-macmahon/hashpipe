@@ -38,7 +38,7 @@ static void *run(hashpipe_thread_args_t * args, int doCPU)
     paper_input_databuf_t *db_in = (paper_input_databuf_t *)args->ibuf;
     paper_output_databuf_t *db_out = (paper_output_databuf_t *)args->obuf;
     hashpipe_status_t st = args->st;
-    const char * status_key = args->module->skey;
+    const char * status_key = args->thread_desc->skey;
 
 #ifdef DEBUG_SEMS
     fprintf(stderr, "s/tid %lu/                      GPU/\n", pthread_self());
@@ -305,7 +305,7 @@ static void *run_gpu_cpu(hashpipe_thread_args_t * args)
   return run(args, 1);
 }
 
-static pipeline_thread_module_t module1 = {
+static hashpipe_thread_desc_t gpu_thread = {
     name: "paper_gpu_thread",
     skey: "GPUSTAT",
     init: NULL,
@@ -314,7 +314,7 @@ static pipeline_thread_module_t module1 = {
     obuf_desc: {paper_output_databuf_create}
 };
 
-static pipeline_thread_module_t module2 = {
+static hashpipe_thread_desc_t gpu_cpu_thread = {
     name: "paper_gpu_cpu_thread",
     skey: "GPUSTAT",
     init: NULL,
@@ -325,6 +325,6 @@ static pipeline_thread_module_t module2 = {
 
 static __attribute__((constructor)) void ctor()
 {
-  register_pipeline_thread_module(&module1);
-  register_pipeline_thread_module(&module2);
+  register_hashpipe_thread(&gpu_thread);
+  register_hashpipe_thread(&gpu_cpu_thread);
 }

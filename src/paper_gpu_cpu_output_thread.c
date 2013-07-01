@@ -41,7 +41,7 @@ static void *run(hashpipe_thread_args_t * args)
     // Our input buffer happens to be a paper_ouput_databuf
     paper_output_databuf_t *db = (paper_output_databuf_t *)args->ibuf;
     hashpipe_status_t st = args->st;
-    const char * status_key = args->module->skey;
+    const char * status_key = args->thread_desc->skey;
 
     /* Main loop */
     int i, rv, debug=20;
@@ -142,7 +142,7 @@ static void *run(hashpipe_thread_args_t * args)
     return NULL;
 }
 
-static pipeline_thread_module_t module = {
+static hashpipe_thread_desc_t gpu_cpu_output_thread = {
     name: "paper_gpu_cpu_output_thread",
     skey: "CGOSTAT",
     init: init,
@@ -153,5 +153,5 @@ static pipeline_thread_module_t module = {
 
 static __attribute__((constructor)) void ctor()
 {
-  register_pipeline_thread_module(&module);
+  register_hashpipe_thread(&gpu_cpu_output_thread);
 }

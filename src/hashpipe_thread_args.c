@@ -5,7 +5,7 @@
 #include "hashpipe_thread_args.h"
 
 void hashpipe_thread_args_init(struct hashpipe_thread_args *a) {
-    a->module=0;
+    a->thread_desc=0;
     a->instance_id=0;
     a->cpu_mask=0;
     a->priority=0;

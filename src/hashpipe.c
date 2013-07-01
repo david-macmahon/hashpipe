@@ -16,10 +16,7 @@
 #include <errno.h>
 #include <sys/resource.h> 
 
-#include "hashpipe_error.h"
-#include "fitshead.h"
-#include "hashpipe_status.h"
-#include "hashpipe_databuf.h"
+#include "hashpipe.h"
 #include "hashpipe_thread.h"
 #include "hashpipe_thread_args.h"
 
@@ -31,7 +28,7 @@ void usage(const char *argv0) {
       "\n"
       "Options:\n"
       "  -h,   --help          Show this message\n"
-      "  -l,   --list          List all known thread modules\n"
+      "  -l,   --list          List all known threads\n"
       "  -I N, --instance=N    Set instance ID of this pipeline\n"
       "  -c N, --cpu=N         Set CPU number for subsequent threads\n"
       "  -m N, --mask=N        Set CPU mask for subsequent threads\n"
@@ -48,9 +45,9 @@ static void cc(int sig)
 
 /* Exit handler that updates status buffer */
 inline void set_exit_status(hashpipe_thread_args_t *args) {
-    if(args && args->st.buf && args->module->skey) {
+    if(args && args->st.buf && args->thread_desc->skey) {
         hashpipe_status_lock_safe(&args->st);
-        hputs(args->st.buf, args->module->skey, "exit");
+        hputs(args->st.buf, args->thread_desc->skey, "exit");
         hashpipe_status_unlock_safe(&args->st);
     }
 }
@@ -69,36 +66,36 @@ hashpipe_thread_init(hashpipe_thread_args_t *args)
                 "Error attaching to status shared memory.");
         goto status_error;
     }
-    if(args->module->skey) {
+    if(args->thread_desc->skey) {
         /* Init status */
         hashpipe_status_lock_safe(&args->st);
-        hputs(args->st.buf, args->module->skey, "init");
+        hputs(args->st.buf, args->thread_desc->skey, "init");
         hashpipe_status_unlock_safe(&args->st);
     }
 
     // Create databufs
-    if(args->module->ibuf_desc.create) {
-        args->ibuf = args->module->ibuf_desc.create(args->instance_id, args->input_buffer);
+    if(args->thread_desc->ibuf_desc.create) {
+        args->ibuf = args->thread_desc->ibuf_desc.create(args->instance_id, args->input_buffer);
         if(!args->ibuf) {
             hashpipe_error(__FUNCTION__,
                     "Error creating/attaching to databuf %d for %s input",
-                    args->input_buffer, args->module->name);
+                    args->input_buffer, args->thread_desc->name);
             goto ibuf_error;
         }
     }
-    if(args->module->obuf_desc.create) {
-        args->obuf = args->module->obuf_desc.create(args->instance_id, args->output_buffer);
+    if(args->thread_desc->obuf_desc.create) {
+        args->obuf = args->thread_desc->obuf_desc.create(args->instance_id, args->output_buffer);
         if(!args->obuf) {
             hashpipe_error(__FUNCTION__,
                     "Error creating/attaching to databuf %d for %s output",
-                    args->output_buffer, args->module->name);
+                    args->output_buffer, args->thread_desc->name);
             goto obuf_error;
         }
     }
 
     // Call user init function, if it exists
-    if(args->module->init) {
-        rv = args->module->init(args);
+    if(args->thread_desc->init) {
+        rv = args->thread_desc->init(args);
     }
 
     // Detach from output buffer
@@ -162,22 +159,22 @@ hashpipe_thread_run(void *vp_args)
     pthread_cleanup_push((void *)set_exit_status, &args->st);
 
     // Attach to data buffers
-    if(args->module->ibuf_desc.create) {
+    if(args->thread_desc->ibuf_desc.create) {
         args->ibuf = hashpipe_databuf_attach(args->instance_id, args->input_buffer);
         if (args->ibuf==NULL) {
             hashpipe_error(__FUNCTION__,
                     "Error attaching to databuf %d for %s input",
-                    args->input_buffer, args->module->name);
+                    args->input_buffer, args->thread_desc->name);
             rv = THREAD_ERROR;
         }
     }
     pthread_cleanup_push((void *)hashpipe_databuf_detach, args->ibuf);
-    if(args->module->obuf_desc.create) {
+    if(args->thread_desc->obuf_desc.create) {
         args->obuf = hashpipe_databuf_attach(args->instance_id, args->output_buffer);
         if (args->obuf==NULL) {
             hashpipe_error(__FUNCTION__,
                     "Error attaching to databuf %d for %s output",
-                    args->output_buffer, args->module->name);
+                    args->output_buffer, args->thread_desc->name);
             rv = THREAD_ERROR;
         }
     }
@@ -189,7 +186,7 @@ hashpipe_thread_run(void *vp_args)
 
     // Call user run function
     if(rv == THREAD_OK) {
-        rv = args->module->run(args);
+        rv = args->thread_desc->run(args);
     }
 
     // Set thread state to finished
@@ -291,23 +288,23 @@ int main(int argc, char *argv[])
       switch (opt) {
         case 1:
           // optarg is name of thread
-          args[num_threads].module = find_pipeline_thread_module(optarg);
+          args[num_threads].thread_desc = find_hashpipe_thread(optarg);
 
-          if (!args[num_threads].module) {
-              fprintf(stderr, "Error finding '%s' module.\n", optarg);
+          if (!args[num_threads].thread_desc) {
+              fprintf(stderr, "Error finding '%s' thread.\n", optarg);
               exit(1);
           }
 
           // Init thread
           printf("initing  thread '%s' with databufs %d and %d\n",
-              args[num_threads].module->name, args[num_threads].input_buffer,
+              args[num_threads].thread_desc->name, args[num_threads].input_buffer,
               args[num_threads].output_buffer);
 
           rv = hashpipe_thread_init(&args[num_threads]);
 
           if (rv) {
               fprintf(stderr, "Error initializing thread for '%s'.\n",
-                  args[num_threads].module->name);
+                  args[num_threads].thread_desc->name);
               exit(1);
           }
 
@@ -327,7 +324,7 @@ int main(int argc, char *argv[])
           break;
 
         case 'l': // List
-          list_pipeline_thread_modules(stdout);
+          list_hashpipe_threads(stdout);
           return 0;
           break;
 
@@ -396,7 +393,7 @@ int main(int argc, char *argv[])
     // If no threads specified
     if(num_threads == 0) {
       printf("No threads specified!\n");
-      list_pipeline_thread_modules(stdout);
+      list_hashpipe_threads(stdout);
       return 1;
     }
 
@@ -417,13 +414,13 @@ int main(int argc, char *argv[])
 
       // Launch thread
       printf("starting thread '%s' with databufs %d and %d\n",
-          args[i].module->name, args[i].input_buffer, args[i].output_buffer);
+          args[i].thread_desc->name, args[i].input_buffer, args[i].output_buffer);
       rv = pthread_create(&threads[i], NULL,
           hashpipe_thread_run, (void *)&args[i]);
 
       if (rv) {
           fprintf(stderr, "Error creating thread for '%s'.\n",
-              args[i].module->name);
+              args[i].thread_desc->name);
           exit(1);
       }
 
@@ -443,7 +440,7 @@ int main(int argc, char *argv[])
     }
     for(i=num_threads-1; i>=0; i--) {
       pthread_join(threads[i], NULL);
-      printf("Joined thread '%s'\n", args[i].module->name);
+      printf("Joined thread '%s'\n", args[i].thread_desc->name);
       fflush(stdout);
     }
     for(i=num_threads; i>=0; i--) {
