@@ -45,6 +45,8 @@ hashpipe_dump_databuf_LDADD = libhashpipe.la
 bin_PROGRAMS += hashpipe
 hashpipe_SOURCES = $(hashpipe_exec)
 hashpipe_LDADD = -ldl libhashpipe.la libhashpipestatus.la
+# Force -rpath to be set to libdir
+hashpipe_LDFLAGS = -Wl,-rpath,"$(libdir)"
 
 lib_LTLIBRARIES += libhashpipestatus.la
 libhashpipestatus_la_SOURCES = $(hashpipe_status)
