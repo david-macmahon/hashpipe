@@ -61,4 +61,7 @@ include_HEADERS = fitshead.h \
 		  hashpipe_status.h \
 		  hashpipe_udp.h
 
+aclocaldir = $(datadir)/aclocal
+aclocal_DATA = m4/hashpipe.m4
+
 # vi: set ts=8 noet :

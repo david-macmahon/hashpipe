@@ -3,3 +3,5 @@
 
 # ... except for this one.
 !.gitignore
+# ... and this one
+!hashpipe.m4
