@@ -48,7 +48,7 @@ hashpipe_LDADD = -ldl libhashpipe.la libhashpipestatus.la
 
 lib_LTLIBRARIES += libhashpipestatus.la
 libhashpipestatus_la_SOURCES = $(hashpipe_status)
-libhashpipestatus_la_LIBADD = -lm
+libhashpipestatus_la_LIBADD = -lm -lrt
 
 lib_LTLIBRARIES += libhashpipe.la
 libhashpipe_la_SOURCES = $(hashpipe_base)
