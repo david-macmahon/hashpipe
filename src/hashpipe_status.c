@@ -20,9 +20,6 @@
 #include "hashpipe_error.h"
 #include "fitshead.h"
 
-#define HASHPIPE_STATUS_SIZE (2880*64) // FITS-style buffer
-#define HASHPIPE_STATUS_CARD 80 // Size of each FITS "card"
-
 /*
  * Stores the hashpipe status (POSIX) semaphore name in semid buffer of length
  * size.  Returns 0 (no error) if semaphore name fit in given size, returns 1
@@ -81,7 +78,7 @@ int hashpipe_status_exists(int instance_id)
         hashpipe_error("hashpipe_status_attach", "hashpipe_status_key error");
         return 0;
     }
-    int shmid = shmget(key, HASHPIPE_STATUS_SIZE, 0666);
+    int shmid = shmget(key, HASHPIPE_STATUS_TOTAL_SIZE, 0666);
     return (shmid==-1) ? 0 : 1;
 }
 
@@ -97,7 +94,7 @@ int hashpipe_status_attach(int instance_id, hashpipe_status_t *s)
         hashpipe_error("hashpipe_status_attach", "hashpipe_status_key error");
         return(0);
     }
-    s->shmid = shmget(key, HASHPIPE_STATUS_SIZE, 0666 | IPC_CREAT);
+    s->shmid = shmget(key, HASHPIPE_STATUS_TOTAL_SIZE, 0666 | IPC_CREAT);
     if (s->shmid==-1) { 
         hashpipe_error("hashpipe_status_attach", "shmget error");
         return(HASHPIPE_ERR_SYS);
@@ -170,10 +167,10 @@ int hashpipe_status_unlock(hashpipe_status_t *s) {
 /* Return pointer to END key */
 static
 char *hashpipe_find_end(char *buf) {
-    /* Loop over 80 byte cards */
+    /* Loop over fixed size records */
     int offs;
     char *out=NULL;
-    for (offs=0; offs<HASHPIPE_STATUS_SIZE; offs+=HASHPIPE_STATUS_CARD) {
+    for (offs=0; offs<HASHPIPE_STATUS_TOTAL_SIZE; offs+=HASHPIPE_STATUS_RECORD_SIZE) {
         if (strncmp(&buf[offs], "END", 3)==0) { out=&buf[offs]; break; }
     }
     return(out);
@@ -190,9 +187,9 @@ void hashpipe_status_chkinit(hashpipe_status_t *s)
     /* If no END, clear it out */
     if (hashpipe_find_end(s->buf)==NULL) {
         /* Zero bufer */
-        memset(s->buf, 0, HASHPIPE_STATUS_SIZE);
-        /* Fill first card w/ spaces */
-        memset(s->buf, ' ', HASHPIPE_STATUS_CARD);
+        memset(s->buf, 0, HASHPIPE_STATUS_TOTAL_SIZE);
+        /* Fill first record w/ spaces */
+        memset(s->buf, ' ', HASHPIPE_STATUS_RECORD_SIZE);
         /* add END */
         strncpy(s->buf, "END", 3);
         // Add INSTANCE record
@@ -223,9 +220,9 @@ void hashpipe_status_clear(hashpipe_status_t *s) {
     hashpipe_status_lock(s);
 
     /* Zero bufer */
-    memset(s->buf, 0, HASHPIPE_STATUS_SIZE);
-    /* Fill first card w/ spaces */
-    memset(s->buf, ' ', HASHPIPE_STATUS_CARD);
+    memset(s->buf, 0, HASHPIPE_STATUS_TOTAL_SIZE);
+    /* Fill first record w/ spaces */
+    memset(s->buf, ' ', HASHPIPE_STATUS_RECORD_SIZE);
     /* add END */
     strncpy(s->buf, "END", 3);
 

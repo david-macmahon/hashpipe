@@ -14,6 +14,9 @@
 // client.
 #include "fitshead.h"
 
+#define HASHPIPE_STATUS_TOTAL_SIZE (2880*64) // FITS-style buffer
+#define HASHPIPE_STATUS_RECORD_SIZE 80 // Size of each record (e.g. FITS "card")
+
 /* Structure describes status memory area */
 typedef struct {
     int instance_id; /* Instance ID of this status buffer (DO NOT SET/CHANGE!) */
