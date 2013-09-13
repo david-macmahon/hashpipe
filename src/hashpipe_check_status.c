@@ -10,6 +10,28 @@
 #include "hashpipe_error.h"
 #include "hashpipe_status.h"
 
+static void usage() { 
+    printf(
+        "Usage: hashpipe_check_status [options]\n"
+        "General options:\n"
+        "  -h,     --help         Show this message\n"
+        "  -I N,   --instance=N   Specify hashpipe instance [0]\n"
+        "  -v,     --verbose      Be verbose [false]\n"
+        "Query options:\n"
+        "  -Q KEY, --query=KEY    Query string value of KEY\n"
+        "  -g KEY, --get=KEY      Query double value of KEY\n"
+        "Update options:\n"
+        "  -k KEY, --key=KEY      Specify KEY to be updated\n"
+        "  -s VAL, --string=VAL   Update key with string value VAL\n"
+        "  -f VAL, --float=VAL    Update key with float value VAL\n"
+        "  -d VAL, --double=VAL   Update key with double value VAL\n"
+        "  -i VAL, --int=VAL      Update key with int value VAL\n"
+        "Delete options:\n"
+        "  -C,     --clear        Remove all key/value pairs\n"
+        "  -D KEY, --del=KEY      Delete KEY (and its value)\n"
+    );
+}
+
 static hashpipe_status_t *get_status_buffer(int instance_id)
 {
     int rv;
@@ -39,6 +61,7 @@ int main(int argc, char *argv[]) {
 
     /* Loop over cmd line to fill in params */
     static struct option long_opts[] = {
+        {"help",   0, NULL, 'h'},
         {"key",    1, NULL, 'k'},
         {"get",    1, NULL, 'g'},
         {"string", 1, NULL, 's'},
@@ -59,7 +82,7 @@ int main(int argc, char *argv[]) {
     double dbltmp;
     int inttmp;
     int verbose=0, clear=0;
-    while ((opt=getopt_long(argc,argv,"k:g:s:f:d:i:vCDQ:I:",long_opts,&opti))!=-1) {
+    while ((opt=getopt_long(argc,argv,"hk:g:s:f:d:i:vCDQ:I:",long_opts,&opti))!=-1) {
         switch (opt) {
             case 'I':
                 instance_id = atoi(optarg);
@@ -131,8 +154,12 @@ int main(int argc, char *argv[]) {
             case 'v':
                 verbose=1;
                 break;
+            case 'h':
+                usage();
+                return 0;
             case '?': // Command line parsing error
             default:
+                usage();
                 exit(1);
                 break;
         }
