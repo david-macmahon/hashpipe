@@ -12,8 +12,8 @@
 #include "hashpipe_databuf.h"
 
 void usage() { 
-    fprintf(stderr, 
-            "Usage: check_hashpipe_databuf [options]\n"
+    printf(
+            "Usage: hashpipe_check_databuf [options]\n"
             "Options:\n"
             "  -h, --help\n"
             "  -q, --quiet\n"
