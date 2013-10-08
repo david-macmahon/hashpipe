@@ -16,13 +16,14 @@ void usage() {
             "Usage: hashpipe_check_databuf [options]\n"
             "Options:\n"
             "  -h, --help\n"
-            "  -q, --quiet\n"
-            "  -I n, --instance=n (0)\n"
-            "  -c, --create\n"
-            "  -i n, --id=n (1)\n"
-            "  -s MB, --blksize=MB (32)\n"
-            "  -n n, --nblock=n (24)\n"
-            "  -H n, --hdrsize=n (sizeof(hashpipe_databuf_t))\n"
+            "  -q,   --quiet         Quiet mode\n"
+            "  -I N, --instance=N    Instance number  [0]\n"
+            "  -d N, --databuf=N     Databuf ID       [1]\n"
+            "  -c,   --create        Create databuf\n"
+            "Extra options for use with -c or --create:\n"
+            "  -s MB, --blksize=MB Block size in MiB  [32]\n"
+            "  -n N,  --nblock=N   Number of blocks   [24]\n"
+            "  -H N,  --hdrsize=N  Size of header [sizeof(hashpipe_databuf_t)]\n"
             );
 }
 
@@ -34,7 +35,7 @@ int main(int argc, char *argv[]) {
         {"quiet",  0, NULL, 'q'},
         {"instance", 1, NULL, 'I'},
         {"create", 0, NULL, 'c'},
-        {"id",     1, NULL, 'i'},
+        {"databuf", 1, NULL, 'd'},
         {"blksize",   1, NULL, 's'},
         {"nblock", 1, NULL, 'n'},
         {"hdrsize", 1, NULL, 'H'},
@@ -48,7 +49,7 @@ int main(int argc, char *argv[]) {
     int blocksize = 32;
     int nblock = 24;
     size_t header_size = sizeof(hashpipe_databuf_t);
-    while ((opt=getopt_long(argc,argv,"hqI:ci:s:n:t:H:",long_opts,&opti))!=-1) {
+    while ((opt=getopt_long(argc,argv,"hqI:cd:s:n:t:H:",long_opts,&opti))!=-1) {
         switch (opt) {
             case 'I':
                 instance_id=atoi(optarg);
@@ -59,7 +60,7 @@ int main(int argc, char *argv[]) {
             case 'q':
                 quiet=1;
                 break;
-            case 'i':
+            case 'd':
                 db_id = atoi(optarg);
                 break;
             case 's':
