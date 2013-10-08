@@ -49,9 +49,8 @@ int main(int argc, char *argv[]) {
     int skip = 0;
     int num = 0;
     int force = 0;
-    while ((opt=getopt_long(argc,argv,"hi:I:b:d:fn:s:",long_opts,NULL))!=-1) {
+    while ((opt=getopt_long(argc,argv,"hI:b:d:fn:s:",long_opts,NULL))!=-1) {
         switch (opt) {
-            case 'i':
             case 'I':
                 instance_id=atoi(optarg);
                 break;
