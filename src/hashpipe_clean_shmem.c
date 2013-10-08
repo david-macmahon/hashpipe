@@ -16,6 +16,21 @@
 #include "hashpipe_status.h"
 #include "hashpipe_databuf.h"
 
+void usage() {
+    printf(
+            "Usage: hashpipe_clean_shmem [options]\n"
+            "\n"
+            "Clears status buffer and deletes data buffers for specified\n"
+            "Hashpipe instance.  If -d is given, deletes status buffer\n"
+            "instead of just clearing it.\n"
+            "\n"
+            "Options:\n"
+            "  -I N, --instance=N    Instance number [0]\n"
+            "  -d,   --delete        Delete status buffer [clear]\n"
+            "  -h,   --help          This message\n"
+            );
+}
+
 int main(int argc, char *argv[]) {
     int rv,ex=0;
     int instance_id = 0;
@@ -27,11 +42,12 @@ int main(int argc, char *argv[]) {
     // Otherwise, it is simply re-initialized.
     static struct option long_opts[] = {
         {"del",      0, NULL, 'd'},
+        {"help",     0, NULL, 'h'},
         {"instance", 1, NULL, 'I'},
         {0,0,0,0}
     };
 
-    while ((opt=getopt_long(argc,argv,"dI:",long_opts,NULL))!=-1) {
+    while ((opt=getopt_long(argc,argv,"dhI:",long_opts,NULL))!=-1) {
         switch (opt) {
             case 'd':
                 delete_status = 1;
@@ -39,10 +55,13 @@ int main(int argc, char *argv[]) {
             case 'I':
                 instance_id = atoi(optarg);
                 break;
-            case '?': // Command line parsing error
-            default:
-                exit(1);
+            case 'h':
+                usage();
+                exit(0);
                 break;
+            default:
+                usage();
+                exit(1);
         }
     }
 
@@ -119,4 +138,3 @@ int main(int argc, char *argv[]) {
 
     exit(ex);
 }
-
