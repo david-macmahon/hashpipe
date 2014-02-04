@@ -1,5 +1,5 @@
 /*
- *  hashpipe_ipckey.h
+ *  hashpipe_ipckey.c
  *
  *  Declare function used to get IPC keys.
  */
