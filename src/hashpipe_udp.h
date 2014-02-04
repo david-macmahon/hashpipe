@@ -10,6 +10,10 @@
 #include <netdb.h>
 #include <poll.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Struct to hold connection parameters */
 struct hashpipe_udp_params {
 
@@ -42,5 +46,9 @@ struct hashpipe_udp_packet {
     size_t packet_size;  /* packet size, bytes */
     char data[HASHPIPE_MAX_PACKET_SIZE] __attribute__ ((aligned(128))); /* packet data */
 };
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // _HASHPIPE_UDP_H

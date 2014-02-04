@@ -17,6 +17,10 @@
 #define HASHPIPE_STATUS_TOTAL_SIZE (2880*64) // FITS-style buffer
 #define HASHPIPE_STATUS_RECORD_SIZE 80 // Size of each record (e.g. FITS "card")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Structure describes status memory area */
 typedef struct {
     int instance_id; /* Instance ID of this status buffer (DO NOT SET/CHANGE!) */
@@ -90,4 +94,8 @@ void hashpipe_status_clear(hashpipe_status_t *s);
     hashpipe_status_unlock(s); \
     pthread_cleanup_pop(0);
 
+#ifdef __cplusplus
+}
 #endif
+
+#endif // _HASHPIPE_STATUS_H

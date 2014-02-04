@@ -11,6 +11,10 @@
 #include <sys/ipc.h>
 #include <sys/sem.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Define hashpipe_databuf structure
 typedef struct {
     char data_type[64]; /* Type of data in buffer */
@@ -79,5 +83,8 @@ int hashpipe_databuf_wait_free(hashpipe_databuf_t *d, int block_id);
 int hashpipe_databuf_busywait_free(hashpipe_databuf_t *d, int block_id);
 int hashpipe_databuf_set_free(hashpipe_databuf_t *d, int block_id);
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif // _HASHPIPE_DATABUF_H

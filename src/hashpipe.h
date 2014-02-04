@@ -8,6 +8,10 @@
 #include "hashpipe_status.h"
 #include "hashpipe_udp.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // This file defines types needed by hashpipe plugings.  A hashpipe plugin is
 // an shared library that defines application specific processing threads and
 // data buffers for use in a hashpipe pipeline.  The hashpipe executable loads
@@ -168,5 +172,9 @@ void list_hashpipe_threads(FILE * f);
 // Get CPU affinity of calling thread
 // Returns 0 on error
 unsigned int get_cpu_affinity();
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // _HASHPIPE_H
