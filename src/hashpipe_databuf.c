@@ -85,6 +85,17 @@ hashpipe_databuf_t *hashpipe_databuf_create(int instance_id,
             }
             return NULL;
         }
+    } else {
+      /* Zero out newly created databuf */
+      memset(d, 0, total_size);
+
+      /* Fill params into databuf */
+      d->shmid = shmid;
+      d->semid = 0;
+      d->header_size = header_size;
+      d->n_block = n_block;
+      d->block_size = block_size;
+      sprintf(d->data_type, "unknown");
     }
 
     /* Try to lock in memory */
@@ -94,17 +105,6 @@ hashpipe_databuf_t *hashpipe_databuf_create(int instance_id,
         hashpipe_error(__FUNCTION__, "Error locking shared memory.");
         return NULL;
     }
-
-    /* Zero out memory */
-    memset(d, 0, total_size);
-
-    /* Fill params into databuf */
-    d->shmid = shmid;
-    d->semid = 0;
-    d->header_size = header_size;
-    d->n_block = n_block;
-    d->block_size = block_size;
-    sprintf(d->data_type, "unknown");
 
     /* Get semaphores set up */
     d->semid = semget(key + databuf_id - 1, n_block, 0666 | IPC_CREAT);
