@@ -83,11 +83,11 @@ void hashpipe_status_clear(hashpipe_status_t *s);
 //       and pthread_cleanup_pop are defined.  Users of the macros defined here
 //       must explicitly include pthread.h themselves.
 #define hashpipe_status_lock_safe(s) \
-    pthread_cleanup_push((void *)hashpipe_status_unlock, s); \
+    pthread_cleanup_push((void (*)(void *))hashpipe_status_unlock, s); \
     hashpipe_status_lock(s);
 
 #define hashpipe_status_lock_busywait_safe(s) \
-    pthread_cleanup_push((void *)hashpipe_status_unlock, s); \
+    pthread_cleanup_push((void (*)(void *))hashpipe_status_unlock, s); \
     hashpipe_status_lock_busywait(s);
 
 #define hashpipe_status_unlock_safe(s) \

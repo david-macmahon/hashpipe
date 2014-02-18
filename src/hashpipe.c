@@ -183,8 +183,8 @@ hashpipe_thread_run(void *vp_args)
     }
 
     // No more goto statements now that we're using pthread_cleanup_push!
-    pthread_cleanup_push((void *)hashpipe_status_detach, &args->st);
-    pthread_cleanup_push((void *)set_exit_status, &args->st);
+    pthread_cleanup_push((void (*)(void *))hashpipe_status_detach, &args->st);
+    pthread_cleanup_push((void (*)(void *))set_exit_status, &args->st);
 
     // Attach to data buffers
     if(args->thread_desc->ibuf_desc.create) {
@@ -196,7 +196,7 @@ hashpipe_thread_run(void *vp_args)
             rv = THREAD_ERROR;
         }
     }
-    pthread_cleanup_push((void *)hashpipe_databuf_detach, args->ibuf);
+    pthread_cleanup_push((void (*)(void *))hashpipe_databuf_detach, args->ibuf);
     if(args->thread_desc->obuf_desc.create) {
         args->obuf = hashpipe_databuf_attach(args->instance_id, args->output_buffer);
         if (args->obuf==NULL) {
@@ -206,11 +206,11 @@ hashpipe_thread_run(void *vp_args)
             rv = THREAD_ERROR;
         }
     }
-    pthread_cleanup_push((void *)hashpipe_databuf_detach, args->obuf);
+    pthread_cleanup_push((void (*)(void *))hashpipe_databuf_detach, args->obuf);
 
 
     // Sets up call to set state to finished on thread exit
-    pthread_cleanup_push((void *)hashpipe_thread_set_finished, args);
+    pthread_cleanup_push((void (*)(void *))hashpipe_thread_set_finished, args);
 
     // Call user run function
     if(rv == THREAD_OK) {

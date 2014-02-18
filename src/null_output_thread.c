@@ -38,7 +38,7 @@ static void *run(hashpipe_thread_args_t * args)
         hashpipe_error(__FUNCTION__, msg);
         return THREAD_ERROR;
     }
-    pthread_cleanup_push((void *)hashpipe_databuf_detach, db);
+    pthread_cleanup_push((void (*)(void *))hashpipe_databuf_detach, db);
 
     /* Main loop */
     int rv;
