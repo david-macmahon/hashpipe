@@ -120,8 +120,8 @@ typedef struct {
 // hashpipe thread.  Typically a hashpipe plugin will define one of these
 // hashpipe thread descriptors per hashpipe thread.
 struct hashpipe_thread_desc {
-  char * name;
-  char * skey;
+  const char * name;
+  const char * skey;
   initfunc_t init;
   runfunc_t run;
   databuf_desc_t ibuf_desc;
