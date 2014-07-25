@@ -42,6 +42,10 @@ bin_PROGRAMS += hashpipe_dump_databuf
 hashpipe_dump_databuf_SOURCES = hashpipe_dump_databuf.c
 hashpipe_dump_databuf_LDADD = libhashpipe.la
 
+bin_PROGRAMS += hashpipe_write_databuf
+hashpipe_write_databuf_SOURCES = hashpipe_write_databuf.c
+hashpipe_write_databuf_LDADD = libhashpipe.la
+
 bin_PROGRAMS += hashpipe
 hashpipe_SOURCES = $(hashpipe_exec)
 hashpipe_LDADD = -ldl libhashpipe.la libhashpipestatus.la
