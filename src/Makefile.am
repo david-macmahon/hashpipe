@@ -17,6 +17,8 @@ hashpipe_status = hashpipe_error.h  \
 hashpipe_base = hashpipe.h             \
 		hashpipe_databuf.h     \
 	        hashpipe_databuf.c     \
+	        hashpipe_pktsock.h     \
+	        hashpipe_pktsock.c     \
 	        hashpipe_thread.c      \
 	        hashpipe_udp.h         \
 	        hashpipe_udp.c
@@ -64,6 +66,7 @@ include_HEADERS = fitshead.h \
 		  hashpipe.h \
 		  hashpipe_databuf.h \
 		  hashpipe_error.h \
+		  hashpipe_pktsock.h \
 		  hashpipe_status.h \
 		  hashpipe_udp.h
 
