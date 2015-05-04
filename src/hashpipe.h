@@ -6,6 +6,7 @@
 #include "hashpipe_error.h"
 #include "hashpipe_databuf.h"
 #include "hashpipe_status.h"
+#include "hashpipe_pktsock.h"
 #include "hashpipe_udp.h"
 
 #ifdef __cplusplus
