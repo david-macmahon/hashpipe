@@ -40,12 +40,21 @@ struct hashpipe_pktsock {
 #define PKT_NET(p) (p+TPACKET_HDR(p, tp_net))
 
 // Returns true (non-zero) if this is a UDP packet
-#define PKT_IS_UDP(p) ((p+TPACKET_HDR(p, tp_net))[0x09] == IPPROTO_UDP)
+#define PKT_IS_UDP(p) ((PKT_NET(p)[0x09]) == IPPROTO_UDP)
 
 // Returns UDP destination port of packet.
 // NB: this assumes but does NOT verify that the packet is a UDP packet!
-#define PKT_UDP_DST(p) (((p+TPACKET_HDR(p, tp_net))[0x16] << 8)\
-                       |((p+TPACKET_HDR(p, tp_net))[0x17]     ))
+#define PKT_UDP_DST(p) (((PKT_NET(p)[0x16]) << 8)\
+                       |((PKT_NET(p)[0x17])     ))
+
+// Returns size of UDP packet (including the 8 byte UDP header).
+// NB: this assumes but does NOT verify that the packet is a UDP packet!
+#define PKT_UDP_SIZE(p) (((PKT_NET(p)[0x18]) << 8)\
+                        |((PKT_NET(p)[0x19])     ))
+
+// Returns pointer to UDP packet payload.
+// NB: this assumes but does NOT verify that the packet is a UDP packet!
+#define PKT_UDP_DATA(p) (PKT_NET(p) + 0x1c)
 
 // `p_ps` should point to a `struct pktsock` that has been initialized by
 // caller with desired values for the sizing parmaters `frame_size`, `nframes`,
