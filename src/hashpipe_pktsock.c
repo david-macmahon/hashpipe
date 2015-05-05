@@ -99,10 +99,10 @@ int hashpipe_pktsock_open(struct hashpipe_pktsock *p_ps, const char *ifname, int
 }
 
 // Return NULL on timeout (or error), otherwise returns pointer to frame.
-char * hashpipe_pktsock_recv_frame(struct hashpipe_pktsock *p_ps, int timeout_ms)
+unsigned char * hashpipe_pktsock_recv_frame(struct hashpipe_pktsock *p_ps, int timeout_ms)
 {
   struct pollfd pfd;
-  char * frame;
+  unsigned char * frame;
 
   frame = p_ps->p_ring + p_ps->next_idx * p_ps->frame_size;
 
@@ -133,9 +133,9 @@ char * hashpipe_pktsock_recv_frame(struct hashpipe_pktsock *p_ps, int timeout_ms
 
 // Return NULL on timeout (or error), otherwise returns pointer to the next
 // frame that contains a UDP packet with specified destination port.
-char * hashpipe_pktsock_recv_udp_frame(struct hashpipe_pktsock *p_ps, int dst_port, int timeout_ms)
+unsigned char * hashpipe_pktsock_recv_udp_frame(struct hashpipe_pktsock *p_ps, int dst_port, int timeout_ms)
 {
-  char * p_frame = hashpipe_pktsock_recv_frame(p_ps, timeout_ms);
+  unsigned char * p_frame = hashpipe_pktsock_recv_frame(p_ps, timeout_ms);
   // While we get packets, but they aren't what we want...
   while(p_frame && !(PKT_IS_UDP(p_frame) && PKT_UDP_DST(p_frame) == dst_port)) {
     // ...release them and get another.
@@ -148,7 +148,7 @@ char * hashpipe_pktsock_recv_udp_frame(struct hashpipe_pktsock *p_ps, int dst_po
 }
 
 // Releases frame back to the kernel
-void hashpipe_pktsock_release_frame(char * frame)
+void hashpipe_pktsock_release_frame(unsigned char * frame)
 {
   TPACKET_HDR(frame, tp_status) = TP_STATUS_KERNEL;
 }

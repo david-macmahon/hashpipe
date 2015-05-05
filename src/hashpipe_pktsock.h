@@ -25,7 +25,7 @@ struct hashpipe_pktsock {
   // The following fields are "private" and should not be modified by the
   // caller.
   int fd;
-  char *p_ring;
+  unsigned char *p_ring;
   int next_idx;
 };
 
@@ -76,15 +76,15 @@ int hashpipe_pktsock_open(struct hashpipe_pktsock *p_ps, const char *ifname, int
 // Return NULL on timeout (or error), otherwise returns pointer to frame.
 // The caller MUST release the frame back to the kernel (via
 // `pktsock_release_frame`) once it is finished with the frame.
-char * hashpipe_pktsock_recv_frame(struct hashpipe_pktsock *p_ps, int timeout_ms);
+unsigned char * hashpipe_pktsock_recv_frame(struct hashpipe_pktsock *p_ps, int timeout_ms);
 
 // Return NULL on timeout (or error), otherwise returns pointer to the next
 // frame that contains a UDP packet with specified destination port.
-char * hashpipe_pktsock_recv_udp_frame(struct hashpipe_pktsock *p_ps, int dst_port, int timeout_ms);
+unsigned char * hashpipe_pktsock_recv_udp_frame(struct hashpipe_pktsock *p_ps, int dst_port, int timeout_ms);
 
 // Releases frame back to the kernel.  The caller must be release each frame
 // back to the kernel once the caller is done with the frame.
-void hashpipe_pktsock_release_frame(char * frame);
+void hashpipe_pktsock_release_frame(unsigned char * frame);
 
 // Unmaps kernel ring buffer and closes socket.
 int hashpipe_pktsock_close(struct hashpipe_pktsock *p_ps);
