@@ -7,6 +7,7 @@ hashpipe_check_databuf
 hashpipe_check_status
 hashpipe_clean_shmem
 hashpipe_dump_databuf
+hashpipe_write_databuf
 hashpipe
 *.so
 # Autotools cruft
