@@ -72,15 +72,40 @@ struct hashpipe_pktsock {
 // socket, and p_ps->p_ring will be a poitner to the start of the ring buffer.
 int hashpipe_pktsock_open(struct hashpipe_pktsock *p_ps, const char *ifname, int ring_type);
 
+// Return pointer to frame or NULL if no frame ready.
+//
+// If a non-NULL frame pointer is returned, the caller MUST release the frame
+// back to the kernel (via `pktsock_release_frame`) once it is finished with
+// the frame.
+unsigned char * hashpipe_pktsock_recv_frame_nonblock(struct hashpipe_pktsock *p_ps);
 
-// Return NULL on timeout (or error), otherwise returns pointer to frame.
-// The caller MUST release the frame back to the kernel (via
-// `pktsock_release_frame`) once it is finished with the frame.
+// Return pointer to frame or NULL on timeout.
+//
+// If a non-NULL frame pointer is returned, the caller MUST release the frame
+// back to the kernel (via `pktsock_release_frame`) once it is finished with
+// the frame.
 unsigned char * hashpipe_pktsock_recv_frame(struct hashpipe_pktsock *p_ps, int timeout_ms);
 
-// Return NULL on timeout (or error), otherwise returns pointer to the next
-// frame that contains a UDP packet with specified destination port.
-unsigned char * hashpipe_pktsock_recv_udp_frame(struct hashpipe_pktsock *p_ps, int dst_port, int timeout_ms);
+// If no frame is ready, returns NULL.  If a non-matching frame is ready, it is
+// released back to the kernel and NULL is returned.  Otherwise, returns a
+// pointer to the matching frame.
+//
+// If a non-NULL frame pointer is returned, the caller MUST release the frame
+// back to the kernel (via `pktsock_release_frame`) once it is finished with
+// the frame.
+unsigned char * hashpipe_pktsock_recv_udp_frame_nonblock(
+    struct hashpipe_pktsock *p_ps, int dst_port);
+
+// If no frame is ready, wait up to `timeout_ms` to get a frame.  If no frame
+// is ready after timeout, returns NULL.  If frame does not match, releases
+// non-matching frame back to the kernel and returns NULL.  Otherwise returns
+// pointer to matching frame.
+//
+// If a non-NULL frame pointer is returned, the caller MUST release the frame
+// back to the kernel (via `pktsock_release_frame`) once it is finished with
+// the frame.
+unsigned char * hashpipe_pktsock_recv_udp_frame(
+    struct hashpipe_pktsock *p_ps, int dst_port, int timeout_ms);
 
 // Releases frame back to the kernel.  The caller must be release each frame
 // back to the kernel once the caller is done with the frame.
