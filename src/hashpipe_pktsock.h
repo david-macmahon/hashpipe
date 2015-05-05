@@ -111,6 +111,12 @@ unsigned char * hashpipe_pktsock_recv_udp_frame(
 // back to the kernel once the caller is done with the frame.
 void hashpipe_pktsock_release_frame(unsigned char * frame);
 
+// Stores packet counter and drop counter values in `*p_pkts` and `*p_drops`,
+// provided they are non-NULL.  This makes it possible to request one but not
+// the other.
+void hashpipe_pktsock_stats(struct hashpipe_pktsock *p_ps,
+    unsigned int *p_pkts, unsigned int *p_drops);
+
 // Unmaps kernel ring buffer and closes socket.
 int hashpipe_pktsock_close(struct hashpipe_pktsock *p_ps);
 

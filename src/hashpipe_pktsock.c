@@ -197,6 +197,19 @@ void hashpipe_pktsock_release_frame(unsigned char * frame)
   TPACKET_HDR(frame, tp_status) = TP_STATUS_KERNEL;
 }
 
+// Stores packet counter and drop counter values in `*p_pkts` and `*p_drops`,
+// provided they are non-NULL.  This makes it possible to request one but not
+// the other.
+void hashpipe_pktsock_stats(struct hashpipe_pktsock *p_ps,
+    unsigned int *p_pkts, unsigned int *p_drops)
+{
+  struct tpacket_stats stats;
+  socklen_t stats_len = sizeof(struct tpacket_stats);
+  getsockopt(p_ps->fd, SOL_PACKET, PACKET_STATISTICS, &stats, &stats_len);
+  if(p_pkts) *p_pkts = stats.tp_packets;
+  if(p_drops) *p_drops = stats.tp_drops;
+}
+
 // Unmaps kernel ring buffer and closes socket
 int hashpipe_pktsock_close(struct hashpipe_pktsock *p_ps)
 {
