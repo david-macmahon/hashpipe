@@ -39,6 +39,7 @@ void usage(const char *argv0) {
       "  -m N, --mask=N        Set CPU mask for subsequent threads\n"
       "  -o K=V, --option=K=V  Store K=V in status buffer\n"
       "  -p P, --plugin=P      Load plugin P\n"
+      "  -V,   --version       Show version\n"
 //    "  -b N, --buffer=N        Jump to input buffer B, output buffer B+1\n"
       , argv0
     );
@@ -275,6 +276,7 @@ int main(int argc, char *argv[])
       {"mask",     1, NULL, 'm'},
       {"option",   1, NULL, 'o'},
       {"plugin",   1, NULL, 'p'},
+      {"version",  0, NULL, 'V'},
 //    {"buffer",   1, NULL, 'b'},
       {0,0,0,0}
     };
@@ -319,7 +321,7 @@ int main(int argc, char *argv[])
 
     // Parse command line.  Leading '-' means treat non-option arguments as if
     // it were the argument of an option with character code 1.
-    while((opt=getopt_long(argc,argv,"-hlI:m:c:b:o:p:",long_opts,NULL))!=-1) {
+    while((opt=getopt_long(argc,argv,"-hlI:m:c:b:o:p:V",long_opts,NULL))!=-1) {
       switch (opt) {
         case 1:
           // optarg is name of thread
@@ -439,6 +441,11 @@ int main(int argc, char *argv[])
 
           // Finally, restore privileges (if any)
           seteuid(saved_euid);
+
+        case 'V': // Show version
+          printf("%s\n", HASHPIPE_VERSION);
+          return 0;
+          break;
 
         case 'b': // Set buffer
           // "-b B" jumps to input buffer B, output buffer B+1
