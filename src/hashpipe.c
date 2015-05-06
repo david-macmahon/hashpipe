@@ -425,12 +425,21 @@ int main(int argc, char *argv[])
             // Append PLUGIN_EXT
             strcat(plugin_name, PLUGIN_EXT);
           }
-          // Load plugin
+
+          // First, temporarily drop privileges (if any)
+          uid_t saved_euid = geteuid();
+          seteuid(getuid());
+
+          // Then, load plugin
           if(!dlopen(plugin_name, RTLD_NOW)) {
             fprintf(stderr, "Error loading plugin '%s' (%s)\n",
                 optarg, dlerror());
             exit(1);
           }
+
+          // Finally, restore privileges (if any)
+          seteuid(saved_euid);
+
         case 'b': // Set buffer
           // "-b B" jumps to input buffer B, output buffer B+1
           // TODO
@@ -442,6 +451,9 @@ int main(int argc, char *argv[])
           break;
       }
     }
+
+    // Drop setuid privileges permanently
+    setuid(getuid());
 
     // If no threads specified
     if(num_threads == 0) {

@@ -73,4 +73,8 @@ include_HEADERS = fitshead.h \
 aclocaldir = $(datadir)/aclocal
 aclocal_DATA = m4/hashpipe.m4
 
+# Install hook to make hashpipe executable be setuid
+install-exec-hook:
+	chmod u+s $(DESTDIR)$(bindir)/hashpipe$(EXEEXT)
+
 # vi: set ts=8 noet :
