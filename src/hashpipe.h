@@ -130,7 +130,8 @@ struct hashpipe_thread_desc {
 };
 
 // This structure passed (via a pointer) to the application's thread
-// initialization and run functions.
+// initialization and run functions.  The `user_data` field can be used to pass
+// info from the init function to the run function.
 struct hashpipe_thread_args {
     hashpipe_thread_desc_t *thread_desc;
     int instance_id;
@@ -143,6 +144,7 @@ struct hashpipe_thread_args {
     hashpipe_status_t st;
     hashpipe_databuf_t *ibuf;
     hashpipe_databuf_t *obuf;
+    void *user_data;
 };
 
 // Used to return OK status via return from run

@@ -315,6 +315,7 @@ int main(int argc, char *argv[])
     args[num_threads].instance_id   = instance_id;
     args[num_threads].input_buffer  = input_buffer;
     args[num_threads].output_buffer = output_buffer;
+    args[num_threads].user_data     = NULL;
 
     // Parse command line.  Leading '-' means treat non-option arguments as if
     // it were the argument of an option with character code 1.
@@ -350,6 +351,7 @@ int main(int argc, char *argv[])
           args[num_threads].instance_id   = instance_id;
           args[num_threads].input_buffer  = input_buffer;
           args[num_threads].output_buffer = output_buffer;
+          args[num_threads].user_data     = NULL;
           break;
 
         case 'h': // Help
