@@ -441,6 +441,7 @@ int main(int argc, char *argv[])
 
           // Finally, restore privileges (if any)
           seteuid(saved_euid);
+          break;
 
         case 'V': // Show version
           printf("%s\n", HASHPIPE_VERSION);
