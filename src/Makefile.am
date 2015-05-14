@@ -54,6 +54,9 @@ hashpipe_LDADD = -ldl libhashpipe.la libhashpipestatus.la
 # Force -rpath to be set to libdir
 hashpipe_LDFLAGS = -Wl,-rpath,"$(libdir)"
 
+# Installed scripts
+dist_sbin_SCRIPTS = hashpipe_irqaffinity.sh
+
 lib_LTLIBRARIES += libhashpipestatus.la
 libhashpipestatus_la_SOURCES = $(hashpipe_status)
 libhashpipestatus_la_LIBADD = -lm -lrt
