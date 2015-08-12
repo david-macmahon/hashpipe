@@ -84,6 +84,15 @@ list_hashpipe_threads(FILE * f)
       fprintf(f, "  %s\n", thread_list[i]->name);
     }
   }
+  printf("Known utility threads:\n");
+  for(i=0; i<num_threads; i++) {
+    // Need to explicitly NOT show null_output_thread
+    if(strcmp(thread_list[i]->name, "null_output_thread")) {
+      if(!thread_list[i]->ibuf_desc.create && !thread_list[i]->obuf_desc.create) {
+        fprintf(f, "  %s\n", thread_list[i]->name);
+      }
+    }
+  }
 }
 // Function to get CPU affinity
 unsigned int
