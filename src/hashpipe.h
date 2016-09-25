@@ -9,7 +9,7 @@
 #include "hashpipe_pktsock.h"
 #include "hashpipe_udp.h"
 
-#define HASHPIPE_VERSION "1.4"
+#define HASHPIPE_VERSION "1.5-devel"
 
 #ifdef __cplusplus
 extern "C" {
