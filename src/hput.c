@@ -451,6 +451,7 @@ const char *keyword;
 const char *value; /* character string containing the value for variable
                    keyword.  trailing and leading blanks are removed.  */
 {
+    char keyword8[9];
     char squot = 39;
     char line[100];
     char newcom[50];
@@ -458,13 +459,15 @@ const char *value; /* character string containing the value for variable
     int lkeyword, lcom, lval, lc, lv1, lhead, lblank, ln, nc, i;
 
     /* Find length of keyword, value, and header */
-    lkeyword = (int) strlen (keyword);
+    strncpy(keyword8, keyword, 8);
+    keyword8[8] = '\0';
+    lkeyword = (int) strlen (keyword8);
     lval = (int) strlen (value);
     lhead = gethlength (hstring);
 
     /*  If COMMENT or HISTORY, always add it just before the END */
-    if (lkeyword == 7 && (strncmp (keyword,"COMMENT",7) == 0 ||
-        strncmp (keyword,"HISTORY",7) == 0)) {
+    if (lkeyword == 7 && (strncmp (keyword8,"COMMENT",7) == 0 ||
+        strncmp (keyword8,"HISTORY",7) == 0)) {
         
         /* First look for blank lines before END */
         v1 = blsearch (hstring, "END");
@@ -493,8 +496,8 @@ const char *value; /* character string containing the value for variable
         else
             v2 = v1 + 80;
 
-        /* Insert keyword */
-        strncpy (v1,keyword,7);
+        /* Insert keyword8 */
+        strncpy (v1,keyword8,7);
 
         /* Pad with spaces */
         for (vp = v1+lkeyword; vp < v2; vp++)
@@ -510,9 +513,9 @@ const char *value; /* character string containing the value for variable
         return (0);
         }
 
-    /* Otherwise search for keyword */
+    /* Otherwise search for keyword8 */
     else
-        v1 = ksearch (hstring,keyword);
+        v1 = ksearch (hstring,keyword8);
 
     /*  If parameter is not found, find a place to put it */
     if (v1 == NULL) {
@@ -545,7 +548,7 @@ const char *value; /* character string containing the value for variable
         newcom[0] = 0;
         }
 
-    /*  Otherwise, extract the entry for this keyword from the header */
+    /*  Otherwise, extract the entry for this keyword8 from the header */
     else {
 
         /* Align pointer at start of 80-character line */
@@ -589,10 +592,20 @@ const char *value; /* character string containing the value for variable
     for (vp = v1; vp < v2; vp++)
         *vp = ' ';
 
-    /*  Copy keyword to new entry */
-    strncpy (v1, keyword, lkeyword);
+    /*  Copy keyword8 to new entry */
+    strncpy (v1, keyword8, lkeyword);
 
     /*  Add parameter value in the appropriate place */
+    /*
+     * NB: For better or worse, the following two lines *always* limit the
+     * keyword to 8 characters.  This functionality was inherited from the
+     * primordial code base.  This leads to problems if a keyword with more than
+     * 8 characters is "put" into the header more than once since the longer
+     * keyword on subsequent puts will not match the truncated keyword from
+     * previous puts thereby adding the keyword/value pair to the header in
+     * multiple locations.  For this reason, the keyword is explicitly limited
+     * to 8 characers above.
+     */
     vp = v1 + 8;
     *vp = '=';
     vp = v1 + 9;
@@ -629,9 +642,9 @@ const char *value; /* character string containing the value for variable
 
         if (verbose) {
             if (lcom > 0)
-                fprintf (stderr,"HPUT: %s  = %s  / %s\n",keyword, value, newcom);
+                fprintf (stderr,"HPUT: %s  = %s  / %s\n",keyword8, value, newcom);
             else
-                fprintf (stderr,"HPUT: %s  = %s\n",keyword, value);
+                fprintf (stderr,"HPUT: %s  = %s\n",keyword8, value);
             }
 
         return (0);

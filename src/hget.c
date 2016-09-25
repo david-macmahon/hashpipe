@@ -1348,12 +1348,16 @@ const char *hstring;    /* character string containing fits-style header
 const char *keyword;    /* character string containing the name of the variable
                 to be returned.  ksearch searches for a line beginning
                 with this string.  The string may be a character
-                literal or a character variable terminated by a null
-                or '$'.  it is truncated to 8 characters. */
+                literal or a character variable terminated by a null.
+                It is truncated to 8 characters. */
 {
+    char keyword8[9];
     const char *headlast;
     char *loc, *headnext, *pval, *lc, *line;
     int icol, nextchar, lkey, nleft, lhead, lmax;
+
+    strncpy(keyword8, keyword, 8);
+    keyword8[8] = '\0';
 
 #ifdef USE_SAOLIB
         int iel=1, ip=1, nel, np, ier;
@@ -1380,15 +1384,15 @@ const char *keyword;    /* character string containing the name of the variable
     pval = NULL;
     while (headnext < headlast) {
         nleft = headlast - headnext;
-        loc = strncsrch (headnext, keyword, nleft);
+        loc = strncsrch (headnext, keyword8, nleft);
 
-        /* Exit if keyword is not found */
+        /* Exit if keyword8 is not found */
         if (loc == NULL) {
             break;
             }
 
         icol = (loc - hstring) % 80;
-        lkey = strlen (keyword);
+        lkey = strlen (keyword8);
         nextchar = (int) *(loc + lkey);
 
         /* If this is not in the first 8 characters of a line, keep searching */
@@ -1421,7 +1425,7 @@ const char *keyword;    /* character string containing the name of the variable
 #ifdef USE_SAOLIB
         }
         else {
-            if (get_fits_head_str(keyword,iel,ip,&nel,&np,&ier,hstring) != NULL)
+            if (get_fits_head_str(keyword8,iel,ip,&nel,&np,&ier,hstring) != NULL)
                 return(hstring);
             else
                 return(NULL);
