@@ -98,6 +98,7 @@ hashpipe_thread_init(hashpipe_thread_args_t *args)
     if (rv != HASHPIPE_OK) {
         hashpipe_error(__FUNCTION__,
                 "Error attaching to status shared memory.");
+        // Return value `rv` already set to error code
         goto status_error;
     }
     if(args->thread_desc->skey) {
@@ -114,6 +115,8 @@ hashpipe_thread_init(hashpipe_thread_args_t *args)
             hashpipe_error(__FUNCTION__,
                     "Error creating/attaching to databuf %d for %s input",
                     args->input_buffer, args->thread_desc->name);
+            // Set return value `rv` to error code
+            rv = HASHPIPE_ERR_GEN;
             goto ibuf_error;
         }
     }
@@ -123,6 +126,8 @@ hashpipe_thread_init(hashpipe_thread_args_t *args)
             hashpipe_error(__FUNCTION__,
                     "Error creating/attaching to databuf %d for %s output",
                     args->output_buffer, args->thread_desc->name);
+            // Set return value `rv` to error code
+            rv = HASHPIPE_ERR_GEN;
             goto obuf_error;
         }
     }
@@ -135,7 +140,8 @@ hashpipe_thread_init(hashpipe_thread_args_t *args)
     // Detach from output buffer
     if(hashpipe_databuf_detach(args->obuf)) {
         hashpipe_error(__FUNCTION__, "Error detaching from output databuf.");
-        if(!rv) rv = 1;
+        // Set return value `rv` to error code if not already an error code
+        if(!rv) rv = HASHPIPE_ERR_GEN;
     }
     args->obuf = NULL;
 
@@ -144,7 +150,8 @@ obuf_error:
     // Detach from input buffer
     if(hashpipe_databuf_detach(args->ibuf)) {
         hashpipe_error(__FUNCTION__, "Error detaching from input databuf.");
-        if(!rv) rv = 1;
+        // Set return value `rv` to error code if not already an error code
+        if(!rv) rv = HASHPIPE_ERR_GEN;
     }
     args->ibuf = NULL;
 
@@ -153,7 +160,8 @@ ibuf_error:
     // Detach from status buffer
     if(hashpipe_status_detach(&args->st)) {
         hashpipe_error(__FUNCTION__, "Error detaching from status buffer.");
-        if(!rv) rv = 1;
+        // Set return value `rv` to error code if not already an error code
+        if(!rv) rv = HASHPIPE_ERR_GEN;
     }
 
 status_error:
@@ -342,6 +350,7 @@ int main(int argc, char *argv[])
           if (rv) {
               fprintf(stderr, "Error initializing thread for '%s'.\n",
                   args[num_threads].thread_desc->name);
+              fprintf(stderr, "Exiting.\n");
               exit(1);
           }
 
