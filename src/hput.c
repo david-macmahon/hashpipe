@@ -149,7 +149,7 @@ const float rval;       /* float number */
     char value[30];
 
     /* Translate value from binary to ASCII */
-    sprintf (value, "%f", rval);
+    sprintf (value, "%.9f", rval);
 
     /* Remove sign if string is -0 or extension thereof */
     fixnegzero (value);
@@ -171,7 +171,7 @@ const double dval;      /* double number */
     char value[30];
 
     /* Translate value from binary to ASCII */
-    sprintf (value, "%g", dval);
+    sprintf (value, "%.17g", dval);
 
     /* Remove sign if string is -0 or extension thereof */
     fixnegzero (value);
