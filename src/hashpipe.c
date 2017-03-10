@@ -354,6 +354,9 @@ int main(int argc, char *argv[])
               exit(1);
           }
 
+          printf("inited   thread '%s'\n",
+              args[num_threads].thread_desc->name);
+
           // Setup for next thread
           num_threads++;
           input_buffer++;

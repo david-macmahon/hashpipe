@@ -50,6 +50,8 @@ hashpipe_databuf_t *hashpipe_databuf_create(int instance_id,
     int shmid;
     shmid = shmget(key + databuf_id - 1, total_size, 0666 | IPC_CREAT | IPC_EXCL);
     if (shmid==-1 && errno == EEXIST) {
+        printf("%s: shared memory key %08x already exists", __FUNCTION__,
+            key + databuf_id - 1);
         // Already exists, call shmget again without IPC_CREAT
         shmid = shmget(key + databuf_id - 1, total_size, 0666);
         // Verify buffer sizing
