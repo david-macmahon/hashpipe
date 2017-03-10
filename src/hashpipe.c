@@ -442,7 +442,11 @@ int main(int argc, char *argv[])
 
           // First, temporarily drop privileges (if any)
           uid_t saved_euid = geteuid();
-          seteuid(getuid());
+          if(seteuid(getuid())) {
+            hashpipe_error(__FILE__,
+                "Error dropping privileges (seteuid): %s", strerror(errno));
+            exit(1);
+          }
 
           // Then, load plugin
           if(!dlopen(plugin_name, RTLD_NOW)) {
@@ -452,7 +456,11 @@ int main(int argc, char *argv[])
           }
 
           // Finally, restore privileges (if any)
-          seteuid(saved_euid);
+          if(seteuid(saved_euid)) {
+            hashpipe_error(__FILE__,
+                "Error restoring privileges (seteuid): %s", strerror(errno));
+            exit(1);
+          }
           break;
 
         case 'V': // Show version
@@ -473,7 +481,11 @@ int main(int argc, char *argv[])
     }
 
     // Drop setuid privileges permanently
-    setuid(getuid());
+    if(setuid(getuid())) {
+      hashpipe_error(__FILE__,
+          "Error dropping privileges (setuid): %s", strerror(errno));
+      exit(1);
+    }
 
     // If no threads specified
     if(num_threads == 0) {
