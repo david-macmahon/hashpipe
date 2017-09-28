@@ -15,19 +15,26 @@ smps=( "${@}" )
 nsmps=${#smps[@]}
 
 irqnums=($(awk -F: "/$pattern/{print \$1}"  /proc/interrupts))
-irqnams=($(awk     "/$pattern/{print \$NF}" /proc/interrupts))
 
 if [ -z "${irqnums}" ]
 then
-  $logger "no interrupts found for '$pattern'"
-  exit 1
+  # Check for /sys/class/net/${PATTERN}/device/msi_irqs/ directory
+  sanitized_pattern=$(echo "${pattern}" | tr -cd '[A-Za-z0-9]')
+  dir="/sys/class/net/${sanitized_pattern}/device/msi_irqs"
+  if [ -d "${dir}" ]
+  then
+    irqnums=($(ls "${dir}"))
+  else
+    $logger "no interrupts found for '$pattern'"
+    exit 1
+  fi
 fi
 
 smpidx=0
 for ((i=0;i<${#irqnums[@]};i=i+1))
 do
   irqnum=${irqnums[i]}
-  irqnam=${irqnams[i]}
+  irqnam=$(awk "/^ *${irqnum}:/{print \$NF}" /proc/interrupts)
   file="/proc/irq/$irqnum/smp_affinity"
   if [ ${nsmps} -gt 0 ]
   then
