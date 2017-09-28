@@ -52,7 +52,7 @@ static void cc(int sig)
 }
 
 /* Exit handler that updates status buffer */
-inline void set_exit_status(hashpipe_thread_args_t *args) {
+static void set_exit_status(hashpipe_thread_args_t *args) {
     if(args && args->st.buf && args->thread_desc->skey) {
         hashpipe_status_lock_safe(&args->st);
         hputs(args->st.buf, args->thread_desc->skey, "exit");
@@ -442,7 +442,11 @@ int main(int argc, char *argv[])
 
           // First, temporarily drop privileges (if any)
           uid_t saved_euid = geteuid();
-          seteuid(getuid());
+          if(seteuid(getuid()) == -1) {
+            fprintf(stderr, "Error dropping privileges (%s)\n",
+                strerror(errno));
+            exit(1);
+          }
 
           // Then, load plugin
           if(!dlopen(plugin_name, RTLD_NOW)) {
@@ -452,7 +456,11 @@ int main(int argc, char *argv[])
           }
 
           // Finally, restore privileges (if any)
-          seteuid(saved_euid);
+          if(seteuid(saved_euid) == -1) {
+            fprintf(stderr, "Error restoring privileges (%s)\n",
+                strerror(errno));
+            exit(1);
+          }
           break;
 
         case 'V': // Show version
@@ -473,7 +481,11 @@ int main(int argc, char *argv[])
     }
 
     // Drop setuid privileges permanently
-    setuid(getuid());
+    if(setuid(getuid()) == -1) {
+      fprintf(stderr, "Error dropping privileges (%s)\n",
+          strerror(errno));
+      exit(1);
+    }
 
     // If no threads specified
     if(num_threads == 0) {
