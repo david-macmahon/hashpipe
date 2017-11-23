@@ -270,6 +270,9 @@ int main(int argc, char *argv[])
 {
     int opt, i, rv;
     char * cp;
+    long int lval;
+    double dval;
+    char * errptr;
     hashpipe_status_t st;
     int num_threads = 0;
     pthread_t threads[MAX_HASHPIPE_THREADS];
@@ -401,12 +404,31 @@ int main(int argc, char *argv[])
           // Look for equal sign
           cp = strchr(optarg, '=');
           // If found
-          if(cp) {
+          if(cp && *(cp+1) != '\0') {
             // Nul-terminate key
             *cp = '\0';
             // Store key and value (value starts right after '=')
             hashpipe_status_lock(&st);
-            hputs(st.buf, optarg, cp+1);
+              // If value is empty
+              if(*(cp+1) == '\0') {
+                // Just store empty string
+                hputs(st.buf, optarg, "");
+              } else {
+                // Try conversion to long
+                lval = strtol(cp+1, &errptr, 0);
+                if(*errptr == '\0') {
+                  hputi8(st.buf, optarg, lval);
+                } else {
+                  // Try conversion to doule
+                  dval = strtod(cp+1, &errptr);
+                  if(*errptr == '\0') {
+                    hputr8(st.buf, optarg, dval);
+                  } else {
+                    // Store as string
+                    hputs(st.buf, optarg, cp+1);
+                  }
+                }
+              }
             hashpipe_status_unlock(&st);
             // Restore '=' character
             *cp = '=';
