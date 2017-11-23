@@ -58,7 +58,8 @@ then
   echo GPUs to CPUs:
   for d in /proc/driver/nvidia/gpus/*
   do
-    echo -n "gpu$(basename $d): "
+    gpuid=`awk '/Device Minor/{gsub(/[.:]/,"?",$3); print $3}' $d/information`
+    echo -n "gpu${gpuid:-$(basename $d)}: "
     cat /sys/bus/pci/devices/`awk '/Bus Location/{gsub(/[.:]/,"?",$3); print $3}' $d/information`/local_cpulist
   done
   sep=''
