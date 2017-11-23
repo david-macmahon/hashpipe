@@ -55,6 +55,7 @@ hashpipe_LDADD = -ldl libhashpipe.la libhashpipestatus.la
 hashpipe_LDFLAGS = -Wl,-rpath,"$(libdir)"
 
 # Installed scripts
+dist_bin_SCRIPTS = hashpipe_topology.sh
 dist_sbin_SCRIPTS = hashpipe_irqaffinity.sh
 
 lib_LTLIBRARIES += libhashpipestatus.la
