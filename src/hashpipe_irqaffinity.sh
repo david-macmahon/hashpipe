@@ -64,7 +64,7 @@ do
     $logger "Set irq smp_affinity for "$irqnam" irq $irqnum to $(cat "$file")"
     smpidx=$(( (smpidx + 1) % nsmps ))
   else
-    $logger "Current irq smp_affinity for "$irqnam" irq $irqnum is $(cat "$file")"
+    $logger "Current irq smp_affinity for "$irqnam" irq $irqnum is $(cat "$file" 2>/dev/null || echo 'unreadable')"
   fi
 done
 
