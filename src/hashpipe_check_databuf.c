@@ -17,6 +17,7 @@ void usage() {
             "Options:\n"
             "  -h, --help\n"
             "  -q,   --quiet         Quiet mode\n"
+            "  -K KEY, --shmkey=KEY  Specify key for shared memory\n"
             "  -I N, --instance=N    Instance number  [0]\n"
             "  -d N, --databuf=N     Databuf ID       [1]\n"
             "  -c,   --create        Create databuf\n"
@@ -31,14 +32,15 @@ int main(int argc, char *argv[]) {
 
     /* Loop over cmd line to fill in params */
     static struct option long_opts[] = {
-        {"help",   0, NULL, 'h'},
-        {"quiet",  0, NULL, 'q'},
+        {"help",     0, NULL, 'h'},
+        {"quiet",    0, NULL, 'q'},
+        {"shmkey",   1, NULL, 'K'},
         {"instance", 1, NULL, 'I'},
-        {"create", 0, NULL, 'c'},
-        {"databuf", 1, NULL, 'd'},
-        {"blksize",   1, NULL, 's'},
-        {"nblock", 1, NULL, 'n'},
-        {"hdrsize", 1, NULL, 'H'},
+        {"create",   0, NULL, 'c'},
+        {"databuf",  1, NULL, 'd'},
+        {"blksize",  1, NULL, 's'},
+        {"nblock",   1, NULL, 'n'},
+        {"hdrsize",  1, NULL, 'H'},
         {0,0,0,0}
     };
     int opt,opti;
@@ -48,9 +50,15 @@ int main(int argc, char *argv[]) {
     int db_id=1;
     int blocksize = 32;
     int nblock = 24;
+    char keyfile[1000];
     size_t header_size = sizeof(hashpipe_databuf_t);
-    while ((opt=getopt_long(argc,argv,"hqI:cd:s:n:t:H:",long_opts,&opti))!=-1) {
+    while ((opt=getopt_long(argc,argv,"hqK:I:cd:s:n:t:H:",long_opts,&opti))!=-1) {
         switch (opt) {
+            case 'K': // Keyfile
+              snprintf(keyfile, sizeof(keyfile), "HASHPIPE_KEYFILE=%s", optarg);
+              keyfile[sizeof(keyfile)-1] = '\0';
+              putenv(keyfile);
+              break;
             case 'I':
                 instance_id=atoi(optarg);
                 break;

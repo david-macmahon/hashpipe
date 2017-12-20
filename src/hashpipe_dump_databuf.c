@@ -17,6 +17,7 @@ void usage() {
             "\n"
             "Options [defaults]:\n"
             "  -h, --help\n"
+            "  -K KEY, --shmkey=KEY  Specify key for shared memory\n"
             "  -I N, --instance=N    Instance number           [0]\n"
             "  -d N, --databuf=N     Databuf ID                [1]\n"
             "  -b N, --block=N       Block number           [none]\n"
@@ -34,6 +35,7 @@ int main(int argc, char *argv[]) {
     /* Loop over cmd line to fill in params */
     static struct option long_opts[] = {
         {"help",     0, NULL, 'h'},
+        {"shmkey",   1, NULL, 'K'},
         {"instance", 1, NULL, 'I'},
         {"databuf",  1, NULL, 'd'},
         {"block",    1, NULL, 'b'},
@@ -49,8 +51,14 @@ int main(int argc, char *argv[]) {
     int skip = 0;
     int num = 0;
     int force = 0;
-    while ((opt=getopt_long(argc,argv,"hI:b:d:fn:s:",long_opts,NULL))!=-1) {
+    char keyfile[1000];
+    while ((opt=getopt_long(argc,argv,"hK:I:b:d:fn:s:",long_opts,NULL))!=-1) {
         switch (opt) {
+            case 'K': // Keyfile
+                snprintf(keyfile, sizeof(keyfile), "HASHPIPE_KEYFILE=%s", optarg);
+                keyfile[sizeof(keyfile)-1] = '\0';
+                putenv(keyfile);
+                break;
             case 'I':
                 instance_id=atoi(optarg);
                 break;
