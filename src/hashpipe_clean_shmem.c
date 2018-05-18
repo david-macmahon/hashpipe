@@ -25,6 +25,7 @@ void usage() {
             "instead of just clearing it.\n"
             "\n"
             "Options:\n"
+            "  -K KEY, --shmkey=KEY  Specify key for shared memory\n"
             "  -I N, --instance=N    Instance number [0]\n"
             "  -d,   --delete        Delete status buffer [clear]\n"
             "  -h,   --help          This message\n"
@@ -36,6 +37,7 @@ int main(int argc, char *argv[]) {
     int instance_id = 0;
     int delete_status = 0;
     int opt;
+    char keyfile[1000];
 
     /* Loop over cmd line to fill in params */
     // "-d" as command line argument deletes status memory and semaphore.
@@ -43,14 +45,20 @@ int main(int argc, char *argv[]) {
     static struct option long_opts[] = {
         {"del",      0, NULL, 'd'},
         {"help",     0, NULL, 'h'},
+        {"shmkey",   1, NULL, 'K'},
         {"instance", 1, NULL, 'I'},
         {0,0,0,0}
     };
 
-    while ((opt=getopt_long(argc,argv,"dhI:",long_opts,NULL))!=-1) {
+    while ((opt=getopt_long(argc,argv,"dhK:I:",long_opts,NULL))!=-1) {
         switch (opt) {
             case 'd':
                 delete_status = 1;
+                break;
+            case 'K': // Keyfile
+                snprintf(keyfile, sizeof(keyfile), "HASHPIPE_KEYFILE=%s", optarg);
+                keyfile[sizeof(keyfile)-1] = '\0';
+                putenv(keyfile);
                 break;
             case 'I':
                 instance_id = atoi(optarg);

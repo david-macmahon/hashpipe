@@ -34,6 +34,25 @@
 
 #include <sys/types.h>
 
+#if __SIZEOF_INT__ == 8
+#define INT8_FMT  "%d"
+#define UINT8_FMT "%u"
+typedef int int8;
+typedef unsigned int uint8;
+#elif __SIZEOF_LONG__ == 8
+#define INT8_FMT  "%ld"
+#define UINT8_FMT "%lu"
+typedef long int8;
+typedef unsigned long uint8;
+#elif __SIZEOF_LONG_LONG__ == 8
+#define INT8_FMT  "%lld"
+#define UINT8_FMT "%llu"
+typedef long long int8;
+typedef unsigned long long uint8;
+#else
+#error cannot determine 8 byte integer type
+#endif
+
 #ifdef __cplusplus /* C++ prototypes */
 extern "C" {
 #endif
@@ -54,7 +73,7 @@ extern "C" {
     int hgeti8(                 /* Extract long long value from FITS header */
         const char* hstring,    /* FITS header string */
         const char* keyword,    /* FITS keyword */
-        long long* val);        /* integer value (returned) */
+        int8* val);        /* integer value (returned) */
     int hgeti4(                 /* Extract int value from FITS header */
         const char* hstring,    /* FITS header string */
         const char* keyword,    /* FITS keyword */
@@ -62,7 +81,7 @@ extern "C" {
     int hgetu8(                 /* Extract long long value from FITS header */
         const char* hstring,    /* FITS header string */
         const char* keyword,    /* FITS keyword */
-        unsigned long long* val); /* unsigned integer value (returned) */
+        uint8* val); /* unsigned integer value (returned) */
     int hgetu4(                 /* Extract int value from FITS header */
         const char* hstring,    /* FITS header string */
         const char* keyword,    /* FITS keyword */
@@ -224,7 +243,7 @@ extern "C" {
     int hputi8(         /* Implant long long value into FITS header */
         char* hstring,          /* FITS header string (modified) */
         const char* keyword,    /* FITS keyword */
-        const long long ival);  /* long long value */
+        const int8 ival);  /* long long value */
     int hputu4(         /* Implant int value into FITS header */
         char* hstring,          /* FITS header string (modified) */
         const char* keyword,    /* FITS keyword */
@@ -232,7 +251,7 @@ extern "C" {
     int hputu8(         /* Implant long long value into FITS header */
         char* hstring,          /* FITS header string (modified) */
         const char* keyword,    /* FITS keyword */
-        const unsigned long long ival); /* unsigned long long value */
+        const uint8 ival); /* unsigned long long value */
     int hputr4(         /* Implant float value into FITS header */
         char* hstring,          /* FITS header string (modified) */
         const char* keyword,    /* FITS keyword */

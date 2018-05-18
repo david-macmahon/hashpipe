@@ -115,10 +115,10 @@ hputu8 (hstring, keyword, ival)
 
 char *hstring;          /* Header string */
 const char *keyword;    /* keyword */
-unsigned long long ival;         /* long long (8-byte) integer */
+uint8 ival;             /* long long (8-byte) integer */
 {
     char value[30];
-    sprintf (value, "%llu", ival);
+    sprintf (value, UINT8_FMT, ival);
     return (hputc (hstring, keyword, value));
 }
 
@@ -129,10 +129,10 @@ hputi8 (hstring, keyword, ival)
 
 char *hstring;          /* Header string */
 const char *keyword;    /* keyword */
-long long ival;         /* long long (8-byte) integer */
+int8 ival;              /* long long (8-byte) integer */
 {
     char value[30];
-    sprintf (value, "%lld", ival);
+    sprintf (value, INT8_FMT, ival);
     return (hputc (hstring, keyword, value));
 }
 

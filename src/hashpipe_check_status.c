@@ -15,6 +15,7 @@ static void usage() {
         "Usage: hashpipe_check_status [options]\n"
         "General options:\n"
         "  -h,     --help         Show this message\n"
+        "  -K KEY, --shmkey=KEY   Specify key for shared memory\n"
         "  -I N,   --instance=N   Specify hashpipe instance [0]\n"
         "  -v,     --verbose      Be verbose [false]\n"
         "Query options:\n"
@@ -62,6 +63,7 @@ int main(int argc, char *argv[]) {
     /* Loop over cmd line to fill in params */
     static struct option long_opts[] = {
         {"help",   0, NULL, 'h'},
+        {"shmkey", 1, NULL, 'K'},
         {"key",    1, NULL, 'k'},
         {"get",    1, NULL, 'g'},
         {"string", 1, NULL, 's'},
@@ -82,8 +84,14 @@ int main(int argc, char *argv[]) {
     double dbltmp;
     int inttmp;
     int verbose=0, clear=0;
-    while ((opt=getopt_long(argc,argv,"hk:g:s:f:d:i:vCDQ:I:",long_opts,&opti))!=-1) {
+    char keyfile[1000];
+    while ((opt=getopt_long(argc,argv,"hk:g:s:f:d:i:vCDQ:K:I:",long_opts,&opti))!=-1) {
         switch (opt) {
+            case 'K': // Keyfile
+                snprintf(keyfile, sizeof(keyfile), "HASHPIPE_KEYFILE=%s", optarg);
+                keyfile[sizeof(keyfile)-1] = '\0';
+                putenv(keyfile);
+                break;
             case 'I':
                 instance_id = atoi(optarg);
                 break;

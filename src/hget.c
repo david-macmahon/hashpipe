@@ -172,7 +172,7 @@ const char *keyword;    /* character string containing the name of the keyword
                    line beginning with this string.  if "[n]" is present,
                    the n'th token in the value is returned.
                    (the first 8 characters must be unique) */
-long long *i8val;
+int8 *i8val;
 {
     char *value;
     char *endptr;
@@ -207,7 +207,7 @@ const char *keyword;    /* character string containing the name of the keyword
                    line beginning with this string.  if "[n]" is present,
                    the n'th token in the value is returned.
                    (the first 8 characters must be unique) */
-unsigned long long *i8val;
+uint8 *i8val;
 {
     char *value;
     char *endptr;

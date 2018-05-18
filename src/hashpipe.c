@@ -34,6 +34,7 @@ void usage(const char *argv0) {
       "Options:\n"
       "  -h,   --help          Show this message\n"
       "  -l,   --list          List all known threads\n"
+      "  -K KEY, --shmkey=K    Specify key for shared memory\n"
       "  -I N, --instance=N    Set instance ID of this pipeline\n"
       "  -c N, --cpu=N         Set CPU number for subsequent threads\n"
       "  -m N, --mask=N        Set CPU mask for subsequent threads\n"
@@ -270,8 +271,12 @@ int main(int argc, char *argv[])
 {
     int opt, i, rv;
     char * cp;
+    long int lval;
+    double dval;
+    char * errptr;
     hashpipe_status_t st;
     int num_threads = 0;
+    char keyfile[1000];
     pthread_t threads[MAX_HASHPIPE_THREADS];
     struct hashpipe_thread_args args[MAX_HASHPIPE_THREADS];
     char plugin_name[MAX_PLUGIN_NAME+MAX_PLUGIN_EXT+1];
@@ -279,6 +284,7 @@ int main(int argc, char *argv[])
     static struct option long_opts[] = {
       {"help",     0, NULL, 'h'},
       {"list",     0, NULL, 'l'},
+      {"shmkey",   0, NULL, 'K'},
       {"instance", 1, NULL, 'I'},
       {"cpu",      1, NULL, 'c'},
       {"mask",     1, NULL, 'm'},
@@ -329,7 +335,7 @@ int main(int argc, char *argv[])
 
     // Parse command line.  Leading '-' means treat non-option arguments as if
     // it were the argument of an option with character code 1.
-    while((opt=getopt_long(argc,argv,"-hlI:m:c:b:o:p:V",long_opts,NULL))!=-1) {
+    while((opt=getopt_long(argc,argv,"-hlK:I:m:c:b:o:p:V",long_opts,NULL))!=-1) {
       switch (opt) {
         case 1:
           // optarg is name of thread
@@ -378,6 +384,12 @@ int main(int argc, char *argv[])
           return 0;
           break;
 
+        case 'K': // Keyfile
+          snprintf(keyfile, sizeof(keyfile), "HASHPIPE_KEYFILE=%s", optarg);
+          keyfile[sizeof(keyfile)-1] = '\0';
+          putenv(keyfile);
+          break;
+
         case 'I': // Instance id
           instance_id = strtol(optarg, NULL, 0);
           if(instance_id < 0 || instance_id > 63) {
@@ -401,12 +413,31 @@ int main(int argc, char *argv[])
           // Look for equal sign
           cp = strchr(optarg, '=');
           // If found
-          if(cp) {
+          if(cp && *(cp+1) != '\0') {
             // Nul-terminate key
             *cp = '\0';
             // Store key and value (value starts right after '=')
             hashpipe_status_lock(&st);
-            hputs(st.buf, optarg, cp+1);
+              // If value is empty
+              if(*(cp+1) == '\0') {
+                // Just store empty string
+                hputs(st.buf, optarg, "");
+              } else {
+                // Try conversion to long
+                lval = strtol(cp+1, &errptr, 0);
+                if(*errptr == '\0') {
+                  hputi8(st.buf, optarg, lval);
+                } else {
+                  // Try conversion to doule
+                  dval = strtod(cp+1, &errptr);
+                  if(*errptr == '\0') {
+                    hputr8(st.buf, optarg, dval);
+                  } else {
+                    // Store as string
+                    hputs(st.buf, optarg, cp+1);
+                  }
+                }
+              }
             hashpipe_status_unlock(&st);
             // Restore '=' character
             *cp = '=';
