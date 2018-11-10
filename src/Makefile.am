@@ -70,9 +70,18 @@ include_HEADERS = fitshead.h \
 		  hashpipe.h \
 		  hashpipe_databuf.h \
 		  hashpipe_error.h \
+		  hashpipe_packet.h \
 		  hashpipe_pktsock.h \
 		  hashpipe_status.h \
 		  hashpipe_udp.h
+
+if BUILD_HPIBV
+lib_LTLIBRARIES += libhashpipe_ibverbs.la
+libhashpipe_ibverbs_la_SOURCES = hashpipe_ibverbs.h \
+				 hashpipe_ibverbs.c
+
+include_HEADERS += hashpipe_ibverbs.h
+endif
 
 aclocaldir = $(datadir)/aclocal
 aclocal_DATA = m4/hashpipe.m4

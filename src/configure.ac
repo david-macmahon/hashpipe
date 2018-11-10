@@ -24,6 +24,12 @@ AC_PROG_CC
 AC_CHECK_LIB([dl], [dlopen])
 AC_CHECK_LIB([m], [floor])
 AC_CHECK_LIB([pthread], [pthread_create])
+build_hpibv="will NOT"
+AC_CHECK_LIB([ibverbs], [ibv_get_device_list],[
+              AC_DEFINE([HAVE_LIBIBVERBS],[1],[Define this if ibverbs library is found.])
+              LIBS="-libverbs $LIBS"
+              build_hpibv="WILL"])
+AM_CONDITIONAL([BUILD_HPIBV], [test x$build_hpibv = xWILL])
 
 # Checks for header files.
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h limits.h netdb.h netinet/in.h stdint.h stdlib.h string.h sys/socket.h sys/time.h unistd.h])
@@ -37,6 +43,18 @@ AC_TYPE_UINT64_T
 # Checks for library functions.
 AC_FUNC_MALLOC
 AC_CHECK_FUNCS([floor gettimeofday memset socket strchr strerror strrchr strtol strtoul strtoull])
+
+# Report results
+build_hpibv="will NOT"
+if test "${ac_cv_lib_ibverbs_ibv_get_device_list}" = "yes"
+then
+  build_hpibv="WILL"
+fi
+
+AC_MSG_NOTICE([[
+
+The hashpipe_ibverbs library ${build_hpibv} be built.
+]])
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
