@@ -4,20 +4,23 @@ do_all=1
 do_cpu=0
 do_net=0
 do_gpu=0
+do_nvme=0
 sep=-n
 
 shopt -s nullglob
 
-while getopts ":ceghn" opt; do
+while getopts ":ceghnN" opt; do
   case $opt in
     c) do_cpu=1; do_all=0;;
     e) do_net=1; do_all=0;;
     n) do_net=1; do_all=0;;
     g) do_gpu=1; do_all=0;;
+    N) do_nvme=1; do_all=0;;
     h) echo "Usage: `basename $0` [-c] [-e|-n] [-g]"
        echo "  -c       for CPU topology"
        echo "  -e or -n for NET topology"
        echo "  -g       for GPU topology"
+       echo "  -N       for NVMe topology"
        echo "Default is all of the above."
        exit
        ;;
@@ -64,5 +67,15 @@ then
   done
   sep=''
 fi
-#~gpu0: 0-3,8-11
-#~gpu1: 4-7,12-15
+
+if [ $do_nvme == 1 -o $do_all == 1 ] && [ -d /sys/class/nvme ]
+then
+  echo $sep
+  echo NVMe to CPUs:
+  for n in /sys/class/nvme/nvme*
+  do
+    echo -n "$(basename $n): "
+    cat $n/device/local_cpulist
+  done
+  sep=''
+fi
