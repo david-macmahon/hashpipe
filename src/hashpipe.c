@@ -473,9 +473,9 @@ int main(int argc, char *argv[])
 
           // First, temporarily drop privileges (if any)
           uid_t saved_euid = geteuid();
-          if(seteuid(getuid()) == -1) {
-            fprintf(stderr, "Error dropping privileges (%s)\n",
-                strerror(errno));
+          if(seteuid(getuid())) {
+            hashpipe_error(__FILE__,
+                "Error dropping privileges (seteuid): %s", strerror(errno));
             exit(1);
           }
 
@@ -487,9 +487,9 @@ int main(int argc, char *argv[])
           }
 
           // Finally, restore privileges (if any)
-          if(seteuid(saved_euid) == -1) {
-            fprintf(stderr, "Error restoring privileges (%s)\n",
-                strerror(errno));
+          if(seteuid(saved_euid)) {
+            hashpipe_error(__FILE__,
+                "Error restoring privileges (seteuid): %s", strerror(errno));
             exit(1);
           }
           break;
@@ -512,9 +512,9 @@ int main(int argc, char *argv[])
     }
 
     // Drop setuid privileges permanently
-    if(setuid(getuid()) == -1) {
-      fprintf(stderr, "Error dropping privileges (%s)\n",
-          strerror(errno));
+    if(setuid(getuid())) {
+      hashpipe_error(__FILE__,
+          "Error dropping privileges (setuid): %s", strerror(errno));
       exit(1);
     }
 
