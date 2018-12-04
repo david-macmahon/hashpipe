@@ -192,7 +192,7 @@ const int ndec;         /* Number of decimal places to print */
 const double dval;      /* double number */
 {
     char value[30];
-    char format[8];
+    char format[14];
     int i, lval;
 
     /* Translate value from binary to ASCII */
