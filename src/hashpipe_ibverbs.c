@@ -638,6 +638,12 @@ int hashpipe_ibv_shutdown(struct hashpipe_ibv_context * hibv_ctx)
     }
   } // not user managed
 
+  // Free ibv_flows
+  if(hibv_ctx->ibv_flows) {
+      free(hibv_ctx->ibv_flows);
+      hibv_ctx->ibv_flows = NULL;
+  }
+
   return rc;
 } // hashpipe_ibv_shutdown
 
@@ -685,6 +691,12 @@ int hashpipe_ibv_flow(
   && flow_type != IBV_FLOW_SPEC_IPV4
   && flow_type != IBV_FLOW_SPEC_ETH) {
     errno = EINVAL;
+    return 1;
+  }
+
+  // Sanity check ibv_flows
+  if(!hibv_ctx->ibv_flows) {
+    errno = EFAULT;
     return 1;
   }
 
