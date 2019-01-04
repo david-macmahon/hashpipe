@@ -7,9 +7,47 @@
 #include <poll.h>
 #include <arpa/inet.h>
 #include <net/if.h>
+#include <netinet/if_ether.h>
 #include <sys/ioctl.h>
 
 #include "hashpipe_ibverbs.h"
+
+// Adds or drops membership in a multicast group.  The `option` parameter
+// must be IP_ADD_MEMBERSHIP or IP_DROP_MEMBERSHIP.  The `dst_ip_be` parameter
+// must be in network byte order (i.e. big endian).  If it is not a multicast
+// address, this function does nothing so it is safe to call this function
+// regardless of whether `dst_ip_be` is a multicast address.  Returns 0 on
+// success or `errno` on error.
+static int hashpipe_ibv_mcast_membership(
+    struct hashpipe_ibv_context * hibv_ctx, int option, uint32_t dst_ip_be)
+{
+  struct ip_mreqn mreqn;
+
+  // Do nothing and return success if dst_ip_be is not multicast
+  if((dst_ip_be & 0xf0) != 0xe0) {
+    return 0;
+  }
+
+  // Return EINVAL if socket or option is invalid
+  if(!hibv_ctx || hibv_ctx->mcast_subscriber == -1 ||
+      (option != IP_ADD_MEMBERSHIP && option != IP_DROP_MEMBERSHIP)) {
+    errno = EINVAL;
+    return errno;
+  }
+
+  mreqn.imr_multiaddr.s_addr = dst_ip_be;
+  mreqn.imr_address.s_addr = INADDR_ANY;
+  if((mreqn.imr_ifindex = if_nametoindex(hibv_ctx->interface_name)) == 0) {
+    return errno;
+  }
+
+  if(setsockopt(hibv_ctx->mcast_subscriber,
+        IPPROTO_IP, option, &mreqn, sizeof(mreqn))) {
+    return errno;
+  }
+
+  return 0;
+}
 
 // See comments in header file for details about this function.
 int hashpipe_ibv_get_interface_info(
@@ -250,8 +288,9 @@ int hashpipe_ibv_init(struct hashpipe_ibv_context * hibv_ctx)
     return 1;
   }
 
-  // Init library managed fields to NULL.  This lets us pass a partially
-  // initialized hibv_ctx to the hashpipe_ibv_shutdown() function.
+  // Init library managed fields to NULL or other invalid value.  This lets us
+  // pass a partially initialized hibv_ctx to the hashpipe_ibv_shutdown()
+  // function.
   hibv_ctx->ctx = NULL;
   hibv_ctx->pd = NULL;
   hibv_ctx->send_cc = NULL;
@@ -262,6 +301,7 @@ int hashpipe_ibv_init(struct hashpipe_ibv_context * hibv_ctx)
   hibv_ctx->send_pkt_head = NULL;
   hibv_ctx->send_mr = NULL;
   hibv_ctx->recv_mr = NULL;
+  hibv_ctx->mcast_subscriber = -1;
   if(!hibv_ctx->user_managed_flag) {
     hibv_ctx->send_pkt_buf = NULL;
     hibv_ctx->recv_pkt_buf = NULL;
@@ -498,13 +538,24 @@ int hashpipe_ibv_init(struct hashpipe_ibv_context * hibv_ctx)
     }
   }
 
-  // Allocate space for `max_flows` flow pointers
+  // Allocate space for `max_flows` flow pointers and dst_ip values
   if(hibv_ctx->max_flows == 0) {
     hibv_ctx->max_flows = 1;
   }
   if(!(hibv_ctx->ibv_flows = (struct ibv_flow **)
         calloc(hibv_ctx->max_flows, sizeof(struct ibv_flow *)))) {
     perror("calloc(ibv_flows)");
+    goto cleanup_and_return_error;
+  }
+  if(!(hibv_ctx->flow_dst_ips = (uint32_t *)
+        calloc(hibv_ctx->max_flows, sizeof(uint32_t)))) {
+    perror("calloc(flow_dst_ips)");
+    goto cleanup_and_return_error;
+  }
+
+  // Open socket for managing multicast group membership
+  if((hibv_ctx->mcast_subscriber = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
+    perror("socket [mcast_subscriber]");
     goto cleanup_and_return_error;
   }
 
@@ -540,6 +591,15 @@ int hashpipe_ibv_shutdown(struct hashpipe_ibv_context * hibv_ctx)
     // Destroy any flow rules
     for(i=0; i<hibv_ctx->max_flows; i++) {
       if(hibv_ctx->ibv_flows[i]) {
+        // Drop multicast membership (if any)
+        if(hashpipe_ibv_mcast_membership(hibv_ctx, IP_DROP_MEMBERSHIP,
+              hibv_ctx->flow_dst_ips[i])) {
+          rc++;
+        } else {
+          hibv_ctx->flow_dst_ips[i] = 0;
+        }
+
+        // Destroy flow
         if(ibv_destroy_flow(hibv_ctx->ibv_flows[i])) {
           rc++;
         } else {
@@ -638,10 +698,20 @@ int hashpipe_ibv_shutdown(struct hashpipe_ibv_context * hibv_ctx)
     }
   } // not user managed
 
-  // Free ibv_flows
+  // Free ibv_flows and flow_dst_ips
   if(hibv_ctx->ibv_flows) {
       free(hibv_ctx->ibv_flows);
       hibv_ctx->ibv_flows = NULL;
+  }
+  if(hibv_ctx->flow_dst_ips) {
+      free(hibv_ctx->flow_dst_ips);
+      hibv_ctx->flow_dst_ips = NULL;
+  }
+
+  // Close mcast_subscriber socket
+  if(hibv_ctx->mcast_subscriber != -1 && close(hibv_ctx->mcast_subscriber)) {
+    perror("close [mcast_subscriber]");
+    rc++;
   }
 
   return rc;
@@ -656,6 +726,7 @@ int hashpipe_ibv_flow(
     uint32_t  src_ip,     uint32_t  dst_ip,
     uint16_t  src_port,   uint16_t  dst_port)
 {
+  uint8_t mcast_dst_mac[ETH_ALEN];
   struct hashpipe_ibv_flow flow = {
     .attr = {
       .comp_mask      = 0,
@@ -694,14 +765,21 @@ int hashpipe_ibv_flow(
     return 1;
   }
 
-  // Sanity check ibv_flows
-  if(!hibv_ctx->ibv_flows) {
+  // Sanity check ibv_flows and flow_dst_ips
+  if(!hibv_ctx->ibv_flows || !hibv_ctx->flow_dst_ips) {
     errno = EFAULT;
     return 1;
   }
 
   // If there is already a flow in the specified index, destroy it.
   if(hibv_ctx->ibv_flows[flow_idx]) {
+    // Drop multicast membership (if any)
+    if(hashpipe_ibv_mcast_membership(hibv_ctx, IP_DROP_MEMBERSHIP,
+          hibv_ctx->flow_dst_ips[flow_idx])) {
+      return 1;
+    }
+    hibv_ctx->flow_dst_ips[flow_idx] = 0;
+
     if(ibv_destroy_flow(hibv_ctx->ibv_flows[flow_idx])) {
       return 1;
     }
@@ -746,6 +824,21 @@ int hashpipe_ibv_flow(
       if(dst_ip) {
         flow.spec_ipv4.val.dst_ip = htobe32(dst_ip);
         flow.spec_ipv4.mask.dst_ip = 0xffffffff;
+        // Remember big endian dst_ip
+        hibv_ctx->flow_dst_ips[flow_idx] = flow.spec_ipv4.val.dst_ip;
+        // If dst_ip is multicast
+        if(IN_MULTICAST(dst_ip)) {
+          // Add multicast membership (if needed)
+          if(hashpipe_ibv_mcast_membership(hibv_ctx, IP_ADD_MEMBERSHIP,
+                flow.spec_ipv4.val.dst_ip)) {
+            return 1;
+          }
+          // Set multicast dst_mac
+          ETHER_MAP_IP_MULTICAST(&flow.spec_ipv4.val.dst_ip, mcast_dst_mac);
+          dst_mac = mcast_dst_mac;
+        } else {
+          hibv_ctx->flow_dst_ips[flow_idx] = flow.spec_ipv4.val.dst_ip;
+        }
       }
       // Fall through
 

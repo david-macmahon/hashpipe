@@ -124,6 +124,25 @@ struct hashpipe_ibv_context {
   // Managed by library.
   struct ibv_flow             ** ibv_flows;
 
+  // Array of dst_ip values specified when creating "flows".  These are
+  // one-to-one mapped with the flow pointers in `ibv_flows`.  These need to be
+  // stored so that we can drop multicast membership when destroying a flow.
+  // The `flow_dst_ips` entry for a flow is set to 0 if there is no dst_ip
+  // specified for the corresonding flow.  Managed by library.
+  uint32_t                     * flow_dst_ips;
+
+  // Socket used for multicast subscriptions.  This offloads IGMP management to
+  // the kernel, which means that incoming IGMP packets (e.g. from the switch)
+  // must be permitted to reach the kernel, which means that the NIC must be
+  // allowed to pass non-ibverbs packets to the kernel.  The socket is opened
+  // in hashpipe_ibv_init() and closed on hashpipe_ibv_shutdown().  When a flow
+  // rule with a multicast dst_ip is created, an IP_ADD_MEMBERSHIP setsockopt()
+  // call is made to subscribe to that multicast group.  Whenever a flow rule
+  // with a multicast dst_ip is destroyed, an IP_DROP_MEMBERSHIP setsockopt()
+  // call is made to unsubscribe from that multicast group.  Managed by
+  // library.
+  int                            mcast_subscriber;
+
   // Character buffer to hold interface name.  Contents supplied by user.
   char                           interface_name[IFNAMSIZ];
 };
@@ -343,6 +362,10 @@ int hashpipe_ibv_shutdown(struct hashpipe_ibv_context * hibv_ctx);
 // being used.  Some NICs may require a `dst_mac` match in order to enable any
 // packet reception at all.  This can be the unicast MAC address of the NIC
 // port or a multicast Ethernet MAC address for receiving multicast packets.
+// If a multicast `dst_ip` is given, `dst_mac` will be ignored and the
+// multicast MAC address corresponding to `dst_ip` will be used.  If desired,
+// multicast MAC addresses can be generated from multicast IP addresses using
+// the ETHER_MAP_IP_MULTICAST macro defined in <netinet/if_ether.h>.
 //
 // The non-MAC  parameters are passed as values and must be in host byte order.
 int hashpipe_ibv_flow(
