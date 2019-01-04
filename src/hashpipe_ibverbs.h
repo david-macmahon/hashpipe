@@ -53,7 +53,7 @@ struct hashpipe_ibv_send_pkt {
 // first field.
 struct hashpipe_ibv_recv_pkt {
   struct ibv_recv_wr wr;
-  uint32_t           length;
+  uint32_t length;
 };
 
 // This structure holds pointers and data values for a hashpipe_ibverbs
@@ -85,8 +85,9 @@ struct hashpipe_ibv_context {
   struct hashpipe_ibv_send_pkt * send_pkt_buf;
   struct hashpipe_ibv_recv_pkt * recv_pkt_buf;
 
-  // The send packet buffers `send_pkt_buf` are managed as a linked list of
-  // unused entries.  `send_pkt_head` points to the head of this unused list.
+  // The send packet buffers pointed to by `send_pkt_buf` are managed as a
+  // linked list of unused entries.  `send_pkt_head` points to the head of this
+  // unused list.
   struct hashpipe_ibv_send_pkt * send_pkt_head;
 
   // Scatter/gather buffers (arrays).  Managed by library or advanced user.
@@ -111,7 +112,7 @@ struct hashpipe_ibv_context {
   // receive buffers.  Specified by user.
   uint32_t                       pkt_size_max;
 
-  // Flag indicating user managed buffers/structures (true, non-zero)
+  // Flag indicating user managed buffers/structures (non-zero == user managed)
   int                            user_managed_flag;
 
   // Max number of "flows" (packet selection criteria) to support.  A zero

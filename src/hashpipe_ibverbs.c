@@ -468,7 +468,7 @@ int hashpipe_ibv_init(struct hashpipe_ibv_context * hibv_ctx)
 // Mellanox installed infiniband/verbs.h file does not define
 // IBV_DEVICE_IP_CSUM or IBV_SEND_IP_CSUM.
 #ifdef HAVE_IBV_IP_CSUM
-  // Query device to learnecksum offload capabilities
+  // Query device to learn checksum offload capabilities
   if(!ibv_query_device(hibv_ctx->ctx, &device_attr)
   && (device_attr.device_cap_flags & IBV_DEVICE_IP_CSUM)) {
     send_flags |= IBV_SEND_IP_CSUM;
