@@ -740,12 +740,12 @@ int hashpipe_ibv_flow(
 
       if(src_ip) {
         flow.spec_ipv4.val.src_ip = htobe32(src_ip);
-        flow.spec_ipv4.mask.src_ip = 0xffff;
+        flow.spec_ipv4.mask.src_ip = 0xffffffff;
       }
 
       if(dst_ip) {
         flow.spec_ipv4.val.dst_ip = htobe32(dst_ip);
-        flow.spec_ipv4.mask.dst_ip = 0xffff;
+        flow.spec_ipv4.mask.dst_ip = 0xffffffff;
       }
       // Fall through
 
