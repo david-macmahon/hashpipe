@@ -171,7 +171,9 @@ const double dval;      /* double number */
     char value[30];
 
     /* Translate value from binary to ASCII */
-    sprintf (value, "%.14g", dval);
+    /* Use 17 digits of precision so that conversion back from text will */
+    /* produce the exact same double precision value.  */
+    sprintf (value, "%.17g", dval);
 
     /* Remove sign if string is -0 or extension thereof */
     fixnegzero (value);
