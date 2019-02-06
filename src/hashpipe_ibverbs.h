@@ -60,13 +60,13 @@ struct hashpipe_ibv_recv_pkt {
 // instance.  See the comments for `hashpipe_ibv_init` for more details.
 struct hashpipe_ibv_context {
   // ibverbs structures managed by library.
-  struct ibv_context           * ctx;
-  struct ibv_pd                * pd;
-  struct ibv_comp_channel      * send_cc;
-  struct ibv_comp_channel      * recv_cc;
-  struct ibv_cq                * send_cq;
-  struct ibv_cq                * recv_cq;
-  struct ibv_qp                * qp;
+  struct ibv_context           * ctx;     // ibverbs context
+  struct ibv_pd                * pd;      // protection domain
+  struct ibv_comp_channel      * send_cc; // send completion channel
+  struct ibv_comp_channel      * recv_cc; // recv completion channel
+  struct ibv_cq                * send_cq; // send completion queue
+  struct ibv_cq                * recv_cq; // recv completion queue
+  struct ibv_qp                * qp;      // send/recv queue pair
 
   // Physical port number on NIC.  Managed by library.
   uint8_t                        port_num;
@@ -87,14 +87,14 @@ struct hashpipe_ibv_context {
 
   // The send packet buffers pointed to by `send_pkt_buf` are managed as a
   // linked list of unused entries.  `send_pkt_head` points to the head of this
-  // unused list.
+  // unused list.  Managed by library.
   struct hashpipe_ibv_send_pkt * send_pkt_head;
 
   // Scatter/gather buffers (arrays).  Managed by library or advanced user.
   struct ibv_sge               * send_sge_buf;
   struct ibv_sge               * recv_sge_buf;
 
-  // Send and receive memory region buffersi (i.e.packet buffers).  Managed by
+  // Send and receive memory region buffers (i.e.packet buffers).  Managed by
   // library or advanced user.
   uint8_t                      * send_mr_buf;
   uint8_t                      * recv_mr_buf;
