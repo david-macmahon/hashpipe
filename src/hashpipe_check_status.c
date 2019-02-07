@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
     };
     int opt,opti;
     char *key=NULL;
-    char value[81];
+    char value[81] = {0};
     float flttmp;
     double dbltmp;
     int inttmp;
