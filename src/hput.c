@@ -849,10 +849,9 @@ const char *keyword;    /* Keyword of entry to be deleted */
             strncpy (v, v2, 80);
             }
 
-        /* Cover former last line with spaces */
+        /* Nul terminate after END line */
         v2 = ve + 80;
-        for (v = ve; v < v2; v++)
-            *v = ' ';
+        *v2 = '\0';
         }
 
     return (1);
