@@ -880,6 +880,8 @@ int hashpipe_ibv_flow(
   return 0;
 }
 
+#define WC_BATCH_SIZE (16)
+
 // See comments in header file for details about this function.
 struct hashpipe_ibv_recv_pkt * hashpipe_ibv_recv_pkts(
     struct hashpipe_ibv_context * hibv_ctx, int timeout_ms)
@@ -891,7 +893,7 @@ struct hashpipe_ibv_recv_pkt * hashpipe_ibv_recv_pkts(
   struct ibv_qp_attr qp_attr;
   struct ibv_cq *ev_cq;
   void * ev_cq_ctx;
-  struct ibv_wc wc;
+  struct ibv_wc wc[WC_BATCH_SIZE];
   struct ibv_recv_wr * recv_wr_bad;
   struct hashpipe_ibv_recv_pkt * recv_head = NULL;
   struct ibv_recv_wr * recv_tail = NULL;
@@ -961,7 +963,7 @@ struct hashpipe_ibv_recv_pkt * hashpipe_ibv_recv_pkts(
   do {
     // For now we poll the completion queue one completion at a time.
     // Eventually we might want to poll for multiple completions per call.
-    num_wce = ibv_poll_cq(ev_cq, 1, &wc);
+    num_wce = ibv_poll_cq(ev_cq, WC_BATCH_SIZE, wc);
     if(num_wce < 0) {
       perror("ibv_poll_cq");
       return NULL;
@@ -969,11 +971,11 @@ struct hashpipe_ibv_recv_pkt * hashpipe_ibv_recv_pkts(
 
     // Add work requests with success status to list
     for(i=0; i<num_wce; i++) {
-      if(wc.status != IBV_WC_SUCCESS) {
-        fprintf(stderr, "got completion error 0x%x vendor error 0x%x\n",
-            wc.status, wc.vendor_err);
+      if(wc[i].status != IBV_WC_SUCCESS) {
+        fprintf(stderr, "got completion status 0x%x vendor error 0x%x\n",
+            wc[i].status, wc[i].vendor_err);
         // Repost work request
-        if(ibv_post_recv(hibv_ctx->qp, &hibv_ctx->recv_pkt_buf[wc.wr_id].wr,
+        if(ibv_post_recv(hibv_ctx->qp, &hibv_ctx->recv_pkt_buf[wc[i].wr_id].wr,
               &recv_wr_bad)) {
           perror("ibv_post_recv");
           // Probably not going to end well if we get here,
@@ -983,12 +985,12 @@ struct hashpipe_ibv_recv_pkt * hashpipe_ibv_recv_pkts(
         // but we will soldier on anyway...
       } else {
         // Copy byte_len from completion to length of pkt srtuct
-        hibv_ctx->recv_pkt_buf[wc.wr_id].length = wc.byte_len;
+        hibv_ctx->recv_pkt_buf[wc[i].wr_id].length = wc[i].byte_len;
         if(!recv_head) {
-          recv_head = &hibv_ctx->recv_pkt_buf[wc.wr_id];
+          recv_head = &hibv_ctx->recv_pkt_buf[wc[i].wr_id];
           recv_tail = &recv_head->wr;
         } else {
-          recv_tail->next = &hibv_ctx->recv_pkt_buf[wc.wr_id].wr;
+          recv_tail->next = &hibv_ctx->recv_pkt_buf[wc[i].wr_id].wr;
           recv_tail = recv_tail->next;
         }
       } // success
@@ -1028,7 +1030,7 @@ struct hashpipe_ibv_send_pkt * hashpipe_ibv_get_pkts(
   struct ibv_qp_attr qp_attr;
   struct ibv_cq *ev_cq;
   void * ev_cq_ctx;
-  struct ibv_wc wc;
+  struct ibv_wc wc[WC_BATCH_SIZE];
   struct hashpipe_ibv_send_pkt * send_head = NULL;
   struct ibv_send_wr * send_tail = NULL;
 
@@ -1133,7 +1135,7 @@ struct hashpipe_ibv_send_pkt * hashpipe_ibv_get_pkts(
   do {
     // For now we poll the completion queue one completion at a time.
     // Eventually we might want to poll for multiple completions per call.
-    num_wce = ibv_poll_cq(ev_cq, 1, &wc);
+    num_wce = ibv_poll_cq(ev_cq, WC_BATCH_SIZE, wc);
     if(num_wce < 0) {
       perror("ibv_poll_cq");
       return NULL;
@@ -1147,27 +1149,27 @@ struct hashpipe_ibv_send_pkt * hashpipe_ibv_get_pkts(
         // Append to return list
         if(!send_tail) {
           // If we have no packets in return list, start list
-          send_head = &hibv_ctx->send_pkt_buf[wc.wr_id];
+          send_head = &hibv_ctx->send_pkt_buf[wc[i].wr_id];
           send_tail = (struct ibv_send_wr *)send_head;
         } else {
           // Append to list
-          send_tail->next = &hibv_ctx->send_pkt_buf[wc.wr_id].wr;
+          send_tail->next = &hibv_ctx->send_pkt_buf[wc[i].wr_id].wr;
           send_tail = send_tail->next;
         }
         if(--num_pkts == 0) {
         }
       } else {
         // Push onto free list
-        hibv_ctx->send_pkt_buf[wc.wr_id].wr.next =
+        hibv_ctx->send_pkt_buf[wc[i].wr_id].wr.next =
           (struct ibv_send_wr *)hibv_ctx->send_pkt_head;
-        hibv_ctx->send_pkt_head = &hibv_ctx->send_pkt_buf[wc.wr_id];
+        hibv_ctx->send_pkt_head = &hibv_ctx->send_pkt_buf[wc[i].wr_id];
       }
     } // for each work completion
   } while(num_wce);
 
   // Ensure return list is NULL terminated (if we have a list)
   if(send_tail) {
-    send_tail->next = &hibv_ctx->send_pkt_buf[wc.wr_id].wr;
+    send_tail->next = NULL;
   }
 
   return send_head;
