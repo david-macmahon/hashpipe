@@ -119,6 +119,8 @@ int main(int argc, char *argv[]) {
                     hashpipe_status_lock(s);
                     hputs(s->buf, key, optarg);
                     hashpipe_status_unlock(s);
+                } else {
+                    fprintf(stderr, "no key specified\n");
                 }
                 break;
             case 'f':
@@ -128,6 +130,8 @@ int main(int argc, char *argv[]) {
                     hashpipe_status_lock(s);
                     hputr4(s->buf, key, flttmp);
                     hashpipe_status_unlock(s);
+                } else {
+                   fprintf(stderr, "no key specified\n");
                 }
                 break;
             case 'd':
@@ -137,6 +141,8 @@ int main(int argc, char *argv[]) {
                     hashpipe_status_lock(s);
                     hputr8(s->buf, key, dbltmp);
                     hashpipe_status_unlock(s);
+                } else {
+                    fprintf(stderr, "no key specified\n");
                 }
                 break;
             case 'i':
@@ -146,6 +152,8 @@ int main(int argc, char *argv[]) {
                     hashpipe_status_lock(s);
                     hputi4(s->buf, key, inttmp);
                     hashpipe_status_unlock(s);
+                } else {
+                    fprintf(stderr, "no key specified\n");
                 }
                 break;
             case 'D':
@@ -154,6 +162,8 @@ int main(int argc, char *argv[]) {
                     hashpipe_status_lock(s);
                     hdel(s->buf, key);
                     hashpipe_status_unlock(s);
+                } else {
+                    fprintf(stderr, "no key specified\n");
                 }
                 break;
             case 'C':
