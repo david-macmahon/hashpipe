@@ -65,7 +65,7 @@ int hashpipe_ibv_get_interface_info(
 
   strncpy(ifr.ifr_name , interface_name , IFNAMSIZ-1);
   ifr.ifr_name[IFNAMSIZ-1] = '\0';  // Ensure NUL termination
-  
+
   if((fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
     return 2;
   }
@@ -177,7 +177,7 @@ int hashpipe_ibv_open_device_for_interface_id(
           // Found desired port!
           break;
         }
-      } // for each GID 
+      } // for each GID
 
       if(gididx < ibv_port_attr.gid_tbl_len) {
         // Found desired port!
@@ -361,13 +361,13 @@ int hashpipe_ibv_init(struct hashpipe_ibv_context * hibv_ctx)
   // Create send and recv completion queues
   // TODO comp_vector: what is it good for???  Set to 0 (for now)
   if(!(hibv_ctx->send_cq = ibv_create_cq(hibv_ctx->ctx,
-          hibv_ctx->send_pkt_num, NULL, hibv_ctx->send_cc, 0))) { 
+          hibv_ctx->send_pkt_num, NULL, hibv_ctx->send_cc, 0))) {
     perror("ibv_create_cq[send]");
     goto cleanup_and_return_error;
   }
 
   if(!(hibv_ctx->recv_cq = ibv_create_cq(hibv_ctx->ctx,
-          hibv_ctx->recv_pkt_num, NULL, hibv_ctx->recv_cc, 0))) { 
+          hibv_ctx->recv_pkt_num, NULL, hibv_ctx->recv_cc, 0))) {
     perror("ibv_create_cq[recv]");
     goto cleanup_and_return_error;
   }
