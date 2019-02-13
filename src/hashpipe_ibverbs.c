@@ -99,9 +99,10 @@ int hashpipe_ibv_get_interface_info(
 
 // See comments in header file for details about this function.
 int hashpipe_ibv_open_device_for_interface_id(
-    uint64_t              interface_id,
-    struct ibv_context ** found_ctx,
-    uint8_t             * found_port)
+    uint64_t                 interface_id,
+    struct ibv_context    ** found_ctx,
+    struct ibv_device_attr * found_dev_attr,
+    uint8_t                * found_port)
 {
   int retval = 1;
   int devidx;
@@ -202,6 +203,10 @@ int hashpipe_ibv_open_device_for_interface_id(
     } else if(ibv_close_device(ibv_ctx) == -1) {
       perror("ibv_close_device");
       retval++;
+    }
+    // Save device attributes
+    if(found_dev_attr) {
+      memcpy(found_dev_attr, &ibv_device_attr, sizeof(ibv_device_attr));
     }
     // Save port
     if(found_port) {
@@ -315,6 +320,7 @@ int hashpipe_ibv_init(struct hashpipe_ibv_context * hibv_ctx)
   if((errsv = hashpipe_ibv_open_device_for_interface_id(
         hibv_ctx->interface_id,
         &hibv_ctx->ctx,
+        &hibv_ctx->dev_attr,
         &hibv_ctx->port_num))) {
     if(errsv == 1) {
       perror("hashpipe_ibv_init");

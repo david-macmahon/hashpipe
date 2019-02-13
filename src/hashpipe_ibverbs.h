@@ -60,13 +60,14 @@ struct hashpipe_ibv_recv_pkt {
 // instance.  See the comments for `hashpipe_ibv_init` for more details.
 struct hashpipe_ibv_context {
   // ibverbs structures managed by library.
-  struct ibv_context           * ctx;     // ibverbs context
-  struct ibv_pd                * pd;      // protection domain
-  struct ibv_comp_channel      * send_cc; // send completion channel
-  struct ibv_comp_channel      * recv_cc; // recv completion channel
-  struct ibv_cq                * send_cq; // send completion queue
-  struct ibv_cq                * recv_cq; // recv completion queue
-  struct ibv_qp                * qp;      // send/recv queue pair
+  struct ibv_context           * ctx;      // ibverbs context
+  struct ibv_pd                * pd;       // protection domain
+  struct ibv_comp_channel      * send_cc;  // send completion channel
+  struct ibv_comp_channel      * recv_cc;  // recv completion channel
+  struct ibv_cq                * send_cq;  // send completion queue
+  struct ibv_cq                * recv_cq;  // recv completion queue
+  struct ibv_qp                * qp;       // send/recv queue pair
+  struct ibv_device_attr         dev_attr; // device attributes
 
   // Physical port number on NIC.  Managed by library.
   uint8_t                        port_num;
@@ -175,19 +176,22 @@ int hashpipe_ibv_get_interface_info(
 // used to get `interface_id` for a given interface name.  If a matching IBV
 // device is found, the `ibv_context` for the opened device is stored in
 // `found_ctx` (if non-NULL), the corresponding (physical) port number is
-// stored in `found_port` (if non-NULL), and 0 is returned.  If not found, 1 is
-// returned.  If some other error occurs, an error message is printed to
-// stderr, a value greater than 1 is returned, and the contents of `found_ctx`
-// and `found_port` are unchanged.  If an `ibv_context` is returned, the caller
-// is responsible for closing it.  Note that `interface_id` is expected to be
-// in host byte order, as returned by `hashpipe_ibv_get_interface_info()`.
+// stored in `found_port` (if non-NULL), the corresponding ibv_device_attr
+// structure is copied to `found_dev_attr` (if non_NULL), and 0 is returned.
+// If not found, 1 is returned.  If some other error occurs, an error message
+// is printed to stderr, a value greater than 1 is returned, and the contents
+// of `found_ctx` and `found_port` are unchanged.  If an `ibv_context` is
+// returned, the caller is responsible for closing it.  Note that
+// `interface_id` is expected to be in host byte order, as returned by
+// `hashpipe_ibv_get_interface_info()`.
 //
 // NOTE: This is a low-level function intended for internal use.  Most users
 // will want to use `hashpipe_ibv_init()` instead.
 int hashpipe_ibv_open_device_for_interface_id(
-    uint64_t              interface_id,
-    struct ibv_context ** found_ctx,
-    uint8_t             * found_port);
+    uint64_t                 interface_id,
+    struct ibv_context    ** found_ctx,
+    struct ibv_device_attr * found_dev_attr,
+    uint8_t                * found_port);
 
 // The `hashpipe_ibv_init()` funciton sets up the data structures necessary for
 // initiating raw packet flows using ibverbs.  When this function returns
