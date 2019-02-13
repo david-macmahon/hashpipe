@@ -484,7 +484,7 @@ int hashpipe_ibv_init(struct hashpipe_ibv_context * hibv_ctx)
     goto cleanup_and_return_error;
   }
 
-  // Initilize work requests and scatter/gather elements unless user managed.
+  // Initialize work requests and scatter/gather elements unless user managed.
   if(!hibv_ctx->user_managed_flag) {
     // Send related elements
     for(i=0; i<hibv_ctx->send_pkt_num; i++) {
@@ -522,12 +522,13 @@ int hashpipe_ibv_init(struct hashpipe_ibv_context * hibv_ctx)
 #endif // HAVE_IBV_IP_CSUM
 
   // Link send work requests and set head pointer
-  for(i=0; i<hibv_ctx->send_pkt_num-1; i++) {
-    hibv_ctx->send_pkt_buf[i].wr.next = &hibv_ctx->send_pkt_buf[i+1].wr;
+  for(i=0; i<hibv_ctx->send_pkt_num; i++) {
+    hibv_ctx->send_pkt_buf[i].wr.next = (i < hibv_ctx->send_pkt_num-1)
+                                      ? &hibv_ctx->send_pkt_buf[i+1].wr
+                                      : NULL;
     hibv_ctx->send_pkt_buf[i].wr.opcode = IBV_WR_SEND;
     hibv_ctx->send_pkt_buf[i].wr.send_flags = send_flags;
   }
-  hibv_ctx->send_pkt_buf[hibv_ctx->send_pkt_num-1].wr.next = NULL;
   hibv_ctx->send_pkt_head = hibv_ctx->send_pkt_buf;
 
   // Unlink recv work requests
