@@ -373,8 +373,8 @@ int hashpipe_ibv_init(struct hashpipe_ibv_context * hibv_ctx)
   }
 
   // Request notifications before any send completion can be created.
-  // Restrict to solicited-only completions for send.
-  if(ibv_req_notify_cq(hibv_ctx->send_cq, 1)) {
+  // Do NOT restrict to solicited-only completions.
+  if(ibv_req_notify_cq(hibv_ctx->send_cq, 0)) {
     perror("ibv_req_notify_cq[send]");
     goto cleanup_and_return_error;
   }
@@ -1132,8 +1132,8 @@ struct hashpipe_ibv_send_pkt * hashpipe_ibv_get_pkts(
   ibv_ack_cq_events(ev_cq, 1);
 
   // Request notification upon the next completion event
-  // Restrict to solicited-only completions
-  if(ibv_req_notify_cq(ev_cq, 1)) {
+  // Do NOT restrict to solicited-only completions.
+  if(ibv_req_notify_cq(ev_cq, 0)) {
     perror("ibv_req_notify_cq");
     return send_head;
   }
@@ -1195,11 +1195,11 @@ int hashpipe_ibv_send_pkts(struct hashpipe_ibv_context * hibv_ctx,
 
   for(p = &send_pkt->wr; p; p=p->next) {
     if(p->next) {
-      // Clear IBV_SEND_SOLICITED flag
-      p->send_flags &= ~IBV_SEND_SOLICITED;
+      // Clear IBV_SEND_SIGNALED flag
+      p->send_flags &= ~IBV_SEND_SIGNALED;
     } else {
-      // Set IBV_SEND_SOLICITED flag
-      p->send_flags |= IBV_SEND_SOLICITED;
+      // Set IBV_SEND_SIGNALED flag
+      p->send_flags |= IBV_SEND_SIGNALED;
     }
   }
 
