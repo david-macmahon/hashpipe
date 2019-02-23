@@ -1026,6 +1026,104 @@ int hashpipe_ibv_release_pkts(struct hashpipe_ibv_context * hibv_ctx,
   return ibv_post_recv(hibv_ctx->qp, &recv_pkt->wr, &recv_wr_bad);
 } // hashpipe_ibv_release_pkts
 
+#ifdef VERBOSE_IBV_DEBUG
+#define eprintf(...) fprintf(stderr, __VA_ARGS__)
+#else
+#define eprintf(...)
+#endif // VERBOSE_IBV_DEBUG
+
+#ifdef VERBOSE_IBV_DEBUG
+// Debug function to print wr_id values from up to max elements of linked list
+// pointed to by p.
+static void print_send_pkt_list(struct hashpipe_ibv_send_pkt *p, size_t max)
+{
+  while(p && max) {
+    fprintf(stderr, " %lu", p->wr.wr_id);
+    p=(struct hashpipe_ibv_send_pkt *)p->wr.next;
+    max--;
+  }
+  fprintf(stderr, "\n");
+}
+#endif // VERBOSE_IBV_DEBUG
+
+// Utility function to pop up to num_to_pop packets from the hibv_ctx's
+// send_pkt_head list, updating the send_pkt_head field as needed.  If *pp_head
+// is NULL, *pp_head will be updated to point to the head of the popped packets
+// (or NULL if no packets are available).  If *pp_tail is non-NULL, the popped
+// packets, if any, will be appended to **pp_tail and *pp_tail will be updated
+// to point to the new tail elmenent.  The number of packets popped will be
+// returned.  If hibv_ctx or pp_head or pp_tail is NULL, the number of packets
+// popped will be 0.  If *pp_tail is non-NULL and (*pp_tail)->wr.next is not
+// NULL (i.e. it does not point to a tail), the number of packets popped will
+// be 0.
+static size_t pop_send_packets(
+    struct hashpipe_ibv_context * hibv_ctx, size_t num_to_pop,
+    struct hashpipe_ibv_send_pkt ** pp_head,
+    struct hashpipe_ibv_send_pkt ** pp_tail)
+{
+  size_t num_popped = 0;
+
+  // Validate the hibv_ctx and pp_tail are non-NULL
+  if(!hibv_ctx || !pp_head || !pp_tail) {
+    fprintf(stderr, "pop_send_packets: NULL pointer passwd\n");
+    return 0;
+  }
+
+#ifdef VERBOSE_IBV_DEBUG
+  eprintf("entering pop_send_packets for up to %lu packets\n", num_to_pop);
+  eprintf("  pkt_head"); print_send_pkt_list(hibv_ctx->send_pkt_head, 32);
+  eprintf("  pop_head"); print_send_pkt_list(*pp_head, 32);
+  eprintf("  pop_tail"); print_send_pkt_list(*pp_tail, 32);
+#endif // VERBOSE_IBV_DEBUG
+
+  // Validate that *pp_tail, if non-NULL, points to a tail
+  if(*pp_tail && (*pp_tail)->wr.next) {
+    fprintf(stderr, "pop_send_packets: tail pointer points to non-tail\n");
+    return 0;
+  }
+
+  // If no packets requested, don't do anything
+  if(num_to_pop == 0) {
+    return 0;
+  }
+
+  // If pp_head point to a NULL pointer, update it
+  if(!(*pp_head)) {
+    *pp_head = hibv_ctx->send_pkt_head;
+  }
+
+  // If pp_tail is non-NULL, append to existing tail
+  if(*pp_tail) {
+    (*pp_tail)->wr.next = &hibv_ctx->send_pkt_head->wr;
+  }
+
+  *pp_tail = hibv_ctx->send_pkt_head;
+  while(*pp_tail) {
+    // Increment num_popped
+    num_popped++;
+    // If we have enough packets or are at end of list, break out of loop
+    if(num_popped >= num_to_pop || !(*pp_tail)->wr.next) {
+      break;
+    }
+    *pp_tail = (struct hashpipe_ibv_send_pkt *)(*pp_tail)->wr.next;
+  }
+
+  // If *pp_tail is non-NULL, update send_pkt_head and sever popped packets
+  if(*pp_tail) {
+    hibv_ctx->send_pkt_head = (struct hashpipe_ibv_send_pkt *)(*pp_tail)->wr.next;
+    (*pp_tail)->wr.next = NULL;
+  }
+
+#ifdef VERBOSE_IBV_DEBUG
+  eprintf("leaving pop_send_packets got %lu packets\n", num_popped);
+  eprintf("  pkt_head"); print_send_pkt_list(hibv_ctx->send_pkt_head, 32);
+  eprintf("  pop_head"); print_send_pkt_list(*pp_head, 32);
+  eprintf("  pop_tail"); print_send_pkt_list(*pp_tail, 32);
+#endif // VERBOSE_IBV_DEBUG
+
+  return num_popped;
+}
+
 // See comments in header file for details about this function.
 struct hashpipe_ibv_send_pkt * hashpipe_ibv_get_pkts(
     struct hashpipe_ibv_context * hibv_ctx, uint32_t num_pkts, int timeout_ms)
@@ -1033,13 +1131,16 @@ struct hashpipe_ibv_send_pkt * hashpipe_ibv_get_pkts(
   int i;
   int poll_rc = 0;
   int num_wce;
+  size_t num_popped;
+  uint64_t wr_id_first;
+  uint64_t wr_id_last;
   struct pollfd pfd;
   struct ibv_qp_attr qp_attr;
   struct ibv_cq *ev_cq;
   void * ev_cq_ctx;
   struct ibv_wc wc[WC_BATCH_SIZE];
   struct hashpipe_ibv_send_pkt * send_head = NULL;
-  struct ibv_send_wr * send_tail = NULL;
+  struct hashpipe_ibv_send_pkt * send_tail = NULL;
 
   // Sanity check hibv_ctx
   if(!hibv_ctx) {
@@ -1085,20 +1186,9 @@ struct hashpipe_ibv_send_pkt * hashpipe_ibv_get_pkts(
     return NULL;
   }
 
-  // Pop up to `num_pkts` send packets off the free list and push onto return
-  // list.
-  send_head = hibv_ctx->send_pkt_head;
-  while(hibv_ctx->send_pkt_head && num_pkts) {
-    send_tail = (struct ibv_send_wr *)hibv_ctx->send_pkt_head;
-    hibv_ctx->send_pkt_head =
-      (struct hashpipe_ibv_send_pkt *)hibv_ctx->send_pkt_head->wr.next;
-    num_pkts--;
-  }
-
-  // Sever return list from free list
-  if(send_tail) {
-    send_tail->next = NULL;
-  }
+  num_popped = pop_send_packets(hibv_ctx, num_pkts, &send_head, &send_tail);
+  num_pkts -= num_popped;
+  eprintf("popped %lu packets\n", num_popped);
 
   // If we are done (i.e. num_pkts == 0), return
   if(num_pkts == 0) {
@@ -1117,8 +1207,12 @@ struct hashpipe_ibv_send_pkt * hashpipe_ibv_get_pkts(
   // Poll completion channel's fd with given timeout
   poll_rc = poll(&pfd, 1, timeout_ms);
 
-  if(poll_rc <= 0) {
-    // Timeout or error
+  if(poll_rc < 0) {
+    // Error
+    perror("hashpipe_ibv_get_pkts[poll]");
+    return send_head;
+  } else if(poll_rc == 0) {
+    // Timeout
     return send_head;
   }
 
@@ -1137,6 +1231,7 @@ struct hashpipe_ibv_send_pkt * hashpipe_ibv_get_pkts(
     perror("ibv_req_notify_cq");
     return send_head;
   }
+  eprintf("got completion channel event\n");
 
   // Empty the CQ: poll all of the completions from the CQ (if any exist)
   do {
@@ -1147,36 +1242,31 @@ struct hashpipe_ibv_send_pkt * hashpipe_ibv_get_pkts(
       perror("ibv_poll_cq");
       return NULL;
     }
+    eprintf("got %d work completions\n", num_wce);
 
-    // Process all completion events.  Append completed packets to return list
-    // until num_pkts is 0, then push completed packets back on free list.
-
+    // Process all completion events.
     for(i=0; i<num_wce; i++) {
-      if(num_pkts) {
-        // Append to return list
-        if(!send_tail) {
-          // If we have no packets in return list, start list
-          send_head = &hibv_ctx->send_pkt_buf[wc[i].wr_id];
-          send_tail = (struct ibv_send_wr *)send_head;
-        } else {
-          // Append to list
-          send_tail->next = &hibv_ctx->send_pkt_buf[wc[i].wr_id].wr;
-          send_tail = send_tail->next;
-        }
-        if(--num_pkts == 0) {
-        }
-      } else {
-        // Push onto free list
-        hibv_ctx->send_pkt_buf[wc[i].wr_id].wr.next =
-          (struct ibv_send_wr *)hibv_ctx->send_pkt_head;
-        hibv_ctx->send_pkt_head = &hibv_ctx->send_pkt_buf[wc[i].wr_id];
-      }
+      // Swap wr_id values from first/last send_pkt work requests
+      wr_id_first = wc[i].wr_id;
+      wr_id_last = hibv_ctx->send_pkt_buf[wr_id_first].wr.wr_id;
+      hibv_ctx->send_pkt_buf[wr_id_first].wr.wr_id = wr_id_first;
+      hibv_ctx->send_pkt_buf[wr_id_last].wr.wr_id = wr_id_last;
+      // Push onto send_pkt_head
+      hibv_ctx->send_pkt_buf[wr_id_last].wr.next =
+        &hibv_ctx->send_pkt_head->wr;
+      hibv_ctx->send_pkt_head = &hibv_ctx->send_pkt_buf[wr_id_first];
+      eprintf("got work completion for send work requests %lu to %lu\n",
+          wr_id_first, wr_id_last);
+
+      num_popped = pop_send_packets(hibv_ctx, num_pkts, &send_head, &send_tail);
+      num_pkts -= num_popped;
+      eprintf("popped %lu more packets\n", num_popped);
     } // for each work completion
   } while(num_wce);
 
   // Ensure return list is NULL terminated (if we have a list)
   if(send_tail) {
-    send_tail->next = NULL;
+    send_tail->wr.next = NULL;
   }
 
   return send_head;
@@ -1186,6 +1276,7 @@ struct hashpipe_ibv_send_pkt * hashpipe_ibv_get_pkts(
 int hashpipe_ibv_send_pkts(struct hashpipe_ibv_context * hibv_ctx,
     struct hashpipe_ibv_send_pkt * send_pkt)
 {
+  uint64_t wr_id;
   struct ibv_send_wr * p;
 
   if(!hibv_ctx || !send_pkt) {
@@ -1200,6 +1291,13 @@ int hashpipe_ibv_send_pkts(struct hashpipe_ibv_context * hibv_ctx,
     } else {
       // Set IBV_SEND_SIGNALED flag
       p->send_flags |= IBV_SEND_SIGNALED;
+
+      // Swap work request IDs between send_pkt (head) and p (tail) because we
+      // get notified upon completion of the tail work request, but we want to
+      // reclaim work requests starting with the head.
+      wr_id = send_pkt->wr.wr_id;
+      send_pkt->wr.wr_id = p->wr_id;
+      p->wr_id = wr_id;
     }
   }
 
