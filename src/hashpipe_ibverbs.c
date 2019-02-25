@@ -1126,18 +1126,18 @@ static size_t pop_send_packets(
 
 // See comments in header file for details about this function.
 struct hashpipe_ibv_send_pkt * hashpipe_ibv_get_pkts(
-    struct hashpipe_ibv_context * hibv_ctx, uint32_t num_pkts, int timeout_ms)
+    struct hashpipe_ibv_context * hibv_ctx, uint32_t *num_pkts, int timeout_ms)
 {
   int i;
-  int poll_rc = 0;
+  //int poll_rc = 0;
   int num_wce;
   size_t num_popped;
   uint64_t wr_id_first;
   uint64_t wr_id_last;
-  struct pollfd pfd;
+  //struct pollfd pfd;
   struct ibv_qp_attr qp_attr;
-  struct ibv_cq *ev_cq;
-  void * ev_cq_ctx;
+  //struct ibv_cq *ev_cq;
+  //void * ev_cq_ctx;
   struct ibv_wc wc[WC_BATCH_SIZE];
   struct hashpipe_ibv_send_pkt * send_head = NULL;
   struct hashpipe_ibv_send_pkt * send_tail = NULL;
@@ -1150,13 +1150,14 @@ struct hashpipe_ibv_send_pkt * hashpipe_ibv_get_pkts(
   }
 
   // Sanity check num_pkts
-  if(num_pkts > hibv_ctx->send_pkt_num) {
-    num_pkts = hibv_ctx->send_pkt_num;
-  } else if(num_pkts == 0) {
+  if(*num_pkts > hibv_ctx->send_pkt_num) {
+    *num_pkts = hibv_ctx->send_pkt_num;
+  } else if(*num_pkts == 0) {
     return NULL;
   }
 
   // Ensure the QP state is suitable for sending
+if(hibv_ctx->qp->state != IBV_QPS_RTS) {
   switch(hibv_ctx->qp->state) {
   case IBV_QPS_RESET: // Unexpected, but maybe user reset it
     qp_attr.qp_state = IBV_QPS_INIT;
@@ -1185,20 +1186,49 @@ struct hashpipe_ibv_send_pkt * hashpipe_ibv_get_pkts(
     errno = EPROTO; // Protocol error
     return NULL;
   }
+}
 
-  num_popped = pop_send_packets(hibv_ctx, num_pkts, &send_head, &send_tail);
-  num_pkts -= num_popped;
+  // Empty the CQ: poll all of the completions from the CQ (if any exist)
+  do {
+    // For now we poll the completion queue one completion at a time.
+    // Eventually we might want to poll for multiple completions per call.
+    num_wce = ibv_poll_cq(hibv_ctx->send_cq, WC_BATCH_SIZE, wc);
+    if(num_wce < 0) {
+      perror("ibv_poll_cq");
+      return NULL;
+    }
+    eprintf("got %d work completions\n", num_wce);
+
+    // Process all completion events.
+    for(i=0; i<num_wce; i++) {
+      // Swap wr_id values from first/last send_pkt work requests
+      wr_id_first = wc[i].wr_id;
+      wr_id_last = hibv_ctx->send_pkt_buf[wr_id_first].wr.wr_id;
+      hibv_ctx->send_pkt_buf[wr_id_first].wr.wr_id = wr_id_first;
+      hibv_ctx->send_pkt_buf[wr_id_last].wr.wr_id = wr_id_last;
+      // Clear IBV_SEND_SIGNALED flag of tail element
+      hibv_ctx->send_pkt_buf[wr_id_last].wr.send_flags &= ~IBV_SEND_SIGNALED;
+      // Push onto send_pkt_head
+      hibv_ctx->send_pkt_buf[wr_id_last].wr.next =
+        &hibv_ctx->send_pkt_head->wr;
+      hibv_ctx->send_pkt_head = &hibv_ctx->send_pkt_buf[wr_id_first];
+      eprintf("got work completion for send work requests %lu to %lu\n",
+          wr_id_first, wr_id_last);
+    } // for each work completion
+  } while(num_wce);
+
+  num_popped = pop_send_packets(hibv_ctx, *num_pkts, &send_head, &send_tail);
+  *num_pkts = num_popped;
   eprintf("popped %lu packets\n", num_popped);
 
-  // If we are done (i.e. num_pkts == 0), return
-  if(num_pkts == 0) {
-    return send_head;
-  }
+  // If we are not done (i.e. num_pkts > 0)
+  if(*num_pkts > 0) {
 
   // If we get here, then we got fewer than the requested number of packets.
   // send_head and send_tail can be NULL (i.e. if zero send_pkts were
   // available).
 
+#if 0
   // Setup to poll for send completions
   pfd.fd = hibv_ctx->send_cc->fd;
   pfd.events = POLLIN;
@@ -1232,41 +1262,25 @@ struct hashpipe_ibv_send_pkt * hashpipe_ibv_get_pkts(
     return send_head;
   }
   eprintf("got completion channel event\n");
+#endif // 0
 
-  // Empty the CQ: poll all of the completions from the CQ (if any exist)
-  do {
-    // For now we poll the completion queue one completion at a time.
-    // Eventually we might want to poll for multiple completions per call.
-    num_wce = ibv_poll_cq(ev_cq, WC_BATCH_SIZE, wc);
-    if(num_wce < 0) {
-      perror("ibv_poll_cq");
-      return NULL;
-    }
-    eprintf("got %d work completions\n", num_wce);
+#if 0
+  // Try popping more packets
+  num_popped = pop_send_packets(hibv_ctx, num_pkts, &send_head, &send_tail);
+  num_pkts -= num_popped;
+  eprintf("popped %lu more packets\n", num_popped);
+#endif
+  }
 
-    // Process all completion events.
-    for(i=0; i<num_wce; i++) {
-      // Swap wr_id values from first/last send_pkt work requests
-      wr_id_first = wc[i].wr_id;
-      wr_id_last = hibv_ctx->send_pkt_buf[wr_id_first].wr.wr_id;
-      hibv_ctx->send_pkt_buf[wr_id_first].wr.wr_id = wr_id_first;
-      hibv_ctx->send_pkt_buf[wr_id_last].wr.wr_id = wr_id_last;
-      // Push onto send_pkt_head
-      hibv_ctx->send_pkt_buf[wr_id_last].wr.next =
-        &hibv_ctx->send_pkt_head->wr;
-      hibv_ctx->send_pkt_head = &hibv_ctx->send_pkt_buf[wr_id_first];
-      eprintf("got work completion for send work requests %lu to %lu\n",
-          wr_id_first, wr_id_last);
-
-      num_popped = pop_send_packets(hibv_ctx, num_pkts, &send_head, &send_tail);
-      num_pkts -= num_popped;
-      eprintf("popped %lu more packets\n", num_popped);
-    } // for each work completion
-  } while(num_wce);
-
-  // Ensure return list is NULL terminated (if we have a list)
+  // If we got any packets, ensure list is NULL terminated and that tail
+  // element has IBV_SEND_SIGNALED set and swap wr_id values from first and
+  // last packets.
   if(send_tail) {
     send_tail->wr.next = NULL;
+    send_tail->wr.send_flags |= IBV_SEND_SIGNALED;
+    wr_id_first = send_head->wr.wr_id;
+    send_head->wr.wr_id = send_tail->wr.wr_id;
+    send_tail->wr.wr_id = wr_id_first;
   }
 
   return send_head;
@@ -1276,7 +1290,7 @@ struct hashpipe_ibv_send_pkt * hashpipe_ibv_get_pkts(
 int hashpipe_ibv_send_pkts(struct hashpipe_ibv_context * hibv_ctx,
     struct hashpipe_ibv_send_pkt * send_pkt)
 {
-  uint64_t wr_id;
+  //uint64_t wr_id;
   struct ibv_send_wr * p;
 
   if(!hibv_ctx || !send_pkt) {
@@ -1284,6 +1298,7 @@ int hashpipe_ibv_send_pkts(struct hashpipe_ibv_context * hibv_ctx,
     return -1;
   }
 
+#if 0
   for(p = &send_pkt->wr; p; p=p->next) {
     if(p->next) {
       // Clear IBV_SEND_SIGNALED flag
@@ -1300,6 +1315,7 @@ int hashpipe_ibv_send_pkts(struct hashpipe_ibv_context * hibv_ctx,
       p->wr_id = wr_id;
     }
   }
+#endif
 
   return ibv_post_send(hibv_ctx->qp, &send_pkt->wr, &p);
 } // hashpipe_ibv_send_pkts

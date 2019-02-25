@@ -422,7 +422,7 @@ int hashpipe_ibv_release_pkts(struct hashpipe_ibv_context * hibv_ctx,
 // scatter/gather lists will contain values for the previous packets' sizing
 // and may not reflect the actual size of the associated memory region.
 struct hashpipe_ibv_send_pkt * hashpipe_ibv_get_pkts(
-    struct hashpipe_ibv_context * hibv_ctx, uint32_t num_pkts, int timeout_ms);
+    struct hashpipe_ibv_context * hibv_ctx, uint32_t *num_pkts, int timeout_ms);
 
 // This function sends the list of packets pointed to by `send_pkt`.  This
 // function posts the packets for transmission and then returns; it does not
