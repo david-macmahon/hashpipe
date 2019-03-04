@@ -6,6 +6,9 @@
 
 #include <infiniband/verbs.h>
 
+// This define controls various aspects of the Hashpipe IB Verbs library.
+#define HPIBV_USE_MMAP_PKTBUFS  1
+
 // The Mellanox installed infiniband/verbs.h file does not define
 // IBV_DEVICE_IP_CSUM or IBV_SEND_IP_CSUM.  This was an attempt to utilize said
 // functionality when these values are not defined, but it didn't seem to have

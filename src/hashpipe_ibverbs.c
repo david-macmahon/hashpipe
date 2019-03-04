@@ -12,6 +12,12 @@
 
 #include "hashpipe_ibverbs.h"
 
+// Need to include this after including hashpipe_ibverbs.h since
+// HPIBV_USE_MMAP_PKTBUFS may be defined there.
+#if HPIBV_USE_MMAP_PKTBUFS
+#include <sys/mman.h>
+#endif
+
 // Adds or drops membership in a multicast group.  The `option` parameter
 // must be IP_ADD_MEMBERSHIP or IP_DROP_MEMBERSHIP.  The `dst_ip_be` parameter
 // must be in network byte order (i.e. big endian).  If it is not a multicast
@@ -458,6 +464,32 @@ int hashpipe_ibv_init(struct hashpipe_ibv_context * hibv_ctx)
       perror("calloc(ibv_recv_sge)");
       goto cleanup_and_return_error;
     }
+#if HPIBV_USE_MMAP_PKTBUFS
+    if((hibv_ctx->send_mr_buf = (uint8_t *)mmap(NULL,
+            hibv_ctx->send_pkt_num*hibv_ctx->pkt_size_max,
+            PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS,
+            -1, 0)) == MAP_FAILED) {
+      perror("mmap(send_mr_buf)");
+      goto cleanup_and_return_error;
+    }
+    if(mlock(hibv_ctx->send_mr_buf,
+          hibv_ctx->send_pkt_num*hibv_ctx->pkt_size_max)) {
+      perror("mlock(send_mr_buf)");
+      goto cleanup_and_return_error;
+    }
+    if((hibv_ctx->recv_mr_buf = (uint8_t *)mmap(NULL,
+            hibv_ctx->recv_pkt_num*hibv_ctx->pkt_size_max,
+            PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS,
+            -1, 0)) == MAP_FAILED) {
+      perror("mmap(recv_mr_buf)");
+      goto cleanup_and_return_error;
+    }
+    if(mlock(hibv_ctx->recv_mr_buf,
+          hibv_ctx->recv_pkt_num*hibv_ctx->pkt_size_max)) {
+      perror("mlock(recv_mr_buf)");
+      goto cleanup_and_return_error;
+    }
+#else
     if(!(hibv_ctx->send_mr_buf = (uint8_t *)
           calloc(hibv_ctx->send_pkt_num, hibv_ctx->pkt_size_max))) {
       perror("calloc(ibv_send_mr)");
@@ -468,6 +500,7 @@ int hashpipe_ibv_init(struct hashpipe_ibv_context * hibv_ctx)
       perror("calloc(ibv_recv_mr)");
       goto cleanup_and_return_error;
     }
+#endif // HPIBV_USE_MMAP_PKTBUFS
   }
 
   // Register send and receive memory regions
@@ -696,11 +729,21 @@ int hashpipe_ibv_shutdown(struct hashpipe_ibv_context * hibv_ctx)
     }
     // Memory regions (packet buffers)
     if(hibv_ctx->send_mr_buf) {
+#if HPIBV_USE_MMAP_PKTBUFS
+      munmap(hibv_ctx->send_mr_buf,
+          hibv_ctx->send_pkt_num*hibv_ctx->pkt_size_max);
+#else
       free(hibv_ctx->send_mr_buf);
+#endif // HPIBV_USE_MMAP_PKTBUFS
       hibv_ctx->send_mr_buf = NULL;
     }
     if(hibv_ctx->recv_mr_buf) {
+#if HPIBV_USE_MMAP_PKTBUFS
+      munmap(hibv_ctx->recv_mr_buf,
+          hibv_ctx->recv_pkt_num*hibv_ctx->pkt_size_max);
+#else
       free(hibv_ctx->recv_mr_buf);
+#endif // HPIBV_USE_MMAP_PKTBUFS
       hibv_ctx->recv_mr_buf = NULL;
     }
   } // not user managed
