@@ -2,12 +2,15 @@
 #define HASHPIPE_IBVERBS_H
 
 #include <stdint.h>
+#include <time.h>
 #include <net/if.h>
 
 #include <infiniband/verbs.h>
 
-// This define controls various aspects of the Hashpipe IB Verbs library.
+// These defines control various aspects of the Hashpipe IB Verbs library.
+#define HPIBV_USE_SEND_CC       0
 #define HPIBV_USE_MMAP_PKTBUFS  1
+#define HPIBV_USE_TIMING_DAIGS  0
 
 // The Mellanox installed infiniband/verbs.h file does not define
 // IBV_DEVICE_IP_CSUM or IBV_SEND_IP_CSUM.  This was an attempt to utilize said
@@ -22,6 +25,9 @@
 #define IBV_SEND_IP_CSUM   (1 <<  4)
 #endif // HAVE_IBV_IP_CSUM
 #endif // ENABLE_IP_CSUM_HACK
+
+#define ELAPSED_NS(start,stop) \
+    (((int64_t)stop.tv_sec-start.tv_sec)*1000*1000*1000+(stop.tv_nsec-start.tv_nsec))
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,6 +44,12 @@ extern "C" {
 // first field.
 struct hashpipe_ibv_send_pkt {
   struct ibv_send_wr wr;
+#if HPIBV_USE_TIMING_DAIGS
+  struct timespec ts;
+  uint64_t elapsed_ns;
+  uint64_t elapsed_ns_total;
+  uint64_t elapsed_ns_count;
+#endif
 };
 
 // The `struct hashpipe_ibv_recv_pkt` structure is essentially a `struct
@@ -414,18 +426,16 @@ int hashpipe_ibv_release_pkts(struct hashpipe_ibv_context * hibv_ctx,
 
 // This function requests a set of `num_pkts` free "send packets".  These are
 // returned as a pointer to a linked list of `hashpipe_ibv_send_pkt`
-// structures.  The function will wait up to `timeout_ms` milliseconds for
-// `num_pkts` to be free.  If no packets are available after the timeout (or if
-// an error occurs), NULL is returned.  It is possible for the returned list to
-// contain fewer than `num_pkts` (e.g. in the case of a timeout).  A timeout of
-// zero returns immediately.  A negative timeout waits "forever".
+// structures.  If no packets are available (or if
+// an error occurs) NULL is returned.  It is possible for the returned list to
+// contain fewer than `num_pkts`.
 //
 // The work requests associated with these structures may have been used to
 // send previous packets, so the `length` field of the associated
 // scatter/gather lists will contain values for the previous packets' sizing
 // and may not reflect the actual size of the associated memory region.
 struct hashpipe_ibv_send_pkt * hashpipe_ibv_get_pkts(
-    struct hashpipe_ibv_context * hibv_ctx, uint32_t *num_pkts, int timeout_ms);
+    struct hashpipe_ibv_context * hibv_ctx, uint32_t *num_pkts);
 
 // This function sends the list of packets pointed to by `send_pkt`.  This
 // function posts the packets for transmission and then returns; it does not

@@ -304,7 +304,9 @@ int hashpipe_ibv_init(struct hashpipe_ibv_context * hibv_ctx)
   // function.
   hibv_ctx->ctx = NULL;
   hibv_ctx->pd = NULL;
+#if HPIBV_USE_SEND_CC
   hibv_ctx->send_cc = NULL;
+#endif
   hibv_ctx->recv_cc = NULL;
   hibv_ctx->send_cq = NULL;
   hibv_ctx->recv_cq = NULL;
@@ -340,23 +342,27 @@ int hashpipe_ibv_init(struct hashpipe_ibv_context * hibv_ctx)
     goto cleanup_and_return_error;
   }
 
+#if HPIBV_USE_SEND_CC
   // Create send and receive completion channels
   if(!(hibv_ctx->send_cc = ibv_create_comp_channel(hibv_ctx->ctx))) {
     perror("ibv_create_comp_chan[send]");
     goto cleanup_and_return_error;
   }
+#endif
 
   if(!(hibv_ctx->recv_cc = ibv_create_comp_channel(hibv_ctx->ctx))) {
     perror("ibv_create_comp_chan[recv]");
     goto cleanup_and_return_error;
   }
 
-  // Change the blocking mode of the completion channels to non-blocking
+  // Change the blocking mode of the completion channel(s) to non-blocking
+#if HPIBV_USE_SEND_CC
   flags = fcntl(hibv_ctx->send_cc->fd, F_GETFL);
   if(fcntl(hibv_ctx->send_cc->fd, F_SETFL, flags | O_NONBLOCK) == -1) {
     perror("fcntl[send_cc]");
     goto cleanup_and_return_error;
   }
+#endif
 
   flags = fcntl(hibv_ctx->recv_cc->fd, F_GETFL);
   if(fcntl(hibv_ctx->recv_cc->fd, F_SETFL, flags | O_NONBLOCK) == -1) {
@@ -364,24 +370,33 @@ int hashpipe_ibv_init(struct hashpipe_ibv_context * hibv_ctx)
     goto cleanup_and_return_error;
   }
 
-  // Create send and recv completion queues
+  // Create send completion queue
   // TODO comp_vector: what is it good for???  Set to 0 (for now)
   if(!(hibv_ctx->send_cq = ibv_create_cq(hibv_ctx->ctx,
-          hibv_ctx->send_pkt_num, NULL, hibv_ctx->send_cc, 0))) {
+          hibv_ctx->send_pkt_num, NULL,
+#if HPIBV_USE_SEND_CC
+          hibv_ctx->send_cc,
+#else
+          NULL,
+#endif
+          0))) {
     perror("ibv_create_cq[send]");
     goto cleanup_and_return_error;
   }
 
-  if(!(hibv_ctx->recv_cq = ibv_create_cq(hibv_ctx->ctx,
-          hibv_ctx->recv_pkt_num, NULL, hibv_ctx->recv_cc, 0))) {
-    perror("ibv_create_cq[recv]");
-    goto cleanup_and_return_error;
-  }
-
+#if HPIBV_USE_SEND_CC
   // Request notifications before any send completion can be created.
   // Do NOT restrict to solicited-only completions.
   if(ibv_req_notify_cq(hibv_ctx->send_cq, 0)) {
     perror("ibv_req_notify_cq[send]");
+    goto cleanup_and_return_error;
+  }
+#endif
+
+  // Create recv completion queue
+  if(!(hibv_ctx->recv_cq = ibv_create_cq(hibv_ctx->ctx,
+          hibv_ctx->recv_pkt_num, NULL, hibv_ctx->recv_cc, 0))) {
+    perror("ibv_create_cq[recv]");
     goto cleanup_and_return_error;
   }
 
@@ -680,11 +695,13 @@ int hashpipe_ibv_shutdown(struct hashpipe_ibv_context * hibv_ctx)
   }
   hibv_ctx->recv_cq = NULL;
 
+#if HPIBV_USE_SEND_CC
   if(hibv_ctx->send_cc && ibv_destroy_comp_channel(hibv_ctx->send_cc)) {
     perror("ibv_destroy_comp_channel[send]");
     rc++;
   }
   hibv_ctx->send_cc = NULL;
+#endif
 
   if(hibv_ctx->recv_cc && ibv_destroy_comp_channel(hibv_ctx->recv_cc)) {
     perror("ibv_destroy_comp_channel[recv]");
@@ -1169,23 +1186,23 @@ static size_t pop_send_packets(
 
 // See comments in header file for details about this function.
 struct hashpipe_ibv_send_pkt * hashpipe_ibv_get_pkts(
-    struct hashpipe_ibv_context * hibv_ctx, uint32_t *num_pkts, int timeout_ms)
+    struct hashpipe_ibv_context * hibv_ctx, uint32_t *num_pkts)
 {
   int i;
-  //int poll_rc = 0;
   int num_wce;
   size_t num_popped;
   uint64_t wr_id_first;
   uint64_t wr_id_last;
-  //struct pollfd pfd;
   struct ibv_qp_attr qp_attr;
-  //struct ibv_cq *ev_cq;
-  //void * ev_cq_ctx;
   struct ibv_wc wc[WC_BATCH_SIZE];
   struct hashpipe_ibv_send_pkt * send_head = NULL;
   struct hashpipe_ibv_send_pkt * send_tail = NULL;
+#if HPIBV_USE_TIMING_DAIGS
+  struct timespec now;
+#endif
 
   // Sanity check hibv_ctx
+  // TODO Do we really want to check this each time?
   if(!hibv_ctx) {
     errno = EINVAL;
     perror("hashpipe_ibv_context(NULL)");
@@ -1193,6 +1210,7 @@ struct hashpipe_ibv_send_pkt * hashpipe_ibv_get_pkts(
   }
 
   // Sanity check num_pkts
+  // TODO Do we really want to check this each time?
   if(*num_pkts > hibv_ctx->send_pkt_num) {
     *num_pkts = hibv_ctx->send_pkt_num;
   } else if(*num_pkts == 0) {
@@ -1200,6 +1218,7 @@ struct hashpipe_ibv_send_pkt * hashpipe_ibv_get_pkts(
   }
 
   // Ensure the QP state is suitable for sending
+  // TODO Do we really want to check this each time?
 if(hibv_ctx->qp->state != IBV_QPS_RTS) {
   switch(hibv_ctx->qp->state) {
   case IBV_QPS_RESET: // Unexpected, but maybe user reset it
@@ -1232,6 +1251,7 @@ if(hibv_ctx->qp->state != IBV_QPS_RTS) {
 }
 
   // Empty the CQ: poll all of the completions from the CQ (if any exist)
+  // TODO Do we really want to do this each time?
   do {
     // For now we poll the completion queue one completion at a time.
     // Eventually we might want to poll for multiple completions per call.
@@ -1249,6 +1269,15 @@ if(hibv_ctx->qp->state != IBV_QPS_RTS) {
       wr_id_last = hibv_ctx->send_pkt_buf[wr_id_first].wr.wr_id;
       hibv_ctx->send_pkt_buf[wr_id_first].wr.wr_id = wr_id_first;
       hibv_ctx->send_pkt_buf[wr_id_last].wr.wr_id = wr_id_last;
+#if HPIBV_USE_TIMING_DAIGS
+      // Update elapsed stats of first send_pkt
+      clock_gettime(CLOCK_MONOTONIC, &now);
+      hibv_ctx->send_pkt_buf[wr_id_first].elapsed_ns = ELAPSED_NS(
+          hibv_ctx->send_pkt_buf[wr_id_first].ts, now);
+      hibv_ctx->send_pkt_buf[wr_id_first].elapsed_ns_total +=
+          hibv_ctx->send_pkt_buf[wr_id_first].elapsed_ns;
+      hibv_ctx->send_pkt_buf[wr_id_first].elapsed_ns_count++;
+#endif
       // Clear IBV_SEND_SIGNALED flag of tail element
       hibv_ctx->send_pkt_buf[wr_id_last].wr.send_flags &= ~IBV_SEND_SIGNALED;
       // Push onto send_pkt_head
@@ -1263,57 +1292,6 @@ if(hibv_ctx->qp->state != IBV_QPS_RTS) {
   num_popped = pop_send_packets(hibv_ctx, *num_pkts, &send_head, &send_tail);
   *num_pkts = num_popped;
   eprintf("popped %lu packets\n", num_popped);
-
-  // If we are not done (i.e. num_pkts > 0)
-  if(*num_pkts > 0) {
-
-  // If we get here, then we got fewer than the requested number of packets.
-  // send_head and send_tail can be NULL (i.e. if zero send_pkts were
-  // available).
-
-#if 0
-  // Setup to poll for send completions
-  pfd.fd = hibv_ctx->send_cc->fd;
-  pfd.events = POLLIN;
-  pfd.revents = 0;
-
-  // Poll completion channel's fd with given timeout
-  poll_rc = poll(&pfd, 1, timeout_ms);
-
-  if(poll_rc < 0) {
-    // Error
-    perror("hashpipe_ibv_get_pkts[poll]");
-    return send_head;
-  } else if(poll_rc == 0) {
-    // Timeout
-    return send_head;
-  }
-
-  // Get the completion event
-  if(ibv_get_cq_event(hibv_ctx->send_cc, &ev_cq, &ev_cq_ctx)) {
-    perror("ibv_get_cq_event");
-    return send_head;
-  }
-
-  // Ack the event
-  ibv_ack_cq_events(ev_cq, 1);
-
-  // Request notification upon the next completion event
-  // Do NOT restrict to solicited-only completions.
-  if(ibv_req_notify_cq(ev_cq, 0)) {
-    perror("ibv_req_notify_cq");
-    return send_head;
-  }
-  eprintf("got completion channel event\n");
-#endif // 0
-
-#if 0
-  // Try popping more packets
-  num_popped = pop_send_packets(hibv_ctx, num_pkts, &send_head, &send_tail);
-  num_pkts -= num_popped;
-  eprintf("popped %lu more packets\n", num_popped);
-#endif
-  }
 
   // If we got any packets, ensure list is NULL terminated and that tail
   // element has IBV_SEND_SIGNALED set and swap wr_id values from first and
@@ -1341,23 +1319,8 @@ int hashpipe_ibv_send_pkts(struct hashpipe_ibv_context * hibv_ctx,
     return -1;
   }
 
-#if 0
-  for(p = &send_pkt->wr; p; p=p->next) {
-    if(p->next) {
-      // Clear IBV_SEND_SIGNALED flag
-      p->send_flags &= ~IBV_SEND_SIGNALED;
-    } else {
-      // Set IBV_SEND_SIGNALED flag
-      p->send_flags |= IBV_SEND_SIGNALED;
-
-      // Swap work request IDs between send_pkt (head) and p (tail) because we
-      // get notified upon completion of the tail work request, but we want to
-      // reclaim work requests starting with the head.
-      wr_id = send_pkt->wr.wr_id;
-      send_pkt->wr.wr_id = p->wr_id;
-      p->wr_id = wr_id;
-    }
-  }
+#if HPIBV_USE_TIMING_DAIGS
+  clock_gettime(CLOCK_MONOTONIC, &send_pkt->ts);
 #endif
 
   return ibv_post_send(hibv_ctx->qp, &send_pkt->wr, &p);
