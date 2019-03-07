@@ -11,6 +11,7 @@
 #define HPIBV_USE_SEND_CC       0
 #define HPIBV_USE_MMAP_PKTBUFS  1
 #define HPIBV_USE_TIMING_DAIGS  0
+#define HPIBV_USE_EXP_CQ        1
 
 // The Mellanox installed infiniband/verbs.h file does not define
 // IBV_DEVICE_IP_CSUM or IBV_SEND_IP_CSUM.  This was an attempt to utilize said
@@ -50,6 +51,10 @@ struct hashpipe_ibv_send_pkt {
   uint64_t elapsed_ns_total;
   uint64_t elapsed_ns_count;
 #endif
+#if HPIBV_USE_EXP_CQ
+  // Timestamp from work completion
+  uint64_t timestamp;
+#endif
 };
 
 // The `struct hashpipe_ibv_recv_pkt` structure is essentially a `struct
@@ -69,6 +74,10 @@ struct hashpipe_ibv_send_pkt {
 struct hashpipe_ibv_recv_pkt {
   struct ibv_recv_wr wr;
   uint32_t length;
+#if HPIBV_USE_EXP_CQ
+  // Timestamp from work completion
+  uint64_t timestamp;
+#endif
 };
 
 // This structure holds pointers and data values for a hashpipe_ibverbs

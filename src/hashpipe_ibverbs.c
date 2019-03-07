@@ -18,6 +18,18 @@
 #include <sys/mman.h>
 #endif
 
+#if HPIBV_USE_EXP_CQ
+#define IBV_CREATE_CQ(ctx,cqe,cq_ctx,cc,cv,attr) \
+  ibv_exp_create_cq(ctx,cqe,cq_ctx,cc,cv,attr)
+#define IBV_POLL_CQ(cq,nce,wc) \
+  ibv_exp_poll_cq(cq,nce,wc,sizeof(struct ibv_exp_wc))
+#else
+#define IBV_CREATE_CQ(ctx,cqe,cq_ctx,cc,cv,attr) \
+  ibv_create_cq(ctx,cqe,cq_ctx,cc,cv)
+#define IBV_POLL_CQ(cq,nce,wc) \
+  ibv_poll_cq(cq,nce,wc)
+#endif
+
 // Adds or drops membership in a multicast group.  The `option` parameter
 // must be IP_ADD_MEMBERSHIP or IP_DROP_MEMBERSHIP.  The `dst_ip_be` parameter
 // must be in network byte order (i.e. big endian).  If it is not a multicast
@@ -248,6 +260,12 @@ int hashpipe_ibv_init(struct hashpipe_ibv_context * hibv_ctx)
   int max_send_sge = 1;
   int max_recv_sge = 1;
   struct ibv_recv_wr * recv_wr_bad;
+#if HPIBV_USE_EXP_CQ
+  struct ibv_exp_cq_init_attr cq_attr = {
+    .comp_mask = IBV_EXP_CQ_INIT_ATTR_FLAGS,
+    .flags = IBV_EXP_CQ_TIMESTAMP
+  };
+#endif
 
   // Sanity check hibv_ctx
   if(!hibv_ctx) {
@@ -372,14 +390,8 @@ int hashpipe_ibv_init(struct hashpipe_ibv_context * hibv_ctx)
 
   // Create send completion queue
   // TODO comp_vector: what is it good for???  Set to 0 (for now)
-  if(!(hibv_ctx->send_cq = ibv_create_cq(hibv_ctx->ctx,
-          hibv_ctx->send_pkt_num, NULL,
-#if HPIBV_USE_SEND_CC
-          hibv_ctx->send_cc,
-#else
-          NULL,
-#endif
-          0))) {
+  if(!(hibv_ctx->send_cq = IBV_CREATE_CQ(hibv_ctx->ctx,
+          hibv_ctx->send_pkt_num, NULL, hibv_ctx->send_cc, 0, &cq_attr))) {
     perror("ibv_create_cq[send]");
     goto cleanup_and_return_error;
   }
@@ -394,8 +406,8 @@ int hashpipe_ibv_init(struct hashpipe_ibv_context * hibv_ctx)
 #endif
 
   // Create recv completion queue
-  if(!(hibv_ctx->recv_cq = ibv_create_cq(hibv_ctx->ctx,
-          hibv_ctx->recv_pkt_num, NULL, hibv_ctx->recv_cc, 0))) {
+  if(!(hibv_ctx->recv_cq = IBV_CREATE_CQ(hibv_ctx->ctx,
+          hibv_ctx->recv_pkt_num, NULL, hibv_ctx->recv_cc, 0, &cq_attr))) {
     perror("ibv_create_cq[recv]");
     goto cleanup_and_return_error;
   }
@@ -956,11 +968,16 @@ struct hashpipe_ibv_recv_pkt * hashpipe_ibv_recv_pkts(
   int i;
   int poll_rc = 0;
   int num_wce;
+  uint64_t wr_id;
   struct pollfd pfd;
   struct ibv_qp_attr qp_attr;
   struct ibv_cq *ev_cq;
   void * ev_cq_ctx;
+#if HPIBV_USE_EXP_CQ
+  struct ibv_exp_wc wc[WC_BATCH_SIZE];
+#else
   struct ibv_wc wc[WC_BATCH_SIZE];
+#endif
   struct ibv_recv_wr * recv_wr_bad;
   struct hashpipe_ibv_recv_pkt * recv_head = NULL;
   struct ibv_recv_wr * recv_tail = NULL;
@@ -1030,7 +1047,7 @@ struct hashpipe_ibv_recv_pkt * hashpipe_ibv_recv_pkts(
   do {
     // For now we poll the completion queue one completion at a time.
     // Eventually we might want to poll for multiple completions per call.
-    num_wce = ibv_poll_cq(ev_cq, WC_BATCH_SIZE, wc);
+    num_wce = IBV_POLL_CQ(ev_cq, WC_BATCH_SIZE, wc);
     if(num_wce < 0) {
       perror("ibv_poll_cq");
       return NULL;
@@ -1051,13 +1068,17 @@ struct hashpipe_ibv_recv_pkt * hashpipe_ibv_recv_pkts(
         // Probably not going to end well if we get here either,
         // but we will soldier on anyway...
       } else {
+        wr_id = wc[i].wr_id;
         // Copy byte_len from completion to length of pkt srtuct
-        hibv_ctx->recv_pkt_buf[wc[i].wr_id].length = wc[i].byte_len;
+        hibv_ctx->recv_pkt_buf[wr_id].length = wc[i].byte_len;
+#if HPIBV_USE_EXP_CQ
+        hibv_ctx->recv_pkt_buf[wr_id].timestamp = wc[i].timestamp;
+#endif
         if(!recv_head) {
-          recv_head = &hibv_ctx->recv_pkt_buf[wc[i].wr_id];
+          recv_head = &hibv_ctx->recv_pkt_buf[wr_id];
           recv_tail = &recv_head->wr;
         } else {
-          recv_tail->next = &hibv_ctx->recv_pkt_buf[wc[i].wr_id].wr;
+          recv_tail->next = &hibv_ctx->recv_pkt_buf[wr_id].wr;
           recv_tail = recv_tail->next;
         }
       } // success
@@ -1194,7 +1215,11 @@ struct hashpipe_ibv_send_pkt * hashpipe_ibv_get_pkts(
   uint64_t wr_id_first;
   uint64_t wr_id_last;
   struct ibv_qp_attr qp_attr;
+#if HPIBV_USE_EXP_CQ
+  struct ibv_exp_wc wc[WC_BATCH_SIZE];
+#else
   struct ibv_wc wc[WC_BATCH_SIZE];
+#endif
   struct hashpipe_ibv_send_pkt * send_head = NULL;
   struct hashpipe_ibv_send_pkt * send_tail = NULL;
 #if HPIBV_USE_TIMING_DAIGS
@@ -1255,7 +1280,7 @@ if(hibv_ctx->qp->state != IBV_QPS_RTS) {
   do {
     // For now we poll the completion queue one completion at a time.
     // Eventually we might want to poll for multiple completions per call.
-    num_wce = ibv_poll_cq(hibv_ctx->send_cq, WC_BATCH_SIZE, wc);
+    num_wce = IBV_POLL_CQ(hibv_ctx->send_cq, WC_BATCH_SIZE, wc);
     if(num_wce < 0) {
       perror("ibv_poll_cq");
       return NULL;
@@ -1269,6 +1294,9 @@ if(hibv_ctx->qp->state != IBV_QPS_RTS) {
       wr_id_last = hibv_ctx->send_pkt_buf[wr_id_first].wr.wr_id;
       hibv_ctx->send_pkt_buf[wr_id_first].wr.wr_id = wr_id_first;
       hibv_ctx->send_pkt_buf[wr_id_last].wr.wr_id = wr_id_last;
+#if HPIBV_USE_EXP_CQ
+      hibv_ctx->send_pkt_buf[wr_id_first].timestamp = wc[i].timestamp;
+#endif
 #if HPIBV_USE_TIMING_DAIGS
       // Update elapsed stats of first send_pkt
       clock_gettime(CLOCK_MONOTONIC, &now);
