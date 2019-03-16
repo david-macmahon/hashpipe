@@ -9,6 +9,7 @@
 #include "fitshead.h"
 #include "hashpipe_error.h"
 #include "hashpipe_status.h"
+#include "hashpipe_ipckey.h"
 
 static void usage() { 
     printf(
@@ -16,6 +17,7 @@ static void usage() {
         "General options:\n"
         "  -h,     --help         Show this message\n"
         "  -K KEY, --shmkey=KEY   Specify key for shared memory\n"
+        "  -S,     --show-shmkey  Show shared memory key\n"
         "  -I N,   --instance=N   Specify hashpipe instance [0]\n"
         "  -v,     --verbose      Be verbose [false]\n"
         "Query options:\n"
@@ -64,6 +66,7 @@ int main(int argc, char *argv[]) {
     static struct option long_opts[] = {
         {"help",   0, NULL, 'h'},
         {"shmkey", 1, NULL, 'K'},
+        {"show-shmkey", 0, NULL, 'S'},
         {"key",    1, NULL, 'k'},
         {"get",    1, NULL, 'g'},
         {"string", 1, NULL, 's'},
@@ -84,8 +87,10 @@ int main(int argc, char *argv[]) {
     double dbltmp;
     int inttmp;
     int verbose=0, clear=0;
+    int show_skmkey=0;
+    key_t shmkey = 0;
     char keyfile[1000];
-    while ((opt=getopt_long(argc,argv,"hk:g:s:f:d:i:vCDQ:K:I:",long_opts,&opti))!=-1) {
+    while ((opt=getopt_long(argc,argv,"hk:g:s:f:d:i:vCDQ:K:SI:",long_opts,&opti))!=-1) {
         switch (opt) {
             case 'K': // Keyfile
                 snprintf(keyfile, sizeof(keyfile), "HASHPIPE_KEYFILE=%s", optarg);
@@ -112,6 +117,9 @@ int main(int argc, char *argv[]) {
                 hgetr8(s->buf, optarg, &dbltmp);
                 hashpipe_status_unlock(s);
                 printf("%g\n", dbltmp);
+                break;
+            case 'S':
+                show_skmkey = 1;
                 break;
             case 's':
                 if (key) {
@@ -181,6 +189,12 @@ int main(int argc, char *argv[]) {
                 exit(1);
                 break;
         }
+    }
+
+    if(show_skmkey) {
+      shmkey = hashpipe_status_key(instance_id);
+      printf("%#08x\n", shmkey);
+      return 0;
     }
 
     s = get_status_buffer(instance_id);

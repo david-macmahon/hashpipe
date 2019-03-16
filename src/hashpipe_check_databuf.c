@@ -10,13 +10,15 @@
 #include "fitshead.h"
 #include "hashpipe_status.h"
 #include "hashpipe_databuf.h"
+#include "hashpipe_ipckey.h"
 
 void usage() { 
     printf(
             "Usage: hashpipe_check_databuf [options]\n"
             "Options:\n"
-            "  -h, --help\n"
+            "  -h,   --help\n"
             "  -q,   --quiet         Quiet mode\n"
+            "  -S,   --show-shmkey   Show shared memory key\n"
             "  -K KEY, --shmkey=KEY  Specify key for shared memory\n"
             "  -I N, --instance=N    Instance number  [0]\n"
             "  -d N, --databuf=N     Databuf ID       [1]\n"
@@ -35,6 +37,7 @@ int main(int argc, char *argv[]) {
         {"help",     0, NULL, 'h'},
         {"quiet",    0, NULL, 'q'},
         {"shmkey",   1, NULL, 'K'},
+        {"show-shmkey", 0, NULL, 'S'},
         {"instance", 1, NULL, 'I'},
         {"create",   0, NULL, 'c'},
         {"databuf",  1, NULL, 'd'},
@@ -50,15 +53,20 @@ int main(int argc, char *argv[]) {
     int db_id=1;
     int blocksize = 32;
     int nblock = 24;
+    int show_skmkey=0;
+    key_t shmkey = 0;
     char keyfile[1000];
     size_t header_size = sizeof(hashpipe_databuf_t);
-    while ((opt=getopt_long(argc,argv,"hqK:I:cd:s:n:t:H:",long_opts,&opti))!=-1) {
+    while ((opt=getopt_long(argc,argv,"hqK:SI:cd:s:n:t:H:",long_opts,&opti))!=-1) {
         switch (opt) {
             case 'K': // Keyfile
               snprintf(keyfile, sizeof(keyfile), "HASHPIPE_KEYFILE=%s", optarg);
               keyfile[sizeof(keyfile)-1] = '\0';
               putenv(keyfile);
               break;
+            case 'S':
+                show_skmkey = 1;
+                break;
             case 'I':
                 instance_id=atoi(optarg);
                 break;
@@ -86,6 +94,12 @@ int main(int argc, char *argv[]) {
                 exit(0);
                 break;
         }
+    }
+
+    if(show_skmkey) {
+      shmkey = hashpipe_databuf_key(instance_id);
+      printf("%#08x\n", shmkey);
+      return 0;
     }
 
     /* Create mem if asked, otherwise attach */
