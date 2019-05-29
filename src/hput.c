@@ -615,15 +615,15 @@ const char *value; /* character string containing the value for variable
     vp = vp + 1;
     if (*value == squot) {
         strncpy (vp, value, lval);
-        if (lval+12 > 31)
+        if (lval+12 > 33+1)
             lc = lval + 12;
         else
-            lc = 30;
+            lc = 33;
         }
     else {
-        vp = v1 + 30 - lval;
+        vp = v1 + 33 - lval;
         strncpy (vp, value, lval);
-        lc = 30;
+        lc = 33;
         }
 
     /* Add comment in the appropriate place */
@@ -760,8 +760,8 @@ hputcom (hstring,keyword,comment)
 
         if (c1 != NULL)
             c0 = v1 + (c1 - line) - 1;
-        else if (q2 == NULL || q2-line < 30)
-            c0 = v1 + 30;
+        else if (q2 == NULL || q2-line < 33)
+            c0 = v1 + 33;
         else
             c0 = v1 + (q2 - line) + 1; /* allan: 1997-09-30, was c0=q2+2 */
 
