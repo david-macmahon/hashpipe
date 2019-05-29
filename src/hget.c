@@ -210,7 +210,7 @@ const char *keyword;    /* character string containing the name of the keyword
 uint8 *i8val;
 {
     char *value;
-    char *endptr;
+    char *endptr = NULL;
 
     /* Get value and comment from header string */
     value = hgetc (hstring,keyword);
