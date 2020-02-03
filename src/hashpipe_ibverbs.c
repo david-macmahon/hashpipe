@@ -1086,11 +1086,8 @@ struct hashpipe_ibv_recv_pkt * hashpipe_ibv_recv_pkts(
 #else
   struct ibv_wc wc[WC_BATCH_SIZE];
 #endif
-  struct ibv_recv_wr * recv_wr_bad;
   struct hashpipe_ibv_recv_pkt * recv_head = NULL;
   struct ibv_recv_wr * recv_tail = NULL;
-  struct hashpipe_ibv_recv_pkt * err_head = NULL;
-  struct ibv_recv_wr * err_tail = NULL;
 
   // Sanity check hibv_ctx
   if(!hibv_ctx) {
@@ -1158,8 +1155,6 @@ struct hashpipe_ibv_recv_pkt * hashpipe_ibv_recv_pkts(
 
   // Empty the CQ: poll all of the completions from the CQ (if any exist)
   do {
-    // For now we poll the completion queue one completion at a time.
-    // Eventually we might want to poll for multiple completions per call.
     num_wce = IBV_POLL_CQ(ev_cq, WC_BATCH_SIZE, wc);
     if(num_wce < 0) {
       perror("ibv_poll_cq");
@@ -1169,50 +1164,30 @@ struct hashpipe_ibv_recv_pkt * hashpipe_ibv_recv_pkts(
     // Loop through all work completions
     for(i=0; i<num_wce; i++) {
       wr_id = wc[i].wr_id;
-      // Handle work completion based on success/error status
+      // Set length to 0 for unsuccessful work requests
       if(wc[i].status != IBV_WC_SUCCESS) {
-        // Add work requests with error status to err list
         fprintf(stderr,
             "wr %lu (%#016lx) got completion status 0x%x (%s) vendor error 0x%x (QP %d)\n",
             wr_id, wr_id, wc[i].status, ibv_wc_status_str(wc[i].status),
             wc[i].vendor_err, ev_cq_ctx);
-        if(!err_head) {
-          err_head = &hibv_ctx->recv_pkt_buf[wr_id];
-          err_tail = &err_head->wr;
-        } else {
-          err_tail->next = &hibv_ctx->recv_pkt_buf[wr_id].wr;
-          err_tail = err_tail->next;
-        }
+        hibv_ctx->recv_pkt_buf[wr_id].length = 0;
       } else {
         // Copy byte_len from completion to length of pkt srtuct
         hibv_ctx->recv_pkt_buf[wr_id].length = wc[i].byte_len;
 #if HPIBV_USE_EXP_CQ
         hibv_ctx->recv_pkt_buf[wr_id].timestamp = wc[i].timestamp;
 #endif
-        // Add work requests with success status to recv list
-        if(!recv_head) {
-          recv_head = &hibv_ctx->recv_pkt_buf[wr_id];
-          recv_tail = &recv_head->wr;
-        } else {
-          recv_tail->next = &hibv_ctx->recv_pkt_buf[wr_id].wr;
-          recv_tail = recv_tail->next;
-        }
-      } // success
+      }
+      // Add work requests to recv list
+      if(!recv_head) {
+        recv_head = &hibv_ctx->recv_pkt_buf[wr_id];
+        recv_tail = &recv_head->wr;
+      } else {
+        recv_tail->next = &hibv_ctx->recv_pkt_buf[wr_id].wr;
+        recv_tail = recv_tail->next;
+      }
     } // for each work completion
   } while(num_wce);
-
-  // If we have an error list
-  if(err_tail) {
-    // Ensure it is NULL terminated
-    err_tail->next = NULL;
-
-    // Repost error list of work requests
-    if(ibv_post_recv(hibv_ctx->qp[ev_cq_ctx], &err_head->wr, &recv_wr_bad)) {
-      perror("ibv_post_recv");
-      // Probably not going to end well if we get here,
-      // but we will soldier on anyway...
-    }
-  }
 
   // Ensure list is NULL terminated (if we have a list)
   if(recv_tail) {
