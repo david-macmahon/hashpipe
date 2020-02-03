@@ -88,10 +88,11 @@ struct hashpipe_ibv_context {
   struct ibv_pd                * pd;       // protection domain
   struct ibv_comp_channel      * send_cc;  // send completion channel
   struct ibv_comp_channel      * recv_cc;  // recv completion channel
-  struct ibv_cq                * send_cq;  // send completion queue
-  struct ibv_cq                * recv_cq;  // recv completion queue
-  struct ibv_qp                * qp;       // send/recv queue pair
+  struct ibv_cq               ** send_cq;  // send completion queues
+  struct ibv_cq               ** recv_cq;  // recv completion queues
+  struct ibv_qp               ** qp;       // send/recv queue pairs
   struct ibv_device_attr         dev_attr; // device attributes
+  uint32_t                       nqp;      // number of QPs
 
   // Physical port number on NIC.  Managed by library.
   uint8_t                        port_num;
@@ -129,7 +130,10 @@ struct hashpipe_ibv_context {
   struct ibv_mr                * send_mr;
   struct ibv_mr                * recv_mr;
 
-  // Number of send and receive packets to buffer.  Specified by user.
+  // Number of send and receive packets to buffer per QP.  Specified by user.
+  // Passing 0 for these fields with user managed buffers is an error.
+  // Passing 0 for these fields with library managed buffers means to use the
+  // max allowed number of work requests (packets) per QP.
   uint32_t                       send_pkt_num;
   uint32_t                       recv_pkt_num;
 
@@ -435,23 +439,24 @@ int hashpipe_ibv_release_pkts(struct hashpipe_ibv_context * hibv_ctx,
 
 // This function requests a set of `num_pkts` free "send packets".  These are
 // returned as a pointer to a linked list of `hashpipe_ibv_send_pkt`
-// structures.  If no packets are available (or if
-// an error occurs) NULL is returned.  It is possible for the returned list to
-// contain fewer than `num_pkts`.
+// structures.  If no packets are available (or if an error occurs) NULL is
+// returned.  It is possible for the returned list to contain fewer than
+// `num_pkts`.
 //
 // The work requests associated with these structures may have been used to
 // send previous packets, so the `length` field of the associated
 // scatter/gather lists will contain values for the previous packets' sizing
 // and may not reflect the actual size of the associated memory region.
 struct hashpipe_ibv_send_pkt * hashpipe_ibv_get_pkts(
-    struct hashpipe_ibv_context * hibv_ctx, uint32_t *num_pkts);
+    struct hashpipe_ibv_context * hibv_ctx, uint32_t num_pkts);
 
-// This function sends the list of packets pointed to by `send_pkt`.  This
-// function posts the packets for transmission and then returns; it does not
-// wait for them to be transmitted.  It returns the value of `ibv_post_send()`
-// or -1 if `hibv_ctx` or `send_pkt` is NULL.
+// This function sends the list of packets pointed to by `send_pkt` using the
+// QP indicated by qp_idx.  qp_idx must be greater than or equal to 0 and less
+// than hibv_ctx->nqp.  This function posts the packets for transmission and
+// then returns; it does not wait for them to be transmitted.  It returns the
+// value of `ibv_post_send()` or -1 if `hibv_ctx` or `send_pkt` is NULL.
 int hashpipe_ibv_send_pkts(struct hashpipe_ibv_context * hibv_ctx,
-    struct hashpipe_ibv_send_pkt * send_pkt);
+    struct hashpipe_ibv_send_pkt * send_pkt, uint32_t qp_idx);
 
 #ifdef __cplusplus
 }
