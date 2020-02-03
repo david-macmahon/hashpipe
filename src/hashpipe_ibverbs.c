@@ -459,13 +459,13 @@ int hashpipe_ibv_init(struct hashpipe_ibv_context * hibv_ctx)
 
   // For user managed work requests, walk lists to get max sge
   if(hibv_ctx->user_managed_flag) {
-    for(i=0; i<hibv_ctx->send_pkt_num; i++) {
+    for(i=0; i<hibv_ctx->send_pkt_num*hibv_ctx->nqp; i++) {
       if(max_send_sge < hibv_ctx->send_pkt_buf[i].wr.num_sge) {
         max_send_sge = hibv_ctx->send_pkt_buf[i].wr.num_sge;
       }
     }
 
-    for(i=0; i<hibv_ctx->recv_pkt_num; i++) {
+    for(i=0; i<hibv_ctx->recv_pkt_num*hibv_ctx->nqp; i++) {
       if(max_recv_sge < hibv_ctx->recv_pkt_buf[i].wr.num_sge) {
         max_recv_sge = hibv_ctx->recv_pkt_buf[i].wr.num_sge;
       }
