@@ -567,39 +567,42 @@ int hashpipe_ibv_init(struct hashpipe_ibv_context * hibv_ctx)
       goto cleanup_and_return_error;
     }
 #endif
+
+    hibv_ctx->send_mr_size =
+      (size_t)hibv_ctx->send_pkt_num * hibv_ctx->pkt_size_max * hibv_ctx->nqp;
+
+    hibv_ctx->recv_mr_size =
+      (size_t)hibv_ctx->recv_pkt_num * hibv_ctx->pkt_size_max * hibv_ctx->nqp;
+
 #if HPIBV_USE_MMAP_PKTBUFS
-    if((hibv_ctx->send_mr_buf = (uint8_t *)mmap(NULL,
-            (size_t)hibv_ctx->send_pkt_num*hibv_ctx->pkt_size_max*hibv_ctx->nqp,
+    if((hibv_ctx->send_mr_buf = (uint8_t *)mmap(NULL, hibv_ctx->send_mr_size,
             PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_LOCKED,
             -1, 0)) == MAP_FAILED) {
       perror("mmap(send_mr_buf)");
       goto cleanup_and_return_error;
     }
-    if(mlock(hibv_ctx->send_mr_buf,
-          (size_t)hibv_ctx->send_pkt_num*hibv_ctx->pkt_size_max*hibv_ctx->nqp)) {
+    if(mlock(hibv_ctx->send_mr_buf, hibv_ctx->send_mr_size)) {
       perror("mlock(send_mr_buf)");
       goto cleanup_and_return_error;
     }
-    if((hibv_ctx->recv_mr_buf = (uint8_t *)mmap(NULL,
-            (size_t)hibv_ctx->recv_pkt_num*hibv_ctx->pkt_size_max*hibv_ctx->nqp,
+    if((hibv_ctx->recv_mr_buf = (uint8_t *)mmap(NULL, hibv_ctx->recv_mr_size,
             PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_LOCKED,
             -1, 0)) == MAP_FAILED) {
       perror("mmap(recv_mr_buf)");
       goto cleanup_and_return_error;
     }
-    if(mlock(hibv_ctx->recv_mr_buf,
-          (size_t)hibv_ctx->recv_pkt_num*hibv_ctx->pkt_size_max*hibv_ctx->nqp)) {
+    if(mlock(hibv_ctx->recv_mr_buf, hibv_ctx->recv_mr_size)) {
       perror("mlock(recv_mr_buf)");
       goto cleanup_and_return_error;
     }
 #else
     if(!(hibv_ctx->send_mr_buf = (uint8_t *)
-          calloc((size_t)hibv_ctx->send_pkt_num*hibv_ctx->nqp, hibv_ctx->pkt_size_max))) {
+          calloc(1, hibv_ctx->send_mr_size))) {
       perror("calloc(ibv_send_mr)");
       goto cleanup_and_return_error;
     }
     if(!(hibv_ctx->recv_mr_buf = (uint8_t *)
-          calloc((size_t)hibv_ctx->recv_pkt_num*hibv_ctx->nqp, hibv_ctx->pkt_size_max))) {
+          calloc(1, hibv_ctx->recv_mr_size))) {
       perror("calloc(ibv_recv_mr)");
       goto cleanup_and_return_error;
     }
@@ -608,13 +611,13 @@ int hashpipe_ibv_init(struct hashpipe_ibv_context * hibv_ctx)
 
   // Register send and receive memory regions
   if(!(hibv_ctx->send_mr = ibv_reg_mr(hibv_ctx->pd, hibv_ctx->send_mr_buf,
-          (size_t)hibv_ctx->send_pkt_num * hibv_ctx->pkt_size_max * hibv_ctx->nqp, 0))) {
+          hibv_ctx->send_mr_size, 0))) {
     perror("ibv_reg_mr[send]");
     goto cleanup_and_return_error;
   }
 
   if(!(hibv_ctx->recv_mr = ibv_reg_mr(hibv_ctx->pd, hibv_ctx->recv_mr_buf,
-          (size_t)hibv_ctx->recv_pkt_num * hibv_ctx->pkt_size_max * hibv_ctx->nqp,
+          hibv_ctx->recv_mr_size,
           IBV_ACCESS_LOCAL_WRITE))) {
     perror("ibv_reg_mr[recv]");
     goto cleanup_and_return_error;
