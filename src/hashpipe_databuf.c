@@ -33,6 +33,7 @@ hashpipe_databuf_t *hashpipe_databuf_create(int instance_id,
 {
     int rv = 0;
     int verify_sizing = 0;
+    int newly_created = 0;
     size_t total_size = header_size + block_size*n_block;
 
     if(header_size < sizeof(hashpipe_databuf_t)) {
@@ -50,12 +51,17 @@ hashpipe_databuf_t *hashpipe_databuf_create(int instance_id,
     int shmid;
     shmid = shmget(key + databuf_id - 1, total_size, 0666 | IPC_CREAT | IPC_EXCL);
     if (shmid==-1 && errno == EEXIST) {
-        printf("%s: shared memory key %08x already exists", __FUNCTION__,
+        hashpipe_info(__FUNCTION__, "shared memory key %08x already exists",
             key + databuf_id - 1);
         // Already exists, call shmget again without IPC_CREAT
         shmid = shmget(key + databuf_id - 1, total_size, 0666);
         // Verify buffer sizing
         verify_sizing = 1;
+    } else if(shmid != -1) {
+        // Created shared memory segment
+        hashpipe_info(__FUNCTION__, "created shared memory for key %08x",
+            key + databuf_id - 1);
+        newly_created = 1;
     }
     if (shmid==-1) {
         perror("shmget");
@@ -87,7 +93,17 @@ hashpipe_databuf_t *hashpipe_databuf_create(int instance_id,
             }
             return NULL;
         }
-    } else {
+    }
+
+    /* Try to lock in memory */
+    rv = shmctl(shmid, SHM_LOCK, NULL);
+    if (rv==-1) {
+        perror("shmctl");
+        hashpipe_error(__FUNCTION__, "Error locking shared memory.");
+        return NULL;
+    }
+
+    if(newly_created) {
       /* Zero out newly created databuf */
       memset(d, 0, total_size);
 
@@ -98,14 +114,6 @@ hashpipe_databuf_t *hashpipe_databuf_create(int instance_id,
       d->n_block = n_block;
       d->block_size = block_size;
       sprintf(d->data_type, "unknown");
-    }
-
-    /* Try to lock in memory */
-    rv = shmctl(shmid, SHM_LOCK, NULL);
-    if (rv==-1) {
-        perror("shmctl");
-        hashpipe_error(__FUNCTION__, "Error locking shared memory.");
-        return NULL;
     }
 
     /* Get semaphores set up */
