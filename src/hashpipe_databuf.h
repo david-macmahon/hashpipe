@@ -76,9 +76,16 @@ uint64_t hashpipe_databuf_total_mask(hashpipe_databuf_t *d);
  * put the buffer in the specified state, returning error if
  * it is already in that state.
  */
+int hashpipe_databuf_wait_filled_timeout(hashpipe_databuf_t *d,
+    int block_id, struct timespec *timeout);
+/* Calls hashpipe_databuf_wait_filled_timeout with a 0.25 second timeout */
 int hashpipe_databuf_wait_filled(hashpipe_databuf_t *d, int block_id);
 int hashpipe_databuf_busywait_filled(hashpipe_databuf_t *d, int block_id);
 int hashpipe_databuf_set_filled(hashpipe_databuf_t *d, int block_id);
+
+int hashpipe_databuf_wait_free_timeout(hashpipe_databuf_t *d,
+    int block_id, struct timespec *timeout);
+/* Calls hashpipe_databuf_wait_free_timeout with a 0.25 second timeout */
 int hashpipe_databuf_wait_free(hashpipe_databuf_t *d, int block_id);
 int hashpipe_databuf_busywait_free(hashpipe_databuf_t *d, int block_id);
 int hashpipe_databuf_set_free(hashpipe_databuf_t *d, int block_id);

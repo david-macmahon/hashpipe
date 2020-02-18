@@ -238,17 +238,15 @@ uint64_t hashpipe_databuf_total_mask(hashpipe_databuf_t *d)
     return tot;
 }
 
-int hashpipe_databuf_wait_free(hashpipe_databuf_t *d, int block_id)
+int hashpipe_databuf_wait_free_timeout(hashpipe_databuf_t *d, int block_id,
+    struct timespec *timeout)
 {
     int rv;
     struct sembuf op;
     op.sem_num = block_id;
     op.sem_op = 0;
     op.sem_flg = 0;
-    struct timespec timeout;
-    timeout.tv_sec = 0;
-    timeout.tv_nsec = 250000000;
-    rv = semtimedop(d->semid, &op, 1, &timeout);
+    rv = semtimedop(d->semid, &op, 1, timeout);
     if (rv==-1) {
         if (errno==EAGAIN) {
 #ifdef HASHPIPE_TRACE
@@ -264,6 +262,14 @@ int hashpipe_databuf_wait_free(hashpipe_databuf_t *d, int block_id)
         return HASHPIPE_ERR_SYS;
     }
     return 0;
+}
+
+int hashpipe_databuf_wait_free(hashpipe_databuf_t *d, int block_id)
+{
+    struct timespec timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_nsec = 250000000;
+    return hashpipe_databuf_wait_free_timeout(d, block_id, &timeout);
 }
 
 int hashpipe_databuf_busywait_free(hashpipe_databuf_t *d, int block_id)
@@ -289,7 +295,8 @@ int hashpipe_databuf_busywait_free(hashpipe_databuf_t *d, int block_id)
     return 0;
 }
 
-int hashpipe_databuf_wait_filled(hashpipe_databuf_t *d, int block_id)
+int hashpipe_databuf_wait_filled_timeout(hashpipe_databuf_t *d, int block_id,
+    struct timespec *timeout)
 {
     /* This needs to wait for the semval of the given block
      * to become > 0, but NOT immediately decrement it to 0.
@@ -304,10 +311,7 @@ int hashpipe_databuf_wait_filled(hashpipe_databuf_t *d, int block_id)
     op[0].sem_flg = op[1].sem_flg = 0;
     op[0].sem_op = -1;
     op[1].sem_op = 1;
-    struct timespec timeout;
-    timeout.tv_sec = 0;
-    timeout.tv_nsec = 250000000;
-    rv = semtimedop(d->semid, op, 2, &timeout);
+    rv = semtimedop(d->semid, op, 2, timeout);
     if (rv==-1) {
         if (errno==EAGAIN) return HASHPIPE_TIMEOUT;
         // Don't complain on a signal interruption
@@ -318,6 +322,16 @@ int hashpipe_databuf_wait_filled(hashpipe_databuf_t *d, int block_id)
     }
     return 0;
 }
+
+int hashpipe_databuf_wait_filled(hashpipe_databuf_t *d, int block_id)
+{
+    struct timespec timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_nsec = 250000000;
+
+    return hashpipe_databuf_wait_filled_timeout(d, block_id, &timeout);
+}
+
 
 int hashpipe_databuf_busywait_filled(hashpipe_databuf_t *d, int block_id)
 {
