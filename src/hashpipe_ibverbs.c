@@ -647,15 +647,10 @@ int hashpipe_ibv_init(struct hashpipe_ibv_context * hibv_ctx)
   // and the `addr` and `length` fields of the scatter-gather elements (SGEs)
   // must be set by the user.  Note that the library will enforce a wr_id
   // scheme that sets the wr_id to the index of the WR element in the WR array.
-  // The library also enforcese a one-to-one mapping of WR to initial SGE, so
-  // if the user wishes to use more than one SGE per WR, the second SGE and
-  // beyond for a given WR must come after the first N SGE elenents in the SGE
-  // array, where N is the number of WR elements.
   //
   // Send related elements
   for(i=0; i<hibv_ctx->send_pkt_num*hibv_ctx->nqp; i++) {
     hibv_ctx->send_pkt_buf[i].wr.wr_id = i;
-    hibv_ctx->send_pkt_buf[i].wr.sg_list = &hibv_ctx->send_sge_buf[i];
 
     if(!hibv_ctx->user_managed_flag) {
       hibv_ctx->send_pkt_buf[i].wr.num_sge = 1;
@@ -665,13 +660,21 @@ int hashpipe_ibv_init(struct hashpipe_ibv_context * hibv_ctx)
       hibv_ctx->send_sge_buf[i].length = hibv_ctx->pkt_size_max;
     } // !user_managed
 
-    hibv_ctx->send_sge_buf[i].lkey = hibv_ctx->send_mr->lkey;
+    if(i == 0) {
+      hibv_ctx->send_pkt_buf[i].wr.sg_list = &hibv_ctx->send_sge_buf[0];
+    } else {
+      hibv_ctx->send_pkt_buf[i].wr.sg_list =
+        hibv_ctx->send_pkt_buf[i-1].wr.sg_list +
+        hibv_ctx->send_pkt_buf[i-1].wr.num_sge;
+    }
+    for(j=0; j<hibv_ctx->send_pkt_buf[i].wr.num_sge; j++) {
+      hibv_ctx->send_pkt_buf[i].wr.sg_list[j].lkey = hibv_ctx->send_mr->lkey;
+    }
   }
 
   // Receive related elements
   for(i=0; i<hibv_ctx->recv_pkt_num*hibv_ctx->nqp; i++) {
     hibv_ctx->recv_pkt_buf[i].wr.wr_id = i;
-    hibv_ctx->recv_pkt_buf[i].wr.sg_list = &hibv_ctx->recv_sge_buf[i];
 
     if(!hibv_ctx->user_managed_flag) {
       hibv_ctx->recv_pkt_buf[i].wr.num_sge = 1;
@@ -681,7 +684,16 @@ int hashpipe_ibv_init(struct hashpipe_ibv_context * hibv_ctx)
       hibv_ctx->recv_sge_buf[i].length = hibv_ctx->pkt_size_max;
     } // !user_managed
 
-    hibv_ctx->recv_sge_buf[i].lkey = hibv_ctx->recv_mr->lkey;
+    if(i == 0) {
+      hibv_ctx->recv_pkt_buf[i].wr.sg_list = &hibv_ctx->recv_sge_buf[0];
+    } else {
+      hibv_ctx->recv_pkt_buf[i].wr.sg_list =
+        hibv_ctx->recv_pkt_buf[i-1].wr.sg_list +
+        hibv_ctx->recv_pkt_buf[i-1].wr.num_sge;
+    }
+    for(j=0; j<hibv_ctx->recv_pkt_buf[i].wr.num_sge; j++) {
+      hibv_ctx->recv_pkt_buf[i].wr.sg_list[j].lkey = hibv_ctx->recv_mr->lkey;
+    }
   }
 
 // Mellanox installed infiniband/verbs.h file does not define
