@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
     int opt;
     int instance_id=0;
     int db_id=1;
-    int block = -1;
+    int block = -2;
     int skip = 0;
     int num = 0;
     int force = 0;
@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* Print basic info and exit if block not given */
-    if(block == -1) {
+    if(block <= -2) {
       printf("Instance %d databuf %d stats:\n", instance_id, db_id);
       printf("  header_size=%zd (%#zx)\n", db->header_size, db->header_size);
       printf("  block_size=%zd (%#zx)\n", db->block_size, db->block_size);
@@ -131,7 +131,17 @@ int main(int argc, char *argv[]) {
       fprintf(stderr, "Warning: cannot dump more than %zd bytes\n", db->block_size - skip);
     }
 
-    void *p = ((void *)db) + db->header_size + block*db->block_size + skip;
+    void *p = ((void *)db) + skip;
+
+    if(block == -1) {
+      // Dumping header!  If num was set to default value for data block, set
+      // it to default for header
+      if(num == db->block_size - skip) {
+        num = db->header_size - skip;
+      }
+    } else {
+      p += db->header_size + block*db->block_size;
+    }
 
     // Dump block to stdout
     if(write(1, p, num) == -1) {
