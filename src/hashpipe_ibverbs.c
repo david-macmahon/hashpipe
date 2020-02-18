@@ -616,12 +616,30 @@ int hashpipe_ibv_init(struct hashpipe_ibv_context * hibv_ctx)
     goto cleanup_and_return_error;
   }
 
+#if 1
   if(!(hibv_ctx->recv_mr = ibv_reg_mr(hibv_ctx->pd, hibv_ctx->recv_mr_buf,
           hibv_ctx->recv_mr_size,
           IBV_ACCESS_LOCAL_WRITE))) {
     perror("ibv_reg_mr[recv]");
+    fprintf(stderr, "addr %p length %lu\n",
+        hibv_ctx->recv_mr_buf, hibv_ctx->recv_mr_size);
     goto cleanup_and_return_error;
   }
+#else
+  struct ibv_exp_reg_mr_in mr_info = {
+    .pd = hibv_ctx->pd,
+    .addr = hibv_ctx->recv_mr_buf,
+    .length = hibv_ctx->recv_mr_size,
+    .exp_access = IBV_EXP_ACCESS_LOCAL_WRITE,
+    .comp_mask = 0
+  };
+  if(!(hibv_ctx->recv_mr = ibv_exp_reg_mr(&mr_info))) {
+    perror("ibv_exp_reg_mr[recv]");
+    fprintf(stderr, "addr %p length %lu\n",
+        hibv_ctx->recv_mr_buf, hibv_ctx->recv_mr_size);
+    goto cleanup_and_return_error;
+  }
+#endif
 
   // Initialize work requests and scatter/gather fields
   //
