@@ -132,6 +132,9 @@ int main(int argc, char *argv[]) {
     printf("  n_block=%d\n", db->n_block);
     printf("  shmid=%d\n", db->shmid);
     printf("  semid=%d\n", db->semid);
+    printf("\n");
+    printf("semaphore mask: %0*lx\n", (db->n_block+3)/4,
+        hashpipe_databuf_total_mask(db));
 
     exit(0);
 }
