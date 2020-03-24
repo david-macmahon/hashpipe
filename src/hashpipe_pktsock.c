@@ -63,7 +63,8 @@ int hashpipe_pktsock_open(struct hashpipe_pktsock *p_ps, const char *ifname, int
   }
 
   /* get interface index of ifname */
-  strncpy (s_ifr.ifr_name, ifname, sizeof(s_ifr.ifr_name));
+  strncpy (s_ifr.ifr_name, ifname, sizeof(s_ifr.ifr_name)-1);
+  s_ifr.ifr_name[sizeof(s_ifr.ifr_name)-1] = '\0';
   ioctl(p_ps->fd, SIOCGIFINDEX, &s_ifr);
 
   /* fill sockaddr_ll struct to prepare binding */
