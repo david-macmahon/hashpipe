@@ -1,18 +1,20 @@
 /* check_hashpipe_databuf.c
  *
- * Basic prog to test dstabuf shared mem routines.
+ * Basic prog to test databuf shared mem routines.
  */
 #include <stdio.h>
 #include <stdlib.h>
 #include <getopt.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "fitshead.h"
 #include "hashpipe_status.h"
 #include "hashpipe_databuf.h"
 #include "hashpipe_ipckey.h"
 
-void usage() { 
+void usage()
+{
     printf(
             "Usage: hashpipe_check_databuf [options]\n"
             "Options:\n"
@@ -30,8 +32,8 @@ void usage() {
             );
 }
 
-int main(int argc, char *argv[]) {
-
+int main(int argc, char *argv[])
+{
     /* Loop over cmd line to fill in params */
     static struct option long_opts[] = {
         {"help",     0, NULL, 'h'},
@@ -46,7 +48,7 @@ int main(int argc, char *argv[]) {
         {"hdrsize",  1, NULL, 'H'},
         {0,0,0,0}
     };
-    int opt,opti;
+    int i,opt,opti;
     int quiet=0;
     int instance_id=0;
     int create=0;
@@ -104,7 +106,7 @@ int main(int argc, char *argv[]) {
 
     /* Create mem if asked, otherwise attach */
     hashpipe_databuf_t *db=NULL;
-    if (create) { 
+    if (create) {
         db = hashpipe_databuf_create(instance_id, header_size, nblock, blocksize*1024*1024, db_id);
         if (db==NULL) {
             fprintf(stderr, "Error creating databuf %d (may already exist).\n",
@@ -113,8 +115,8 @@ int main(int argc, char *argv[]) {
         }
     } else {
         db = hashpipe_databuf_attach(instance_id, db_id);
-        if (db==NULL) { 
-            fprintf(stderr, 
+        if (db==NULL) {
+            fprintf(stderr,
                     "Error attaching to databuf %d (may not exist).\n",
                     db_id);
             exit(1);
@@ -127,6 +129,15 @@ int main(int argc, char *argv[]) {
 
     /* Print basic info */
     printf("databuf %d stats:\n", db_id);
+    printf("  data_type='");
+    for(i=0; i<sizeof(db->data_type); i++) {
+      // Break out early on terminating NUL
+      if(!db->data_type[i]) {
+        break;
+      }
+      printf("%c", isprint(db->data_type[i]) ? db->data_type[i] : '.');
+    }
+    printf("'\n");
     printf("  header_size=%zd\n\n", db->header_size);
     printf("  block_size=%zd\n", db->block_size);
     printf("  n_block=%d\n", db->n_block);
