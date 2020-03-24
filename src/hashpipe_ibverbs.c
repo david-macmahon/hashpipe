@@ -872,11 +872,15 @@ int hashpipe_ibv_flow(
       return 1;
   } // switch(flow_type)
 
-  if(!(hibv_ctx->ibv_flows[flow_idx] =
-        ibv_create_flow(hibv_ctx->qp, (struct ibv_flow_attr *)&flow))) {
-    return 1;
+  {
+    struct ibv_flow_attr flowattr;
+    memcpy(&flowattr,&flow.attr,sizeof(struct ibv_flow_attr));
+    if(!(hibv_ctx->ibv_flows[flow_idx] =
+        ibv_create_flow(hibv_ctx->qp, (struct ibv_flow_attr *)&flowattr))) {
+      return 1;
+    }
+    memcpy(&flow.attr,&flowattr,sizeof(struct ibv_flow_attr));
   }
-
   return 0;
 }
 

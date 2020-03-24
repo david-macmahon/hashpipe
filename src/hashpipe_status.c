@@ -191,7 +191,7 @@ void hashpipe_status_chkinit(hashpipe_status_t *s)
         /* Fill first record w/ spaces */
         memset(s->buf, ' ', HASHPIPE_STATUS_RECORD_SIZE);
         /* add END */
-        strncpy(s->buf, "END", 3);
+        memcpy(s->buf, "END", 3*sizeof(char));
         // Add INSTANCE record
         hputi4(s->buf, "INSTANCE", s->instance_id);
     } else {
@@ -224,7 +224,7 @@ void hashpipe_status_clear(hashpipe_status_t *s) {
     /* Fill first record w/ spaces */
     memset(s->buf, ' ', HASHPIPE_STATUS_RECORD_SIZE);
     /* add END */
-    strncpy(s->buf, "END", 3);
+    memcpy(s->buf, "END", 3*sizeof(char));
 
     hputi4(s->buf, "INSTANCE", s->instance_id);
 

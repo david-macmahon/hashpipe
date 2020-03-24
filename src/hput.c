@@ -421,7 +421,8 @@ const char *cval; /* character string containing the value for variable
 
     /* Put single quote at start of string */
     value[0] = squot;
-    strncpy (&value[1],cval,lcval);
+    //strncpy (&value[1],cval,lcval);
+    memcpy(&value[1],cval,lcval*sizeof(char));
 
     /* If string is less than eight characters, pad it with spaces */
     if (lcval < 8) {
@@ -497,7 +498,7 @@ const char *value; /* character string containing the value for variable
             v2 = v1 + 80;
 
         /* Insert keyword8 */
-        strncpy (v1,keyword8,7);
+        memcpy(v1,keyword8,7*sizeof(char));
 
         /* Pad with spaces */
         for (vp = v1+lkeyword; vp < v2; vp++)
@@ -589,11 +590,13 @@ const char *value; /* character string containing the value for variable
         }
 
     /* Fill new entry with spaces */
+    //memset(v1,' ', v2-v1);
     for (vp = v1; vp < v2; vp++)
         *vp = ' ';
 
     /*  Copy keyword8 to new entry */
-    strncpy (v1, keyword8, lkeyword);
+    //strncpy (v1, keyword8, lkeyword);
+    memcpy (v1, keyword8, lkeyword*sizeof(char));
 
     /*  Add parameter value in the appropriate place */
     /*
@@ -612,7 +615,8 @@ const char *value; /* character string containing the value for variable
     *vp = ' ';
     vp = vp + 1;
     if (*value == squot) {
-        strncpy (vp, value, lval);
+        //strncpy (vp, value, lval);
+        memcpy (vp, value, lval*sizeof(char));
         if (lval+12 > 31)
             lc = lval + 12;
         else
@@ -620,7 +624,7 @@ const char *value; /* character string containing the value for variable
         }
     else {
         vp = v1 + 30 - lval;
-        strncpy (vp, value, lval);
+        memcpy (vp, value, lval*sizeof(char));
         lc = 30;
         }
 
@@ -697,6 +701,8 @@ hputcom (hstring,keyword,comment)
         strncpy (v2, v1, 80);
 
         /*  blank out new line and insert keyword */
+        //memset(v1,' ',v2-v1);
+        //memset(v1,' ',80); //FIXME: JK: isn't it more efficient?
         for (vp = v1; vp < v2; vp++)
             *vp = ' ';
         strncpy (v1, keyword, lkeyword);
@@ -766,7 +772,7 @@ hputcom (hstring,keyword,comment)
         /* If comment will not fit at all, return */
         if (c0 - v1 > 77)
             return (-1);
-        strncpy (c0, " / ",3);
+        memcpy(c0, " / ",3*sizeof(char));
         }
 
     /* Create new entry */
@@ -890,7 +896,8 @@ const char *keyword;    /* Keyword of entry to be deleted */
 
     /* Cover former first line with new keyword */
     lkey = (int) strlen (keyword);
-    strncpy (hplace, keyword, lkey);
+    //strncpy (hplace, keyword, lkey);
+    memcpy (hplace, keyword, lkey*sizeof(char));
     if (lkey < 8) {
         for (i = lkey; i < 8; i++)
             hplace[i] = ' ';
@@ -1237,7 +1244,7 @@ double  deg;            /* Angle in degrees */
 int     ndec;           /* Number of decimal places in degree string */
 
 {
-    char degform[8];
+    char degform[25];
     int field, ltstr;
     char tstring[64];
     double deg1;
@@ -1290,7 +1297,7 @@ int     field;          /* Number of characters in output field (0=any) */
 int     ndec;           /* Number of decimal places in degree string */
 
 {
-    char numform[8];
+    char numform[24];
 
     if (field > 0) {
         if (ndec > 0) {
