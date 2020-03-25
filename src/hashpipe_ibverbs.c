@@ -872,15 +872,14 @@ int hashpipe_ibv_flow(
       return 1;
   } // switch(flow_type)
 
-  {
-    struct ibv_flow_attr flowattr;
-    memcpy(&flowattr,&flow.attr,sizeof(struct ibv_flow_attr));
-    if(!(hibv_ctx->ibv_flows[flow_idx] =
-        ibv_create_flow(hibv_ctx->qp, (struct ibv_flow_attr *)&flowattr))) {
-      return 1;
-    }
-    memcpy(&flow.attr,&flowattr,sizeof(struct ibv_flow_attr));
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+  if(!(hibv_ctx->ibv_flows[flow_idx] =
+        ibv_create_flow(hibv_ctx->qp, (struct ibv_flow_attr *)&flow))) {
+#pragma GCC diagnostic pop
+    return 1;
   }
+
   return 0;
 }
 
