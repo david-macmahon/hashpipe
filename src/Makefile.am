@@ -91,3 +91,37 @@ install-exec-hook:
 	chmod u+s $(DESTDIR)$(bindir)/hashpipe$(EXEEXT)
 
 # vi: set ts=8 noet :
+if HAVE_DOXYGEN
+directory1 = $(top_srcdir)/../docs/man/man1/*
+directory3 = $(top_srcdir)/../docs/man/man3/*
+directory7 = $(top_srcdir)/../docs/man/man7/*
+
+man1_MANS = $(directory1)
+man3_MANS = $(directory3)
+man7_MANS = $(directory7)
+
+$(directory1): doxyfile1.stamp
+
+$(directory3): doxyfile3.stamp
+
+$(directory7): doxyfile7.stamp
+
+doxyfile1.stamp: doxygen1
+	$(DOXYGEN) $^
+	echo Timestamp > $@
+
+doxyfile3.stamp: doxygen3
+	$(DOXYGEN) $^
+	echo Timestamp > $@
+
+doxyfile7.stamp: doxygen7
+	$(DOXYGEN) $^
+	echo Timestamp > $@
+
+CLEANFILES = doxyfile1.stamp doxyfile3.stamp doxyfile7.stamp
+
+all-local: doxyfile1.stamp doxyfile3.stamp doxyfile7.stamp
+clean-local:
+	-rm -rf $(top_srcdir)/../docs/man
+
+endif

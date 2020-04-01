@@ -27,6 +27,48 @@
 void set_run_threads();
 void clear_run_threads();
 
+/** @page hashpipe 
+ * 
+ * @brief program that creates shared memory and threads for the processing pipeline
+ *
+ * @section SYNOPSIS SYNOPSIS
+ * hashpipe [OPTIONS] THREAD [[OPTIONS] THREAD ...]
+ *
+ * \t ex: hashpipe -p ./myplugin -I 1 -c 18 thread_inputnet -c 19 thread_proc -c 20 thread_output
+ * 
+ * to load plugin ./myplugin and start 3 threads in a pipeline
+ *
+ * @section DESCRIPTION DESCRIPTION
+ * hashpipe is a program that loads shared libraries (plugins), creates shared memory executes the THREADs 
+ * connected via the ring buffer. Apart from data buffer, additional status buffer is created 
+ *
+ * @section OPTIONS OPTIONS
+ * -h, --help \t\tshow help message
+ *
+ * -l, --list \t\tlist all known threads
+ *
+ * -K=KEY_F, --shmkey=KEY_F \t\t use KEY_F file instead of $HOME as a way to generate 
+ *  SystemV key file for the project. Option may become deprecated in newer versions
+ *
+ * -I ID, --instance=ID \t\tuse given ID as an instance ID. 6 LSB of ID is used to create 
+ *  8 MSB of the key used by SystemV shared memory/semaphores. That means that for given Key 
+ *  file, up to 32 independent pipelines can be created. 
+ *
+ * -c N, --cpu=N \t\t Set CPU number for subsequent thread
+ *
+ * -m N, --mask=N \t\tSet CPU mask for subsequent thread
+ *
+ * -o K=V, --option=K=V \t\tStore K=V in status buffer
+ *
+ * -p P, --plugin=P \t\tload plugin P
+ *
+ * -V, --version \t\t show version and exit 
+ *
+ * @section SEE_ALSO SEE ALSO
+ * hashpipe(7) hashpipe_check_databuf(1) hashpipe_clean_shmem(1) hashpipe_check_status(1)
+ */
+
+
 void usage(const char *argv0) {
     fprintf(stderr,
       "Usage: %s [options]\n"
