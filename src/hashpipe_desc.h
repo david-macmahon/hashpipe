@@ -82,6 +82,17 @@
  *
  *   hashpipe_databuf_t * my_create_function(int instance_id, int databuf_id)
  * 
+ * @section NUMA NUMA
+ *
+ * Hashpipe does lock its shared memory buffers. These buffers will have the
+ * NUMA node affinity of the thread that created them so be sure to pin the
+ * threads to the desired core or cores by preceding the thread names on the
+ * command line with a -c # (set thread affinity to a single core) or -m # 
+ * (set thread affinity to multiple cores) option. 
+ * Alternatively (or additional) you can run the entire hashpipe process with numactl
+ *
+ * numactl --cpunodebind=1 --membind=1 hashpipe [...]
+ *
  * @section SEE_ALSO SEE ALSO
  * 
  * hashpipe(1)   
