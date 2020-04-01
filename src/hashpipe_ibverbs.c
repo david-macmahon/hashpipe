@@ -873,6 +873,7 @@ int hashpipe_ibv_flow(
   } // switch(flow_type)
 
 #pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpragmas"
 #pragma GCC diagnostic ignored "-Waddress-of-packed-member"
   if(!(hibv_ctx->ibv_flows[flow_idx] =
         ibv_create_flow(hibv_ctx->qp, (struct ibv_flow_attr *)&flow))) {
