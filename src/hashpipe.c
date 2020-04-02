@@ -20,12 +20,69 @@
 #include <sys/resource.h> 
 
 #include "hashpipe.h"
+#include "hashpipe_decls.h"
 #include "hashpipe_thread_args.h"
 
 // Functions defined in hashpipe_thread.c, but not declared/exposed in public
 // hashpipe_thread.h.
 void set_run_threads();
 void clear_run_threads();
+
+/** @page hashpipe 
+ * 
+ * @brief program that creates shared memory and threads for the processing pipeline
+ *
+ * @section SYNOPSIS SYNOPSIS
+ * hashpipe [OPTIONS] THREAD [[OPTIONS] THREAD ...]
+ *
+ * @section DESCRIPTION DESCRIPTION
+ * hashpipe is a program that loads shared libraries (plugins), creates shared memory executes the THREADs 
+ * connected via the ring buffer. Apart from data buffer, additional status buffer is created 
+ *
+ * @section OPTIONS OPTIONS
+ *
+ * @subsection h -h, --help
+ *  show help message     
+ *
+ * @subsection l -l, --list
+ * list all known threads 
+ *
+ * @subsection K -K=KEY_F, --shmkey=KEY_F 
+ *  use KEY_F file instead of $HOME as a way to generate 
+ *  SystemV key file for the project. Option may become deprecated in newer versions
+ *
+ * @subsection I -I ID, --instance=ID
+ * use given ID as an instance ID. 6 LSB of ID is used to create 
+ * 8 MSB of the key used by SystemV shared memory/semaphores. That means that for given Key 
+ * file, up to 32 independent pipelines can be created. 
+ *
+ * @subsection c -c N, --cpu=N
+ * Set CPU number for subsequent thread
+ *
+ * @subsection m -m N, --mask=N
+ * Set CPU mask for subsequent thread
+ *
+ * @subsection o -o K=V, --option=K=V
+ * Store K=V in status buffer
+ *
+ * @subsection p -p P, --plugin=P
+ * load plugin P
+ *
+ * @subsection V -V, --version 
+ * show version and exit 
+ *
+ * @section EXAMPLES EXAMPLES
+ *
+ * @subsection e1 hashpipe -p ./myplugin -I 1 -c 18 thread_inputnet -c 19 thread_proc -c 20 thread_output
+ * load plugin ./myplugin and start 3 threads in a pipeline
+ *
+ * @subsection e2 numactl --cpunodebind=1 --membind=1 hashpipe -p ./myplugin -I 1 t1 t2
+ * start 2 threads, all binded to the same NUMA
+ *
+ * @section SEE_ALSO SEE ALSO
+ * hashpipe(7) hashpipe_check_databuf(1) hashpipe_clean_shmem(1) hashpipe_check_status(1)
+ */
+
 
 void usage(const char *argv0) {
     fprintf(stderr,

@@ -44,6 +44,15 @@ AC_TYPE_UINT64_T
 AC_FUNC_MALLOC
 AC_CHECK_FUNCS([floor gettimeofday memset socket strchr strerror strrchr strtol strtoul strtoull])
 
+AC_CHECK_PROGS([DOXYGEN], [doxygen])
+if test -z "$DOXYGEN"; then
+   AC_MSG_WARN([Doxygen not found - continue without Doxygen support])
+fi
+AM_CONDITIONAL([HAVE_DOXYGEN], [test -n "$DOXYGEN"])
+AM_COND_IF([HAVE_DOXYGEN], [AC_CONFIG_FILES([doxygen1])])
+AM_COND_IF([HAVE_DOXYGEN], [AC_CONFIG_FILES([doxygen3])])
+AM_COND_IF([HAVE_DOXYGEN], [AC_CONFIG_FILES([doxygen7])])
+
 # Report results
 build_hpibv="will NOT"
 if test "${ac_cv_lib_ibverbs_ibv_get_device_list}" = "yes"

@@ -1,1 +1,8 @@
 tags
+doxygen1
+doxygen3
+doxygen7
+doxyfile1.stamp
+doxyfile3.stamp
+doxyfile7.stamp
+docs/*
