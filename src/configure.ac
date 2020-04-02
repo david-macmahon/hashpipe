@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.65])
-AC_INIT([FULL-PACKAGE-NAME], [VERSION], [BUG-REPORT-ADDRESS])
+AC_INIT([hashpipe], [1.7-dev], [BUG-REPORT-ADDRESS])
 AM_INIT_AUTOMAKE([foreign])
 LT_INIT
 AM_SILENT_RULES([yes])
