@@ -11,6 +11,7 @@
 #include <pthread.h>
 
 #include "hashpipe.h"
+#include "hashpipe_decls.h"
 
 static void *run(hashpipe_thread_args_t * args)
 {

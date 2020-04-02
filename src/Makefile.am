@@ -24,6 +24,7 @@ hashpipe_base = hashpipe.h             \
 	        hashpipe_udp.c
 
 hashpipe_exec = hashpipe.c             \
+                hashpipe_decls.h       \
 	        hashpipe_thread_args.h \
 	        hashpipe_thread_args.c \
 		null_output_thread.c
@@ -68,6 +69,7 @@ libhashpipe_la_LIBADD = libhashpipestatus.la
 
 include_HEADERS = fitshead.h \
 		  hashpipe.h \
+		  hashpipe_decls.h \
 		  hashpipe_databuf.h \
 		  hashpipe_error.h \
 		  hashpipe_packet.h \
