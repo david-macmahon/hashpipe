@@ -122,8 +122,10 @@ doxyfile7.stamp: doxygen7
 
 CLEANFILES = doxyfile1.stamp doxyfile3.stamp doxyfile7.stamp
 
+clean-local: clean-local-doxygen
+
 all-local: doxyfile1.stamp doxyfile3.stamp doxyfile7.stamp
-clean-local:
+clean-local-doxygen:
 	-rm -rf $(top_srcdir)/../docs/man
 
 endif
