@@ -9,8 +9,6 @@
 #include "hashpipe_pktsock.h"
 #include "hashpipe_udp.h"
 
-#include "config.h"
-#define HASHPIPE_VERSION PACKAGE_VERSION
 //#define HASHPIPE_VERSION "1.7"
 
 // man(7) page below
@@ -192,6 +190,8 @@ struct hashpipe_thread_args {
 // Maximum number of threads that be defined by plugins
 #define MAX_HASHPIPE_THREADS 1024
 
+//this is not a nice thing, but it's a workaround to support backward compatibility
+#include "hashpipe_decls.h"
 
 #ifdef __cplusplus
 }

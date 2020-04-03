@@ -23,6 +23,9 @@
 #include "hashpipe_decls.h"
 #include "hashpipe_thread_args.h"
 
+#include "config.h"
+#define HASHPIPE_VERSION PACKAGE_VERSION
+
 // Functions defined in hashpipe_thread.c, but not declared/exposed in public
 // hashpipe_thread.h.
 void set_run_threads();
