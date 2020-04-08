@@ -17,6 +17,7 @@ static void usage() {
         "General options:\n"
         "  -h,     --help         Show this message\n"
         "  -K KEY, --shmkey=KEY   Specify key for shared memory\n"
+        "  -L,     --show-lock    Show lock semaphore state\n"
         "  -S,     --show-shmkey  Show shared memory key\n"
         "  -I N,   --instance=N   Specify hashpipe instance [0]\n"
         "  -v,     --verbose      Be verbose [false]\n"
@@ -66,6 +67,7 @@ int main(int argc, char *argv[]) {
     static struct option long_opts[] = {
         {"help",   0, NULL, 'h'},
         {"shmkey", 1, NULL, 'K'},
+        {"show-lock",   0, NULL, 'L'},
         {"show-shmkey", 0, NULL, 'S'},
         {"key",    1, NULL, 'k'},
         {"get",    1, NULL, 'g'},
@@ -87,10 +89,12 @@ int main(int argc, char *argv[]) {
     double dbltmp;
     int inttmp;
     int verbose=0, clear=0;
+    int show_lock=0;
+    int lock_value=0;
     int show_skmkey=0;
     key_t shmkey = 0;
     char keyfile[1000];
-    while ((opt=getopt_long(argc,argv,"hk:g:s:f:d:i:vCDQ:K:SI:",long_opts,&opti))!=-1) {
+    while ((opt=getopt_long(argc,argv,"hk:g:s:f:d:i:vCDQ:K:LSI:",long_opts,&opti))!=-1) {
         switch (opt) {
             case 'K': // Keyfile
                 snprintf(keyfile, sizeof(keyfile), "HASHPIPE_KEYFILE=%s", optarg);
@@ -117,6 +121,9 @@ int main(int argc, char *argv[]) {
                 hgetr8(s->buf, optarg, &dbltmp);
                 hashpipe_status_unlock(s);
                 printf("%g\n", dbltmp);
+                break;
+            case 'L':
+                show_lock = 1;
                 break;
             case 'S':
                 show_skmkey = 1;
@@ -191,13 +198,39 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    shmkey = hashpipe_status_key(instance_id);
+
     if(show_skmkey) {
-      shmkey = hashpipe_status_key(instance_id);
       printf("%#08x\n", shmkey);
       return 0;
     }
 
+    // Refuse to do anything else if status buffer does not exist
+    if(!hashpipe_status_exists(instance_id)) {
+      printf("status buffer %#08x for instance %d does not exist\n",
+          shmkey, instance_id);
+      return 1;
+    }
+
     s = get_status_buffer(instance_id);
+
+    if(show_lock) {
+      if(sem_getvalue(s->lock, &lock_value)) {
+        printf("could not get semaphore value for status buffer %#08x\n",
+            shmkey);
+        return 1;
+      } else {
+        if(lock_value > 0) {
+          printf("status buffer %#08x unlocked (%d)\n", shmkey, lock_value);
+        } else if(lock_value == 0) {
+          printf("status buffer %#08x locked\n", shmkey);
+        } else {
+          printf("status buffer %#08x locked (%d waiters)\n",
+              shmkey, -lock_value);
+        }
+      }
+      return 0;
+    }
 
     /* If verbose, print out buffer */
     if (verbose) { 
