@@ -140,7 +140,13 @@ extern "C" {
 
     char* hgetc(                /* Return pointer to value for FITS keyword */
         const char* hstring,    /* FITS header string */
-        const char* keyword);   /* FITS keyword */
+        const char* keyword)    /* FITS keyword */
+        __attribute__ ((deprecated)); /* Use hgetc_thread_safe() instead */
+
+    char* hgetc_thread_safe(    /* Return pointer to value for FITS keyword */
+        const char* hstring,    /* FITS header string */
+        const char* keyword,    /* FITS keyword */
+        char *value_buffer);    /* output buffer, should be VLENGTH+1 long */
 
     char* ksearch(              /* Return pointer to keyword in FITS header */
         const char* hstring,    /* FITS header string */
@@ -351,7 +357,9 @@ extern int hgetl();     /* T->1, F->0 from FITS logical entry */
 extern int hgets();     /* Previously allocated string */
 extern int hgetsc();    /* Previously allocated string (Multiple WCS) */
 //extern int hgetm();     /* Previously allocated string from multiple keywords */
-extern char *hgetc();   /* Return pointer to string */
+extern char *hgetc()    /* Return pointer to string */
+    __attribute__ ((deprecated));  /* Use hgetc_thread_safe() instead */
+extern char *hgetc_thread_safe();  /* Copy value for FITS keyword to buffer */
 extern int hgetndec();  /* Number of decimal places in keyword value */
 
 /* Subroutines to convert strings to RA and Dec in degrees */

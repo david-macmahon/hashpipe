@@ -161,7 +161,26 @@ int hashpipe_status_lock_busywait(hashpipe_status_t *s) {
 }
 
 int hashpipe_status_unlock(hashpipe_status_t *s) {
-    return(sem_post(s->lock));
+    int lock_val = 0;
+
+    // Get semaphore value
+    if(sem_getvalue(s->lock, &lock_val)) {
+      hashpipe_error(__FUNCTION__,
+          "could not get status buffer semaphore value");
+      hashpipe_warn(__FUNCTION__,
+          "attempting to unlock status buffer semaphore anyway");
+      lock_val = 0;
+    }
+    // If locked
+    if(lock_val < 1) {
+      // Unlock it
+      return sem_post(s->lock);
+    } else {
+      hashpipe_warn(__FUNCTION__, "status buffer already unlocked");
+    }
+
+    // Already unlocked
+    return 0;
 }
 
 /* Return pointer to END key */

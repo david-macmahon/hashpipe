@@ -74,8 +74,6 @@
 static int use_saolib=0;
 #endif
 
-char *hgetc ();
-
 /* Don't know why this is global, seems to be just a 
  * temp buffer for parsing strings.  Made local copies in
  * each function that uses it. --PBD
@@ -176,9 +174,10 @@ int8 *i8val;
 {
     char *value;
     char *endptr;
+    char value_buffer[VLENGTH + 1];
 
     /* Get value and comment from header string */
-    value = hgetc (hstring,keyword);
+    value = hgetc_thread_safe (hstring,keyword,value_buffer);
 
     /* Translate value from ASCII to binary */
     if (value != NULL) {
@@ -211,9 +210,10 @@ uint8 *i8val;
 {
     char *value;
     char *endptr = NULL;
+    char value_buffer[VLENGTH + 1];
 
     /* Get value and comment from header string */
-    value = hgetc (hstring,keyword);
+    value = hgetc_thread_safe (hstring,keyword,value_buffer);
 
     /* Translate value from ASCII to binary */
     if (value != NULL) {
@@ -250,9 +250,10 @@ int *ival;
     int lval;
     char *dchar;
     char val[VLENGTH+1];
+    char value_buffer[VLENGTH + 1];
 
     /* Get value and comment from header string */
-    value = hgetc (hstring,keyword);
+    value = hgetc_thread_safe (hstring,keyword,value_buffer);
 
     /* Translate value from ASCII to binary */
     if (value != NULL) {
@@ -309,9 +310,10 @@ unsigned int *ival;
     int lval;
     char *dchar;
     char val[VLENGTH+1];
+    char value_buffer[VLENGTH + 1];
 
     /* Get value and comment from header string */
-    value = hgetc (hstring,keyword);
+    value = hgetc_thread_safe (hstring,keyword,value_buffer);
 
     /* Translate value from ASCII to binary */
     if (value != NULL) {
@@ -369,9 +371,10 @@ short *ival;
     int lval;
     char *dchar;
     char val[VLENGTH+1];
+    char value_buffer[VLENGTH + 1];
 
     /* Get value and comment from header string */
-    value = hgetc (hstring,keyword);
+    value = hgetc_thread_safe (hstring,keyword,value_buffer);
 
     /* Translate value from ASCII to binary */
     if (value != NULL) {
@@ -426,9 +429,10 @@ float *rval;
     int lval;
     char *dchar;
     char val[VLENGTH+1];
+    char value_buffer[VLENGTH + 1];
 
     /* Get value and comment from header string */
-    value = hgetc (hstring,keyword);
+    value = hgetc_thread_safe (hstring,keyword,value_buffer);
 
     /* translate value from ASCII to binary */
     if (value != NULL) {
@@ -472,9 +476,10 @@ const char *keyword;    /* character string containing the name of the keyword
 double *dval;   /* Right ascension in degrees (returned) */
 {
     char *value;
+    char value_buffer[VLENGTH + 1];
 
     /* Get value from header string */
-    value = hgetc (hstring,keyword);
+    value = hgetc_thread_safe (hstring,keyword,value_buffer);
 
     /* Translate value from ASCII colon-delimited string to binary */
     if (value != NULL) {
@@ -501,9 +506,10 @@ const char *keyword;    /* character string containing the name of the keyword
 double *dval;   /* Right ascension in degrees (returned) */
 {
     char *value;
+    char value_buffer[VLENGTH + 1];
 
     /* Get value from header string */
-    value = hgetc (hstring,keyword);
+    value = hgetc_thread_safe (hstring,keyword,value_buffer);
 
     /* Translate value from ASCII colon-delimited string to binary */
     if (value != NULL) {
@@ -564,9 +570,10 @@ double *dval;
     int lval;
     char *dchar;
     char val[VLENGTH+1];
+    char value_buffer[VLENGTH + 1];
 
     /* Get value and comment from header string */
-    value = hgetc (hstring,keyword);
+    value = hgetc_thread_safe (hstring,keyword,value_buffer);
 
     /* Translate value from ASCII to binary */
     if (value != NULL) {
@@ -613,9 +620,10 @@ int *ival;
     char newval;
     int lval;
     char val[VLENGTH+1];
+    char value_buffer[VLENGTH + 1];
 
     /* Get value and comment from header string */
-    value = hgetc (hstring,keyword);
+    value = hgetc_thread_safe (hstring,keyword,value_buffer);
 
     /* Translate value from ASCII to binary */
     if (value != NULL) {
@@ -658,9 +666,10 @@ double *dval;
     int year, month, day, yday, i, hours, minutes;
     //static int mday[12] = {31,28,31,30,31,30,31,31,30,31,30,31};
     int mday[12] = {31,28,31,30,31,30,31,31,30,31,30,31};
+    char value_buffer[VLENGTH + 1];
 
     /* Get value and comment from header string */
-    value = hgetc (hstring,keyword);
+    value = hgetc_thread_safe (hstring,keyword,value_buffer);
 
     /* Translate value from ASCII to binary */
     if (value != NULL) {
@@ -933,9 +942,10 @@ char *str;      /* String (returned) */
 {
     char *value;
     int lval;
+    char value_buffer[VLENGTH + 1];
 
     /* Get value and comment from header string */
-    value = hgetc (hstring,keyword);
+    value = hgetc_thread_safe (hstring,keyword,value_buffer);
 
     if (value != NULL) {
         lval = strlen (value);
@@ -968,9 +978,10 @@ int *ndec;      /* Number of decimal places in keyword value */
 {
     char *value;
     int i, nchar;
+    char value_buffer[VLENGTH + 1];
 
     /* Get value and comment from header string */
-    value = hgetc (hstring,keyword);
+    value = hgetc_thread_safe (hstring,keyword,value_buffer);
 
     /* Find end of string and count backward to decimal point */
     *ndec = 0;
@@ -990,6 +1001,7 @@ int *ndec;      /* Number of decimal places in keyword value */
 
 /* Extract character value for variable from FITS header string */
 
+/* This function is deprecated.  Use hgetc_thread_safe() instead. */
 char *
 hgetc (hstring,keyword0)
 
@@ -1004,6 +1016,24 @@ const char *keyword0;   /* character string containing the name of the keyword
     // Since we return cval (via value), it must be static (but that doesn't
     // make it thread safe).
     static char cval[80];
+
+    hgetc_thread_safe(hstring, keyword0, cval);
+    return cval;
+}
+
+char *
+hgetc_thread_safe (hstring,keyword0, value_buffer)
+
+const char *hstring;    /* character string containing FITS header information
+                   in the format <keyword>= <value> {/ <comment>} */
+const char *keyword0;   /* character string containing the name of the keyword
+                   the value of which is returned.  hget searches for a
+                   line beginning with this string.  if "[n]" is present,
+                   the n'th token in the value is returned.
+                   (the first 8 characters must be unique) */
+char *value_buffer; /* output buffer, assumed to be VLENGTH+1 bytes minimum */
+{
+    char *cval;
     char *value;
     char cwhite[2];
     char squot[2], dquot[2], lbracket[2], rbracket[2], slash[2], comma[2];
@@ -1021,6 +1051,12 @@ const char *keyword0;   /* character string containing the name of the keyword
 
     if( !use_saolib ){
 #endif
+
+    if (value_buffer == NULL)
+    {
+        return NULL;
+    }
+    cval = value_buffer;
 
     squot[0] = (char) 39;
     squot[1] = (char) 0;
