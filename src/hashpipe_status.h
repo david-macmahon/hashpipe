@@ -22,6 +22,7 @@ extern "C" {
 #endif
 
 /* Structure describes status memory area */
+/// @private
 typedef struct {
     int instance_id; /* Instance ID of this status buffer (DO NOT SET/CHANGE!) */
     int shmid;   /* Shared memory segment id */

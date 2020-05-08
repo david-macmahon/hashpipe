@@ -6,6 +6,7 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include "hashpipe.h"
+#include "hashpipe_decls.h"
 
 static int run_threads_flag = 1;
 

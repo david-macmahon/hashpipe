@@ -5,6 +5,10 @@
 #ifndef _HASHPIPE_ERROR_H
 #define _HASHPIPE_ERROR_H
 
+/** @file hashpipe_error.h
+ * @brief temp description
+ */
+
 /* Some exit codes */
 #define HASHPIPE_OK          0
 #define HASHPIPE_TIMEOUT     1 // Call timed out 

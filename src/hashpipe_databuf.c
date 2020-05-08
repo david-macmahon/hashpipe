@@ -21,6 +21,7 @@
 #include "hashpipe_error.h"
 
 /* union for semaphore ops. */
+/// @private
 union semun {
     int val;
     struct semid_ds *buf;

@@ -16,6 +16,7 @@ extern "C" {
 #endif
 
 // Define hashpipe_databuf structure
+/// @private
 typedef struct {
     char data_type[64]; /* Type of data in buffer */
     size_t header_size; /* Size of each block header (bytes) */
