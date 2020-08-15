@@ -872,8 +872,19 @@ int hashpipe_ibv_flow(
       return 1;
   } // switch(flow_type)
 
+#ifdef __GNUC__
+#if __GNUC__ > 7
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+#endif
+#endif
   if(!(hibv_ctx->ibv_flows[flow_idx] =
         ibv_create_flow(hibv_ctx->qp, (struct ibv_flow_attr *)&flow))) {
+#ifdef __GNUC__
+#if __GNUC__ > 7
+#pragma GCC diagnostic pop
+#endif
+#endif
     return 1;
   }
 
