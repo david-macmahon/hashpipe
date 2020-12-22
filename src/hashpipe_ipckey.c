@@ -30,8 +30,14 @@ static key_t hashpipe_ipckey(int proj_id)
     key_t key = -1;
     char * keyfile = getenv("HASHPIPE_KEYFILE");
     if(!keyfile) {
+#ifdef HASHPIPE_VERBOSE
+        fprintf(stderr, "no HASHPIPE_KEYFILE value\n");
+#endif
         keyfile = getenv("HOME");
         if(!keyfile) {
+#ifdef HASHPIPE_VERBOSE
+                fprintf(stderr, "no HOME value\n");
+#endif
             keyfile = "/tmp";
         }
     }
