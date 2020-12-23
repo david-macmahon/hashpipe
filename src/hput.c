@@ -194,7 +194,7 @@ const int ndec;         /* Number of decimal places to print */
 const double dval;      /* double number */
 {
     char value[30];
-    char format[14];
+    char format[8];
     int i, lval;
 
     /* Translate value from binary to ASCII */
@@ -423,8 +423,7 @@ const char *cval; /* character string containing the value for variable
 
     /* Put single quote at start of string */
     value[0] = squot;
-    // strncpy (&value[1],cval,lcval);
-    sprintf(&value[1], "%s", cval);
+    strncpy (&value[1],cval,lcval);
 
     /* If string is less than eight characters, pad it with spaces */
     if (lcval < 8) {
@@ -500,7 +499,7 @@ const char *value; /* character string containing the value for variable
             v2 = v1 + 80;
 
         /* Insert keyword8 */
-        strncpy (v1,keyword8,9);
+        strncpy (v1,keyword8,7);
 
         /* Pad with spaces */
         for (vp = v1+lkeyword; vp < v2; vp++)
@@ -596,7 +595,7 @@ const char *value; /* character string containing the value for variable
         *vp = ' ';
 
     /*  Copy keyword8 to new entry */
-    strncpy (v1, keyword8, lkeyword+1);
+    strncpy (v1, keyword8, lkeyword);
 
     /*  Add parameter value in the appropriate place */
     /*
@@ -769,7 +768,7 @@ hputcom (hstring,keyword,comment)
         /* If comment will not fit at all, return */
         if (c0 - v1 > 77)
             return (-1);
-        strncpy (c0, " / ",4);
+        strncpy (c0, " / ",3);
         }
 
     /* Create new entry */
@@ -780,7 +779,7 @@ hputcom (hstring,keyword,comment)
             lcom = lblank;
         for (i = 0; i < lblank; i++)
             c1[i] = ' ';
-        strncpy (c1, comment, lcom+1);
+        strncpy (c1, comment, lcom);
         }
 
     if (verbose) {
@@ -892,8 +891,7 @@ const char *keyword;    /* Keyword of entry to be deleted */
 
     /* Cover former first line with new keyword */
     lkey = (int) strlen (keyword);
-    // strncpy (hplace, keyword, lkey+1);
-    sprintf(hplace, "%s", keyword);
+    strncpy (hplace, keyword, lkey);
     if (lkey < 8) {
         for (i = lkey; i < 8; i++)
             hplace[i] = ' ';
@@ -1240,7 +1238,7 @@ double  deg;            /* Angle in degrees */
 int     ndec;           /* Number of decimal places in degree string */
 
 {
-    char degform[26];
+    char degform[8];
     int field, ltstr;
     char tstring[64];
     double deg1;
@@ -1293,23 +1291,22 @@ int     field;          /* Number of characters in output field (0=any) */
 int     ndec;           /* Number of decimal places in degree string */
 
 {
-    char numform1[25];
-    char numform2[14];
+    char numform[8];
 
     if (field > 0) {
         if (ndec > 0) {
-            sprintf (numform1, "%%%d.%df", field, ndec);
-            sprintf (string, numform1, num);
+            sprintf (numform, "%%%d.%df", field, ndec);
+            sprintf (string, numform, num);
             }
         else {
-            sprintf (numform2, "%%%dd", field);
-            sprintf (string, numform2, (int)num);
+            sprintf (numform, "%%%dd", field);
+            sprintf (string, numform, (int)num);
             }
         }
     else {
         if (ndec > 0) {
-            sprintf (numform2, "%%.%df", ndec);
-            sprintf (string, numform2, num);
+            sprintf (numform, "%%.%df", ndec);
+            sprintf (string, numform, num);
             }
         else {
             sprintf (string, "%d", (int)num);
