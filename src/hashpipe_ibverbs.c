@@ -1079,6 +1079,18 @@ int hashpipe_ibv_flow(
       if(dst_mac) {
         memcpy(flow.spec_eth.val.dst_mac, dst_mac, 6);
         memset(flow.spec_eth.mask.dst_mac, 0xff, 6);
+// Compile with ALLOW_IBV_WILDCARD_DST_MAC defined to allow unspecified (i.e.
+// widcard) dst_mac.  Doing so will make this incompatible with ConnectX-3.
+#ifndef ALLOW_IBV_WILDCARD_DST_MAC
+      } else {
+        fprintf(stderr, "using dst_mac ");
+        for(i=0; i<5; i++) {
+          fprintf(stderr, "%02x:", hibv_ctx->mac[i]);
+        }
+        fprintf(stderr, "%02x\n", hibv_ctx->mac[i]);
+        memcpy(flow.spec_eth.val.dst_mac, hibv_ctx->mac, 6);
+        memset(flow.spec_eth.mask.dst_mac, 0xff, 6);
+#endif
       }
 
       if(src_mac) {
