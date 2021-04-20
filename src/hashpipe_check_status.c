@@ -32,7 +32,8 @@ static void usage() {
         "  -i VAL, --int=VAL      Update key with int value VAL\n"
         "Delete options:\n"
         "  -C,     --clear        Remove all key/value pairs\n"
-        "  -D KEY, --del=KEY      Delete KEY (and its value)\n"
+        "  -D,     --del          Delete KEY and its value\n"
+        "                         (needs to follow -k KEY)\n"
     );
 }
 
