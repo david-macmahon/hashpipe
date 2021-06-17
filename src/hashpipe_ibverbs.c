@@ -155,6 +155,11 @@ int hashpipe_ibv_open_device_for_interface_id(
       retval++;
       continue;
     }
+    if(errno){
+      fprintf(stderr, "hashpipe_ibv_open_device_for_interface_id ibv_open_device %s ", dev_list[devidx]->name);
+      perror("resetting errno");
+      errno = 0;
+    }
 
     // Query device
     if(ibv_query_device(ibv_ctx, &ibv_device_attr)) {
@@ -243,8 +248,13 @@ clean_devlist:
   }
 
   // Set errno if we are not returning success
+  // otherwise note any errno values and reset errno
   if(retval) {
     errno = ENODEV;
+  }
+  else if(errno){
+    perror("hashpipe_ibv_open_device_for_interface_id resetting errno");
+    errno = 0;
   }
 
   return retval;
