@@ -1180,7 +1180,7 @@ struct hashpipe_ibv_recv_pkt * hashpipe_ibv_recv_pkts(
   struct ibv_qp *qp;
   struct ibv_qp_attr qp_attr;
   struct ibv_cq *ev_cq;
-  int ev_cq_ctx;
+  void *ev_cq_ctx = NULL;
 #if HPIBV_USE_EXP_CQ
   struct ibv_exp_wc wc[WC_BATCH_SIZE];
 #else
@@ -1238,7 +1238,7 @@ struct hashpipe_ibv_recv_pkt * hashpipe_ibv_recv_pkts(
   }
 
   // Get the completion event
-  if(ibv_get_cq_event(hibv_ctx->recv_cc, &ev_cq, (void **)&ev_cq_ctx)) {
+  if(ibv_get_cq_event(hibv_ctx->recv_cc, &ev_cq, &ev_cq_ctx)) {
     perror("ibv_get_cq_event");
     return NULL;
   }
@@ -1267,7 +1267,7 @@ struct hashpipe_ibv_recv_pkt * hashpipe_ibv_recv_pkts(
       // Set length to 0 for unsuccessful work requests
       if(wc[i].status != IBV_WC_SUCCESS) {
         fprintf(stderr,
-            "wr %lu (%#016lx) got completion status 0x%x (%s) vendor error 0x%x (QP %d)\n",
+            "wr %lu (%#016lx) got completion status 0x%x (%s) vendor error 0x%x (QP %p)\n",
             wr_id, wr_id, wc[i].status, ibv_wc_status_str(wc[i].status),
             wc[i].vendor_err, ev_cq_ctx);
         hibv_ctx->recv_pkt_buf[wr_id].length = 0;
