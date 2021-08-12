@@ -12,6 +12,10 @@
 
 #include "hashpipe_ibverbs.h"
 
+#if HPIBV_USE_TIMING_DAIGS
+#define ELAPSED_NS(start,stop) \
+    (((int64_t)stop.tv_sec-start.tv_sec)*1000*1000*1000+(stop.tv_nsec-start.tv_nsec))
+#endif
 // Need to include this after including hashpipe_ibverbs.h since
 // HPIBV_USE_MMAP_PKTBUFS may be defined there.
 #if HPIBV_USE_MMAP_PKTBUFS
@@ -20,7 +24,7 @@
 
 #if HPIBV_USE_EXP_CQ
 #define IBV_CREATE_CQ(ctx,cqe,cq_ctx,cc,cv,attr) \
-  ibv_exp_create_cq(ctx,cqe,cq_ctx,cc,cv,attr)
+  ibv_create_cq_ex(ctx,attr)
 #define IBV_POLL_CQ(cq,nce,wc) \
   ibv_exp_poll_cq(cq,nce,wc,sizeof(struct ibv_exp_wc))
 #else
@@ -241,11 +245,6 @@ int hashpipe_ibv_open_device_for_interface_id(
 
 clean_devlist:
   ibv_free_device_list(dev_list);
-  
-  // free ibv_device_attr
-  if(!found_device_attr) {
-    free(ibv_device_attr);
-  }
 
   // Set errno if we are not returning success
   // otherwise note any errno values and reset errno
@@ -276,9 +275,9 @@ int hashpipe_ibv_init(struct hashpipe_ibv_context * hibv_ctx)
   int max_recv_sge = 1;
   struct ibv_recv_wr * recv_wr_bad;
 #if HPIBV_USE_EXP_CQ
-  struct ibv_exp_cq_init_attr cq_attr = {
-    .comp_mask = IBV_EXP_CQ_INIT_ATTR_FLAGS,
-    .flags = IBV_EXP_CQ_TIMESTAMP
+  struct ibv_cq_init_attr_ex cq_attr = {
+  // .comp_mask = IBV_EXP_CQ_INIT_ATTR_FLAGS, // ??? modern replacement mlnx5?
+  .flags = IBV_WC_EX_WITH_COMPLETION_TIMESTAMP // confirm?
   };
 #endif
 
@@ -685,6 +684,7 @@ int hashpipe_ibv_init(struct hashpipe_ibv_context * hibv_ctx)
       hibv_ctx->send_sge_buf[i].addr = (uint64_t)
         hibv_ctx->send_mr_buf + i * hibv_ctx->pkt_size_max;
       hibv_ctx->send_sge_buf[i].length = hibv_ctx->pkt_size_max;
+      hibv_ctx->send_sge_buf[i].lkey = hibv_ctx->send_mr->lkey;
     } // !user_managed
 
     if(i == 0) {
@@ -709,6 +709,7 @@ int hashpipe_ibv_init(struct hashpipe_ibv_context * hibv_ctx)
       hibv_ctx->recv_sge_buf[i].addr = (uint64_t)
         hibv_ctx->recv_mr_bufs[0] + i * hibv_ctx->pkt_size_max;
       hibv_ctx->recv_sge_buf[i].length = hibv_ctx->pkt_size_max;
+      hibv_ctx->recv_sge_buf[i].lkey = hibv_ctx->recv_mrs[0]->lkey;
     } // !user_managed
 
     if(i == 0) {
@@ -949,10 +950,10 @@ int hashpipe_ibv_shutdown(struct hashpipe_ibv_context * hibv_ctx)
       for(i=0; i<hibv_ctx->recv_mr_num; i++){
         if(hibv_ctx->recv_mr_bufs[i]) {
 #if HPIBV_USE_MMAP_PKTBUFS
-          munmap(hibv_ctx->recv_mr_buf,
+          munmap(hibv_ctx->recv_mr_bufs[i],
               hibv_ctx->recv_pkt_num*hibv_ctx->pkt_size_max);
 #else
-          free(hibv_ctx->recv_mr_buf);
+          free(hibv_ctx->recv_mr_bufs[i]);
 #endif // HPIBV_USE_MMAP_PKTBUFS
           hibv_ctx->recv_mr_bufs[i] = NULL;
         }

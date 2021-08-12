@@ -11,7 +11,7 @@
 #define HPIBV_USE_SEND_CC       0
 #define HPIBV_USE_MMAP_PKTBUFS  1
 #define HPIBV_USE_TIMING_DAIGS  0
-#define HPIBV_USE_EXP_CQ        1
+#define HPIBV_USE_EXP_CQ        0
 
 // The Mellanox installed infiniband/verbs.h file does not define
 // IBV_DEVICE_IP_CSUM or IBV_SEND_IP_CSUM.  This was an attempt to utilize said
@@ -26,9 +26,6 @@
 #define IBV_SEND_IP_CSUM   (1 <<  4)
 #endif // HAVE_IBV_IP_CSUM
 #endif // ENABLE_IP_CSUM_HACK
-
-#define ELAPSED_NS(start,stop) \
-    (((int64_t)stop.tv_sec-start.tv_sec)*1000*1000*1000+(stop.tv_nsec-start.tv_nsec))
 
 #ifdef __cplusplus
 extern "C" {
