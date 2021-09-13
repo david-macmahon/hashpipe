@@ -2,6 +2,7 @@
 #define _HASHPIPE_H
 
 #include <stdio.h>
+#include <sched.h>
 
 #include "hashpipe_error.h"
 #include "hashpipe_databuf.h"
@@ -139,7 +140,7 @@ struct hashpipe_thread_args {
     int instance_id;
     int input_buffer;
     int output_buffer;
-    unsigned int cpu_mask; // 0 means use inherited
+    __cpu_mask cpu_mask; // 0 means use inherited
     int finished;
     pthread_cond_t finished_c;
     pthread_mutex_t finished_m;
