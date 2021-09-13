@@ -11,7 +11,6 @@
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <sched.h>
 #include <signal.h>
 #include <poll.h>
 #include <getopt.h>
@@ -63,15 +62,14 @@ static void set_exit_status(hashpipe_thread_args_t *args) {
 
 // Function to set cpu affinity
 int
-set_cpu_affinity(unsigned int mask)
+set_cpu_affinity(__cpu_mask mask)
 {
     int i, rv;
 
     if(mask != 0) {
         cpu_set_t cpuset;
         CPU_ZERO(&cpuset);
-        // Only handle 32 cores (for now)
-        for(i=0; i<32; i++) {
+        for(i=0; i<__NCPUBITS; i++) {
             if(mask&1) {
               CPU_SET(i, &cpuset);
             }
