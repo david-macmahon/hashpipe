@@ -454,7 +454,7 @@ int main(int argc, char *argv[])
 
         case 'c': // CPU number
           i = strtol(optarg, NULL, 0);
-          args[num_threads].cpu_mask = (1<<i);
+          args[num_threads].cpu_mask = (((__cpu_mask) 1)<<i);
           break;
 
         case 'p': // Load plugin
