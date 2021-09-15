@@ -1367,7 +1367,7 @@ struct hashpipe_ibv_send_pkt * hashpipe_ibv_get_pkts(
   struct ibv_wc wc[WC_BATCH_SIZE];
 #endif
   struct hashpipe_ibv_send_pkt * send_pkt;
-#if HPIBV_USE_TIMING_DAIGS
+#if HPIBV_USE_TIMING_DIAGS
   struct timespec now;
 #endif
 
@@ -1423,7 +1423,7 @@ struct hashpipe_ibv_send_pkt * hashpipe_ibv_get_pkts(
     }
   }
 
-#if HPIBV_USE_TIMING_DAIGS
+#if HPIBV_USE_TIMING_DIAGS
   // Used to update elapsed stats of packets
   clock_gettime(CLOCK_MONOTONIC, &now);
 #endif
@@ -1445,7 +1445,7 @@ struct hashpipe_ibv_send_pkt * hashpipe_ibv_get_pkts(
 #if HPIBV_USE_EXP_CQ
         send_pkt->timestamp = wc[i].timestamp;
 #endif
-#if HPIBV_USE_TIMING_DAIGS
+#if HPIBV_USE_TIMING_DIAGS
         send_pkt->elapsed_ns = ELAPSED_NS( send_pkt->ts, now);
         send_pkt->elapsed_ns_total += send_pkt->elapsed_ns;
         send_pkt->elapsed_ns_count++;
@@ -1470,7 +1470,7 @@ int hashpipe_ibv_send_pkts(struct hashpipe_ibv_context * hibv_ctx,
 {
   //uint64_t wr_id;
   struct ibv_send_wr * p;
-#if HPIBV_USE_TIMING_DAIGS
+#if HPIBV_USE_TIMING_DIAGS
   struct hashpipe_ibv_send_pkt * pkt;
 #endif
 
@@ -1479,7 +1479,7 @@ int hashpipe_ibv_send_pkts(struct hashpipe_ibv_context * hibv_ctx,
     return -1;
   }
 
-#if HPIBV_USE_TIMING_DAIGS
+#if HPIBV_USE_TIMING_DIAGS
   // Set ts field in each packet
   for(pkt=send_pkt; pkt; pkt = pkt->wr.next) {
     clock_gettime(CLOCK_MONOTONIC, &pkt->ts);
