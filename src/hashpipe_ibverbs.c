@@ -484,7 +484,7 @@ int hashpipe_ibv_init(struct hashpipe_ibv_context * hibv_ctx)
       .max_inline_data = 0,
     },
     .qp_type = IBV_QPT_RAW_PACKET,
-    .sq_sig_all = 0
+    .sq_sig_all = 1
   };
 
   if(!(hibv_ctx->qp =
@@ -1302,8 +1302,7 @@ static void print_send_pkt_list(struct hashpipe_ibv_send_pkt *p, size_t max)
 // send_pkt_head list, updating the send_pkt_head field as needed.
 // The return value is a pointer to the first packet of a linked list of
 // packets, or NULL if no packets are available or hibv_ctx is NULL or
-// num_to_pop is zero.  The final element of the linked list (i.e. the one with
-// "next" set to NULL) will have the IBV_SEND_SIGNALED flag set.
+// num_to_pop is zero.
 static struct hashpipe_ibv_send_pkt * pop_send_packets(
     struct hashpipe_ibv_context * hibv_ctx, size_t num_to_pop)
 {
@@ -1339,9 +1338,6 @@ static struct hashpipe_ibv_send_pkt * pop_send_packets(
   // Update send_pkt_head and NULL terminate tail
   hibv_ctx->send_pkt_head = (struct hashpipe_ibv_send_pkt *)tail->wr.next;
   tail->wr.next = NULL;
-
-  // Set the IBV_SEND_SIGNALED flag
-  tail->wr.send_flags |= IBV_SEND_SIGNALED;
 
 #ifdef VERBOSE_IBV_DEBUG
   eprintf("leaving pop_send_packets got %d packets\n", i+1);
@@ -1450,8 +1446,6 @@ struct hashpipe_ibv_send_pkt * hashpipe_ibv_get_pkts(
         send_pkt->elapsed_ns_total += send_pkt->elapsed_ns;
         send_pkt->elapsed_ns_count++;
 #endif
-        // Clear IBV_SEND_SIGNALED flag
-        send_pkt->wr.send_flags &= ~IBV_SEND_SIGNALED;
         // Push onto send_pkt_head
         send_pkt->wr.next = &hibv_ctx->send_pkt_head->wr;
         hibv_ctx->send_pkt_head = send_pkt;
