@@ -294,7 +294,7 @@ int hashpipe_ibv_open_device_for_interface_id(
 //
 //   When `user_managed_flag` is true (non-zero), the user must allocate the
 //   packet send and receive buffers and allocate and initialize the work
-//   requests with scatter/gather lists as desired.  See USER MANGED STRUCTURES
+//   requests with scatter/gather lists as desired.  See USER MANGED BUFFERS
 //   below for more details.
 //
 // * USER MANAGED BUFFERS
