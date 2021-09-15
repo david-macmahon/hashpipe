@@ -10,8 +10,8 @@
 // These defines control various aspects of the Hashpipe IB Verbs library.
 #define HPIBV_USE_SEND_CC       0
 #define HPIBV_USE_MMAP_PKTBUFS  1
-#define HPIBV_USE_TIMING_DAIGS  0
-#define HPIBV_USE_EXP_CQ        0
+#define HPIBV_USE_TIMING_DIAGS  0
+#define HPIBV_USE_EXP_CQ        1
 
 // The Mellanox installed infiniband/verbs.h file does not define
 // IBV_DEVICE_IP_CSUM or IBV_SEND_IP_CSUM.  This was an attempt to utilize said
@@ -42,7 +42,7 @@ extern "C" {
 // first field.
 struct hashpipe_ibv_send_pkt {
   struct ibv_send_wr wr;
-#if HPIBV_USE_TIMING_DAIGS
+#if HPIBV_USE_TIMING_DIAGS
   struct timespec ts;
   uint64_t elapsed_ns;
   uint64_t elapsed_ns_total;
