@@ -1482,7 +1482,7 @@ struct hashpipe_ibv_send_pkt * hashpipe_ibv_get_pkts(
       for(j=0; j<num_wce; j++) {
         send_pkt = &hibv_ctx->send_pkt_buf[wc[j].wr_id];
 #if HPIBV_USE_EXP_CQ
-        send_pkt->timestamp = wc[i].timestamp;
+        send_pkt->timestamp = wc[j].timestamp;
 #endif
 #if HPIBV_USE_TIMING_DIAGS
         send_pkt->elapsed_ns = ELAPSED_NS( send_pkt->ts, now);
