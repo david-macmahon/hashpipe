@@ -27,9 +27,6 @@
 #endif // HAVE_IBV_IP_CSUM
 #endif // ENABLE_IP_CSUM_HACK
 
-#define ELAPSED_NS(start,stop) \
-    (((int64_t)stop.tv_sec-start.tv_sec)*1000*1000*1000+(stop.tv_nsec-start.tv_nsec))
-
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
@@ -123,7 +120,7 @@ struct hashpipe_ibv_context {
   // Send and receive memory region buffers (i.e.packet buffers).  Managed by
   // library or advanced user.
   uint8_t                      * send_mr_buf;
-  uint8_t                      * recv_mr_buf;
+  uint8_t                      **recv_mr_bufs; // should be recv_mr_num pointers
 
   // Size of the send and receive memory region buffers (i.e. packet buffers).
   // Managed by library or advanced user.
@@ -133,7 +130,8 @@ struct hashpipe_ibv_context {
   // Send and receive memory regions that have been registered with `pd`.
   // Managed by library.
   struct ibv_mr                * send_mr;
-  struct ibv_mr                * recv_mr;
+  struct ibv_mr                **recv_mrs;
+  uint8_t                        recv_mr_num; 
 
   // Number of send and receive packets to buffer per QP.  Specified by user.
   // Passing 0 for these fields with user managed buffers is an error.
