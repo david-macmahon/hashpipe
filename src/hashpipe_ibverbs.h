@@ -10,8 +10,8 @@
 // These defines control various aspects of the Hashpipe IB Verbs library.
 #define HPIBV_USE_SEND_CC       0
 #define HPIBV_USE_MMAP_PKTBUFS  1
-#define HPIBV_USE_TIMING_DAIGS  0
-#define HPIBV_USE_EXP_CQ        0
+#define HPIBV_USE_TIMING_DIAGS  0
+#define HPIBV_USE_EXP_CQ        1
 
 // The Mellanox installed infiniband/verbs.h file does not define
 // IBV_DEVICE_IP_CSUM or IBV_SEND_IP_CSUM.  This was an attempt to utilize said
@@ -42,7 +42,7 @@ extern "C" {
 // first field.
 struct hashpipe_ibv_send_pkt {
   struct ibv_send_wr wr;
-#if HPIBV_USE_TIMING_DAIGS
+#if HPIBV_USE_TIMING_DIAGS
   struct timespec ts;
   uint64_t elapsed_ns;
   uint64_t elapsed_ns_total;
@@ -294,7 +294,7 @@ int hashpipe_ibv_open_device_for_interface_id(
 //
 //   When `user_managed_flag` is true (non-zero), the user must allocate the
 //   packet send and receive buffers and allocate and initialize the work
-//   requests with scatter/gather lists as desired.  See USER MANGED STRUCTURES
+//   requests with scatter/gather lists as desired.  See USER MANGED BUFFERS
 //   below for more details.
 //
 // * USER MANAGED BUFFERS
