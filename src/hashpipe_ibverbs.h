@@ -8,10 +8,10 @@
 #include <infiniband/verbs.h>
 
 // These defines control various aspects of the Hashpipe IB Verbs library.
-#define HPIBV_USE_SEND_CC       0
+#define HPIBV_USE_SEND_CC       1
 #define HPIBV_USE_MMAP_PKTBUFS  1
 #define HPIBV_USE_TIMING_DIAGS  0
-#define HPIBV_USE_EXP_CQ        1
+#define HPIBV_USE_EXP_CQ        0
 
 // The Mellanox installed infiniband/verbs.h file does not define
 // IBV_DEVICE_IP_CSUM or IBV_SEND_IP_CSUM.  This was an attempt to utilize said
@@ -119,8 +119,8 @@ struct hashpipe_ibv_context {
 
   // Send and receive memory region buffers (i.e.packet buffers).  Managed by
   // library or advanced user.
-  uint8_t                      * send_mr_buf;
-  uint8_t                      **recv_mr_bufs; // should be recv_mr_num pointers
+  uint8_t                     ** send_mr_bufs;
+  uint8_t                     ** recv_mr_bufs; // should be recv_mr_num pointers
 
   // Size of the send and receive memory region buffers (i.e. packet buffers).
   // Managed by library or advanced user.
@@ -129,8 +129,9 @@ struct hashpipe_ibv_context {
 
   // Send and receive memory regions that have been registered with `pd`.
   // Managed by library.
-  struct ibv_mr                * send_mr;
-  struct ibv_mr                **recv_mrs;
+  struct ibv_mr               ** send_mrs;
+  uint8_t                        send_mr_num; 
+  struct ibv_mr               ** recv_mrs;
   uint8_t                        recv_mr_num; 
 
   // Number of send and receive packets to buffer per QP.  Specified by user.
