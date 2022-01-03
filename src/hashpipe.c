@@ -71,6 +71,7 @@ set_cpu_affinity(__cpu_mask mask)
         CPU_ZERO(&cpuset);
         for(i=0; i<__NCPUBITS; i++) {
             if(mask&1) {
+              hashpipe_info(__FUNCTION__, "masked to CPU %d", i);
               CPU_SET(i, &cpuset);
             }
             mask >>= 1;
@@ -175,6 +176,7 @@ hashpipe_thread_run(void *vp_args)
     hashpipe_thread_args_t *args = (hashpipe_thread_args_t *)vp_args;
     void * rv = THREAD_OK;
 
+    hashpipe_info(__FUNCTION__, "Masking %s:", args->thread_desc->name);
     // Set CPU affinity
     if(set_cpu_affinity(args->cpu_mask) < 0) {
         perror("set_cpu_affinity");
