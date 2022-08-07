@@ -38,7 +38,7 @@ extern "C" {
 // ibv_send_wr`.  Because the first field is a `struct ibv_send_wr`, pointers
 // to `struct hashpipe_ibv_send_pkt` can be cast as pointers to `struct
 // ibv_send_wr`. This definition was chosen over a `typedef` or `#define` to
-// mainain a degee of symmetry with `struct hashpipe_ibv_recv_pkt`.
+// maintain a degree of symmetry with `struct hashpipe_ibv_recv_pkt`.
 //
 // When using user managed buffers that require additional fields, the user
 // MUST define a stucture that has a `struct hashpipe_ibv_send_pkt` as its
@@ -65,7 +65,7 @@ struct hashpipe_ibv_send_pkt {
 // The `length` field stores the full length of the data copied into the
 // scatter/gather memory buffers.  Each scatter/gather memory buffer is fully
 // filled before moving onto the next scatter/gather memory buffer.  Consumers
-// can iterate through the scatter/gather list comsuming bytes until `length`
+// can iterate through the scatter/gather list consuming bytes until `length`
 // bytes have been consumed.
 //
 // When using user managed buffers that require additional fields, the user
@@ -162,7 +162,7 @@ struct hashpipe_ibv_context {
   // one-to-one mapped with the flow pointers in `ibv_flows`.  These need to be
   // stored so that we can drop multicast membership when destroying a flow.
   // The `flow_dst_ips` entry for a flow is set to 0 if there is no dst_ip
-  // specified for the corresonding flow.  Managed by library.
+  // specified for the corresponding flow.  Managed by library.
   uint32_t                     * flow_dst_ips;
 
   // Socket used for multicast subscriptions.  This offloads IGMP management to
@@ -226,11 +226,11 @@ int hashpipe_ibv_open_device_for_interface_id(
     struct ibv_device_attr * found_dev_attr,
     uint8_t                * found_port);
 
-// The `hashpipe_ibv_init()` funciton sets up the data structures necessary for
+// The `hashpipe_ibv_init()` function sets up the data structures necessary for
 // initiating raw packet flows using ibverbs.  When this function returns
 // successfully, the underlying ibverbs "queue pair" will be in the INIT state,
 // so the queue pair will drop incoming packets and outgoing packets.  The
-// `hashpipe_ibverbs` library will automatially transition the queue pair to
+// `hashpipe_ibverbs` library will automatically transition the queue pair to
 // the appropriate state for receiving or sending packets on the first call to
 // a `hashpipe_ibverbs` function that initiates such activity.  After this
 // function returns successfully, the user can set the queue pair state
@@ -242,7 +242,7 @@ int hashpipe_ibv_open_device_for_interface_id(
 // This function returns 0 on success, non-zero on error.
 //
 // The caller must provide the following things in the `hashpipe_ibv_context`
-// sturcture pointed to by `hibv_ctx`:
+// structure pointed to by `hibv_ctx`:
 //
 // 1. The desired interface name.
 // 2. Packet buffer sizing info.
@@ -419,9 +419,9 @@ int hashpipe_ibv_flow(
 // milliseconds for packets to arrive.  Because NULL is returned for both a
 // normal "no packets" condition and an error condition, callers who wish to
 // distinguish between no packet and an error condition can set `errno` to 0
-// prioer to calling this function and then check `errno` if NULL is returned.
+// prior to calling this function and then check `errno` if NULL is returned.
 // For a normal "no packets" NULL return value, errno will be unchanged; if an
-// error occured errno will ne non-zero.  A timeout of zero returns
+// error occurred errno will be non-zero.  A timeout of zero returns
 // immediately.  A negative timeout waits "forever".
 //
 // Because work completion notifications are asynchronous with work completion
