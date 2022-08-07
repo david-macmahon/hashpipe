@@ -550,16 +550,20 @@ int debug_i=0, debug_j=0;
 
   // Wait until the first two blocks are marked as free
   // (should already be free)
+  hashpipe_info(thread_name, "waiting for two free blocks");
   for(i=0; i<2; i++) {
     wait_for_block_free(db,
         (curblk+i) % HASHPIPE_IBVPKT_DATABUF_NBLOCKS, st, status_key);
   }
+  hashpipe_info(thread_name, "got two free blocks");
 
   // Initialize IBV
+  hashpipe_info(thread_name, "calling hashpipe_ibvpkt_init");
   if(hashpipe_ibvpkt_init(st, db)) {
     hashpipe_error(thread_name, "hashpipe_ibvpkt_init failed");
     return NULL;
   }
+  hashpipe_info(thread_name, "hashpipe_ibvpkt_init succeeded");
 
   // Initialize next slot
   next_slot = hibv_ctx->recv_pkt_num + 1;
