@@ -6,27 +6,27 @@ lib_LTLIBRARIES  =
 
 hashpipe_status = hashpipe_error.h  \
                   hashpipe_error.c  \
-		  hashpipe_ipckey.h \
-		  hashpipe_ipckey.c \
+                  hashpipe_ipckey.h \
+                  hashpipe_ipckey.c \
                   hashpipe_status.h \
-		  hashpipe_status.c \
-		  fitshead.h        \
-		  hget.c            \
-		  hput.c
+                  hashpipe_status.c \
+                  fitshead.h        \
+                  hget.c            \
+                  hput.c
 
-hashpipe_base = hashpipe.h             \
-		hashpipe_databuf.h     \
-	        hashpipe_databuf.c     \
-	        hashpipe_pktsock.h     \
-	        hashpipe_pktsock.c     \
-	        hashpipe_thread.c      \
-	        hashpipe_udp.h         \
-	        hashpipe_udp.c
+hashpipe_base = hashpipe.h         \
+                hashpipe_databuf.h \
+                hashpipe_databuf.c \
+                hashpipe_pktsock.h \
+                hashpipe_pktsock.c \
+                hashpipe_thread.c  \
+                hashpipe_udp.h     \
+                hashpipe_udp.c
 
 hashpipe_exec = hashpipe.c             \
-	        hashpipe_thread_args.h \
-	        hashpipe_thread_args.c \
-		null_output_thread.c
+                hashpipe_thread_args.h \
+                hashpipe_thread_args.c \
+                null_output_thread.c
 
 bin_PROGRAMS += hashpipe_check_databuf
 hashpipe_check_databuf_SOURCES = hashpipe_check_databuf.c
@@ -67,18 +67,18 @@ libhashpipe_la_SOURCES = $(hashpipe_base)
 libhashpipe_la_LIBADD = libhashpipestatus.la
 
 include_HEADERS = fitshead.h \
-		  hashpipe.h \
-		  hashpipe_databuf.h \
-		  hashpipe_error.h \
-		  hashpipe_packet.h \
-		  hashpipe_pktsock.h \
-		  hashpipe_status.h \
-		  hashpipe_udp.h
+                  hashpipe.h \
+                  hashpipe_databuf.h \
+                  hashpipe_error.h \
+                  hashpipe_packet.h \
+                  hashpipe_pktsock.h \
+                  hashpipe_status.h \
+                  hashpipe_udp.h
 
 if BUILD_HPIBV
 lib_LTLIBRARIES += libhashpipe_ibverbs.la
 libhashpipe_ibverbs_la_SOURCES = hashpipe_ibverbs.h \
-				 hashpipe_ibverbs.c
+                                 hashpipe_ibverbs.c
 
 include_HEADERS += hashpipe_ibverbs.h
 endif
