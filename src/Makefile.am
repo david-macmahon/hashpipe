@@ -23,9 +23,12 @@ hashpipe_base = hashpipe.h         \
                 hashpipe_udp.h     \
                 hashpipe_udp.c
 
-hashpipe_exec = hashpipe.c             \
-                hashpipe_thread_args.h \
-                hashpipe_thread_args.c \
+hashpipe_exec = hashpipe.c                \
+                hashpipe_ibvpkt_databuf.h \
+                hashpipe_ibvpkt_databuf.c \
+                hashpipe_ibvpkt_thread.c  \
+                hashpipe_thread_args.h    \
+                hashpipe_thread_args.c    \
                 null_output_thread.c
 
 bin_PROGRAMS += hashpipe_check_databuf
@@ -50,7 +53,7 @@ hashpipe_write_databuf_LDADD = libhashpipe.la
 
 bin_PROGRAMS += hashpipe
 hashpipe_SOURCES = $(hashpipe_exec)
-hashpipe_LDADD = -ldl libhashpipe.la libhashpipestatus.la
+hashpipe_LDADD = -ldl libhashpipe.la libhashpipestatus.la libhashpipe_ibverbs.la
 # Force -rpath to be set to libdir
 hashpipe_LDFLAGS = -Wl,-rpath,"$(libdir)"
 
@@ -76,11 +79,13 @@ include_HEADERS = fitshead.h \
                   hashpipe_udp.h
 
 if BUILD_HPIBV
+hashpipe_LDADD += libhashpipe_ibverbs.la
 lib_LTLIBRARIES += libhashpipe_ibverbs.la
 libhashpipe_ibverbs_la_SOURCES = hashpipe_ibverbs.h \
                                  hashpipe_ibverbs.c
 
-include_HEADERS += hashpipe_ibverbs.h
+include_HEADERS += hashpipe_ibverbs.h \
+                   hashpipe_ibvpkt_databuf.h
 endif
 
 aclocaldir = $(datadir)/aclocal
