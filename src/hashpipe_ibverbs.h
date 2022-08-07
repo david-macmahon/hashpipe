@@ -226,6 +226,10 @@ int hashpipe_ibv_open_device_for_interface_id(
     struct ibv_device_attr * found_dev_attr,
     uint8_t                * found_port);
 
+// Queries the device specified by interface_name and returns max_qp_wr, or -1
+// on error.
+int hashpipe_ibv_query_max_wr(const char * interface_name);
+
 // The `hashpipe_ibv_init()` function sets up the data structures necessary for
 // initiating raw packet flows using ibverbs.  When this function returns
 // successfully, the underlying ibverbs "queue pair" will be in the INIT state,

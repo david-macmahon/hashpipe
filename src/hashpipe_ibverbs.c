@@ -245,6 +245,32 @@ clean_devlist:
   return retval;
 }
 
+// Queries the device specified by interface_name and returns max_qp_wr, or -1
+// on error.
+int
+hashpipe_ibv_query_max_wr(const char * interface_name)
+{
+  uint64_t interface_id;
+  struct ibv_device_attr ibv_dev_attr;
+
+  if(hashpipe_ibv_get_interface_info(interface_name, NULL, &interface_id)) {
+    perror("hashpipe_ibv_get_interface_info");
+    fprintf(stderr, "error getting interface info for %s", interface_name);
+    errno = 0;
+    return -1;
+  }
+
+  // This passes NULL for the `found_ctx` parameter so the ibv device will be
+  // closed before the function returns.
+  if(hashpipe_ibv_open_device_for_interface_id(
+        interface_id, NULL, &ibv_dev_attr, NULL)) {
+    // Error message already logged
+    return -1;
+  }
+
+  return ibv_dev_attr.max_qp_wr;
+}
+
 // See comments in header file for details about this function.
 // TODO Use checksum offload, if available
 // TODO Create checksum calculating functions as backup
