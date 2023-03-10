@@ -23,12 +23,9 @@ hashpipe_base = hashpipe.h         \
                 hashpipe_udp.h     \
                 hashpipe_udp.c
 
-hashpipe_exec = hashpipe.c                \
-                hashpipe_ibvpkt_databuf.h \
-                hashpipe_ibvpkt_databuf.c \
-                hashpipe_ibvpkt_thread.c  \
-                hashpipe_thread_args.h    \
-                hashpipe_thread_args.c    \
+hashpipe_exec = hashpipe.c             \
+                hashpipe_thread_args.h \
+                hashpipe_thread_args.c \
                 null_output_thread.c
 
 bin_PROGRAMS += hashpipe_check_databuf
@@ -81,8 +78,11 @@ include_HEADERS = fitshead.h \
 if BUILD_HPIBV
 hashpipe_LDADD += libhashpipe_ibverbs.la
 lib_LTLIBRARIES += libhashpipe_ibverbs.la
-libhashpipe_ibverbs_la_SOURCES = hashpipe_ibverbs.h \
-                                 hashpipe_ibverbs.c
+libhashpipe_ibverbs_la_SOURCES = hashpipe_ibverbs.h        \
+                                 hashpipe_ibverbs.c        \
+                                 hashpipe_ibvpkt_databuf.h \
+                                 hashpipe_ibvpkt_databuf.c \
+                                 hashpipe_ibvpkt_thread.c
 
 include_HEADERS += hashpipe_ibverbs.h \
                    hashpipe_ibvpkt_databuf.h
