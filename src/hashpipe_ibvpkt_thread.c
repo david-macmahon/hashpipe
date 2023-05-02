@@ -120,14 +120,11 @@ static void wait_for_block_free(hashpipe_ibvpkt_databuf_t *db, int block_idx,
     hashpipe_status_t * st, const char * status_key)
 {
   int rv;
-#ifdef STATUS_HACK
   char ibvstat[80] = {0};
-#endif
   char ibvbuf_status[80];
   int ibvbuf_full = hashpipe_ibvpkt_databuf_total_status(db);
   sprintf(ibvbuf_status, "%d/%d", ibvbuf_full, db->header.n_block);
 
-#ifdef STATUS_HACK
   hashpipe_status_lock_safe(st);
   {
     // Save original status
@@ -138,35 +135,30 @@ static void wait_for_block_free(hashpipe_ibvpkt_databuf_t *db, int block_idx,
     hputs(st->buf, "IBVBUFST", ibvbuf_status);
   }
   hashpipe_status_unlock_safe(st);
-#endif
 
   while ((rv=hashpipe_ibvpkt_databuf_wait_free(db, block_idx))
       != HASHPIPE_OK) {
     if (rv==HASHPIPE_TIMEOUT) {
       ibvbuf_full = hashpipe_ibvpkt_databuf_total_status(db);
       sprintf(ibvbuf_status, "%d/%d", ibvbuf_full, db->header.n_block);
-#ifdef STATUS_HACK
       hashpipe_status_lock_safe(st);
       {
         hputs(st->buf, status_key, "blocked");
         hputs(st->buf, "IBVBUFST", ibvbuf_status);
       }
       hashpipe_status_unlock_safe(st);
-#endif
     } else {
       hashpipe_error(__FUNCTION__,
           "error waiting for free databuf (%s)", __FILE__);
       pthread_exit(NULL);
     }
   }
-#ifdef STATUS_HACK
   hashpipe_status_lock_safe(st);
   {
     // Restore original status
     hputs(st->buf, status_key, ibvstat);
   }
   hashpipe_status_unlock_safe(st);
-#endif
 }
 
 // Parses the ibvpktsz string for chunk sizes and initializes db's pktbuf_info
@@ -393,7 +385,6 @@ update_status_buffer(hashpipe_status_t *st, int nfull, int nblocks,
     uint64_t nbytes, uint64_t npkts, uint64_t ns_elapsed,
     int32_t * sniffer_flag)
 {
-#ifdef STATUS_HACK
   char ibvbufst[80];
   double gbps;
   double pps;
@@ -416,7 +407,6 @@ update_status_buffer(hashpipe_status_t *st, int nfull, int nblocks,
     }
   }
   hashpipe_status_unlock_safe(st);
-#endif
 }
 
 // This thread's init() function, if provided, is called by the Hashpipe
@@ -580,14 +570,12 @@ int debug_i=0, debug_j=0;
   uint64_t ns_elapsed;
 
   // Update status_key with running state
-#ifdef STATUS_HACK
   hashpipe_status_lock_safe(st);
   {
     hgeti4(st->buf, "IBVSNIFF", &sniffer_flag);
     hputs(st->buf, status_key, "running");
   }
   hashpipe_status_unlock_safe(st);
-#endif
 
   if(sniffer_flag > 0) {
     if(!(sniffer_flow = create_sniffer_flow(hibv_ctx))) {
@@ -725,13 +713,11 @@ int debug_i=0, debug_j=0;
   } // end main loop
 
   // Update status_key with exiting state
-#ifdef STATUS_HACK
   hashpipe_status_lock_safe(st);
   {
     hputs(st->buf, status_key, "exiting");
   }
   hashpipe_status_unlock_safe(st);
-#endif
 
   hashpipe_info(thread_name, "exiting!");
   pthread_exit(NULL);
