@@ -11,7 +11,6 @@
 #include "hashpipe_status.h"
 #include "hashpipe_error.h"
 #include "hashpipe_ibverbs.h"
-#include "config.h"
 
 #ifndef HASHPIPE_IBVPKT_DATABUF_NBLOCKS
 #define HASHPIPE_IBVPKT_DATABUF_NBLOCKS (4)
