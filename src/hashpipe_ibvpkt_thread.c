@@ -378,12 +378,40 @@ destroy_sniffer_flow(struct ibv_flow * sniffer_flow)
   return ibv_destroy_flow(sniffer_flow);
 }
 
+// Create UDP flow to grab all packets sent to `hibv_ctx`'s MAC address and UDP
+// `port`.  This is used with `UDPSNIFF`.  It differs from the "sniffer" flow
+// created by `create_sniffer_flow` (in response to `IBVSNIFF`) in that it
+// "consumes" the matching packets; they do not also continue to the kernel.
+// This uses the last flow index of `hibv_ctx` (i.e. `hibv_ctx->max_flows-1`).
+// Use with caution!!!
+static
+int
+create_udp_sniffer_flow(struct hashpipe_ibv_context * hibv_ctx, int32_t port)
+{
+  return hashpipe_ibv_flow(hibv_ctx, hibv_ctx->max_flows-1, IBV_FLOW_SPEC_UDP,
+             hibv_ctx->mac, NULL, 0, 0,
+             0, 0, 0, port);
+}
+
+// Destroy flow rule at flow index `hibv_cts->maxflows-1`.  This is where
+// `create_udp_flow` will store its flow rule, but no checks are performed here to
+// ensure that the flow being detstroyed was created by `create_udp_flow`.
+// Use with caution!!!
+static
+int
+destroy_udp_sniffer_flow(struct hashpipe_ibv_context * hibv_ctx)
+{
+  return hashpipe_ibv_flow(hibv_ctx, hibv_ctx->max_flows-1, IBV_FLOW_SPEC_UDP,
+             NULL, NULL, 0, 0,
+             0, 0, 0, 0);
+}
+
 // Update status buffer fields
 static
 void
 update_status_buffer(hashpipe_status_t *st, int nfull, int nblocks,
     uint64_t nbytes, uint64_t npkts, uint64_t ns_elapsed,
-    int32_t * sniffer_flag)
+    int32_t * sniffer_flag, int32_t * udp_sniffer_port)
 {
   char ibvbufst[80];
   double gbps;
@@ -404,6 +432,9 @@ update_status_buffer(hashpipe_status_t *st, int nfull, int nblocks,
     hputnr8(st->buf, "IBVPPS", 3, pps);
     if(*sniffer_flag > -1) {
       hgeti4(st->buf, "IBVSNIFF", sniffer_flag);
+    }
+    if(*udp_sniffer_port > -1) {
+      hgeti4(st->buf, "UDPSNIFF", udp_sniffer_port);
     }
   }
   hashpipe_status_unlock_safe(st);
@@ -537,6 +568,12 @@ int debug_i=0, debug_j=0;
   // error in encountered with it.  We also disable it completely unless
   // IBVSNIFF>-1 in the status buffer at startup.
   int32_t sniffer_flag = -1;
+  // udp_sniffer_port <0 disabled completely, 0 enabled but off, >0 enabled and
+  // on (and is the UDP port number to sniff).  The disabled completely state
+  // is to completely avoid the sniffer if an error in encountered with it.  We
+  // also disable it completely unless UDPSNIFF>-1 in the status buffer at
+  // startup.
+  int32_t udp_sniffer_port = -1;
 
   // Wait until the first two blocks are marked as free
   // (should already be free)
@@ -573,6 +610,7 @@ int debug_i=0, debug_j=0;
   hashpipe_status_lock_safe(st);
   {
     hgeti4(st->buf, "IBVSNIFF", &sniffer_flag);
+    hgeti4(st->buf, "UDPSNIFF", &udp_sniffer_port);
     hputs(st->buf, status_key, "running");
   }
   hashpipe_status_unlock_safe(st);
@@ -587,6 +625,18 @@ int debug_i=0, debug_j=0;
     }
   } else {
     hashpipe_info(thread_name, "sniffer_flow disabled");
+  }
+
+  if(udp_sniffer_port > 0) {
+    if(!create_udp_sniffer_flow(hibv_ctx, udp_sniffer_port)) {
+      hashpipe_error(thread_name, "create_udp_sniffer_flow failed");
+      errno = 0;
+      udp_sniffer_port = -1;
+    } else {
+      hashpipe_info(thread_name, "create_udp_sniffer_flow succeeded");
+    }
+  } else {
+    hashpipe_info(thread_name, "udp_sniffer_flow disabled");
   }
 
   // Initialize ts_start with current time
@@ -614,7 +664,7 @@ int debug_i=0, debug_j=0;
       // Timeout, update status buffer
       update_status_buffer(st, hashpipe_ibvpkt_databuf_total_status(db),
           db->header.n_block, bytes_received, pkts_received, ns_elapsed,
-          &sniffer_flag);
+          &sniffer_flag, &udp_sniffer_port);
 
       // Reset counters
       bytes_received = 0;
@@ -638,6 +688,26 @@ int debug_i=0, debug_j=0;
           hashpipe_info(thread_name, "destroy_sniffer_flow succeeded");
         }
         sniffer_flow = NULL;
+      }
+
+      // Manage UDP "sniffer flow" as needed
+      if(udp_sniffer_port > 0 && !hibv_ctx->ibv_flows[hibv_ctx->max_flows-1]) {
+        if(!create_udp_sniffer_flow(hibv_ctx, udp_sniffer_port)) {
+          hashpipe_error(thread_name, "create_sniffer_flow failed");
+          errno = 0;
+          udp_sniffer_port = -1;
+        } else {
+          hashpipe_info(thread_name, "create_sniffer_flow succeeded");
+        }
+      } else if (udp_sniffer_port < 1 && hibv_ctx->ibv_flows[hibv_ctx->max_flows-1]) {
+        if(destroy_udp_sniffer_flow(hibv_ctx)) {
+          hashpipe_error(thread_name, "destroy_sniffer_flow failed");
+          errno = 0;
+          sniffer_flag = -1;
+        } else {
+          hashpipe_info(thread_name, "destroy_sniffer_flow succeeded");
+        }
+        hibv_ctx->ibv_flows[hibv_ctx->max_flows-1] = NULL;
       }
     } // end periodic status buffer update
 
