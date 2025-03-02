@@ -99,7 +99,8 @@ list_hashpipe_threads(FILE * f)
 unsigned int
 get_cpu_affinity()
 {
-    int i, mask=0;
+    int i;
+    unsigned int mask=0;
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
 
@@ -108,14 +109,11 @@ get_cpu_affinity()
         hashpipe_error(__FUNCTION__, "Error getting cpu affinity.");
         return 0;
     }
-    if(mask != 0) {
-        // Only handle 32 cores (for now)
-        for(i=31; i<=0; i--) {
-            mask <<= 1;
-            if(CPU_ISSET(i, &cpuset)) {
-              mask |= 1;
-            }
-        }
+    // Only handle 32 cores (for now)
+    for(i=31; i>=0; i--) {
+        mask <<= 1;
+        if(CPU_ISSET(i, &cpuset)) {
+          mask |= 1;            }
     }
     return mask;
 }
